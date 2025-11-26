@@ -1,0 +1,23 @@
+
+version: '3'
+
+services:
+  gemini-rss:
+    build: .
+    image: gemini-rss-app
+    container_name: gemini-rss
+    # 关键配置：使用 host 网络模式
+    # 这样容器内的 127.0.0.1 直接指向宿主机，从而能访问宿主机的 Clash (7890)
+    # 同时省去了 NAT 转换，性能最高
+    network_mode: "host"
+    
+    restart: always
+    environment:
+      - NODE_ENV=production
+    
+    # 日志轮转，防止日志占满磁盘
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

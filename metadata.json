@@ -1,0 +1,5 @@
+{
+  "name": "Gemini RSS Translator",
+  "description": "A modern, visualized RSS reader that uses Google Gemini to translate articles into your preferred language instantly.",
+  "requestFramePermissions": []
+}
