@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchRSS, proxyImageUrl } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
@@ -465,7 +466,7 @@ const App: React.FC = () => {
                    <img src={readingViewAvatar} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-50 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800" onError={(e) => { (e.target as HTMLImageElement).src = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`); }} />
                    <div className="flex flex-col">
                      <span className="font-semibold text-slate-800 dark:text-slate-200">{activeArticle.author || activeArticle.feedTitle}</span>
-                     <span>{new Date(activeArticle.pubDate).toLocaleDateString()}</span>
+                     <span>{new Date(activeArticle.pubDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
                    </div>
                  </div>
                  {showTranslation && translatedContent && (

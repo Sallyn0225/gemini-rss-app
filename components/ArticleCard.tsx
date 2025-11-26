@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Article } from '../types';
 
@@ -16,6 +17,16 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
   const preview = article.description 
     ? article.description.replace(/<[^>]+>/g, '').substring(0, 150) + '...'
     : 'No preview available.';
+  
+  const formattedDateTime = new Date(article.pubDate).toLocaleString([], {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).replace(',', '');
+
 
   return (
     <div 
@@ -73,7 +84,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <time>{new Date(article.pubDate).toLocaleDateString()}</time>
+            <time>{formattedDateTime}</time>
           </div>
           <div className="flex items-center gap-2">
             {!isRead && (
