@@ -282,7 +282,8 @@ const App: React.FC = () => {
     if (translatedContent && lastTranslatedLang === targetLang) { setShowTranslation(true); return; }
     setIsTranslating(true);
     try {
-      const result = await translateContent(activeArticle.content || activeArticle.description, targetLang, aiSettings);
+      const content = activeArticle.content || activeArticle.description;
+      const result = await translateContent(content, targetLang, aiSettings);
       setTranslatedContent(result); setLastTranslatedLang(targetLang); setShowTranslation(true);
     } catch (error: any) { 
       console.error(error); 
@@ -293,7 +294,32 @@ const App: React.FC = () => {
     }
   }, [activeArticle, targetLang, showTranslation, translatedContent, lastTranslatedLang, aiSettings]);
 
+  const handleLanguageSwitch = async (newLang: Language) => {
+    setTargetLang(newLang);
+    // If we are currently viewing a translation, refresh it immediately
+    if (showTranslation && activeArticle) {
+        setIsTranslating(true);
+        try {
+            const content = activeArticle.content || activeArticle.description || '';
+            const result = await translateContent(content, newLang, aiSettings);
+            setTranslatedContent(result);
+            setLastTranslatedLang(newLang);
+        } catch (error: any) {
+            console.error(error);
+            alert(`翻译失败:\n${error.message}`);
+        } finally {
+            setIsTranslating(false);
+        }
+    }
+  };
+
   const handleSaveSettings = (newSettings: AISettings) => { setAiSettings(newSettings); localStorage.setItem('rss_ai_settings', JSON.stringify(newSettings)); };
+
+  const getTranslatorName = useCallback(() => {
+    if (aiSettings.tasks.translation?.modelName) return aiSettings.tasks.translation.modelName;
+    if (aiSettings.tasks.general?.modelName) return aiSettings.tasks.general.modelName;
+    return "Gemini AI";
+  }, [aiSettings]);
 
   const proxiedArticleContent = useMemo(() => {
     if (!activeArticle?.content) return activeArticle?.description || '';
@@ -489,21 +515,21 @@ const App: React.FC = () => {
                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                        </svg>
-                       <span className="hidden md:inline">Translating...</span>
+                       <span className="hidden md:inline">翻译中...</span>
                     </>
                    ) : showTranslation ? (
                      <>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:mr-2">
                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
                         </svg>
-                        <span className="hidden md:inline">Restore</span>
+                        <span className="hidden md:inline">查看原文</span>
                      </>
                    ) : (
                      <>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:mr-2">
                            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
                         </svg>
-                        <span className="hidden md:inline">Translate</span>
+                        <span className="hidden md:inline">AI 翻译</span>
                      </>
                    )}
                  </button>
@@ -529,15 +555,34 @@ const App: React.FC = () => {
                      <span>{new Date(activeArticle.pubDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
                    </div>
                  </div>
+                 
+                 {/* Translation Disclaimer / Header */}
                  {showTranslation && translatedContent && (
-                   <div className="mb-12 rounded-3xl overflow-hidden border border-indigo-200 shadow-xl bg-white animate-fade-in dark:bg-slate-800 dark:border-indigo-900">
-                     <div className="bg-indigo-50/80 px-6 py-3 border-b border-indigo-100 flex items-center justify-between dark:bg-indigo-900/40 dark:border-indigo-800">
-                       <div className="flex items-center gap-2 text-indigo-700 font-bold uppercase text-xs dark:text-indigo-300">Gemini Translation ({targetLang})</div>
-                     </div>
-                     <div className="p-8 prose prose-indigo prose-lg max-w-none text-slate-800 font-serif dark:prose-invert dark:text-slate-200" dangerouslySetInnerHTML={{ __html: translatedContent }} />
-                   </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 mb-6 px-4 py-3 bg-slate-100 rounded-lg dark:bg-slate-800 dark:text-slate-400 border-l-4 border-blue-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-blue-500">
+                            <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 12.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm-1.5-6.5a.75.75 0 100 1.5.75.75 0 000-1.5z" />
+                        </svg>
+                        <span>由 <strong>{getTranslatorName()}</strong> 翻译，仅供参考</span>
+                        <span className="text-slate-300 mx-1">|</span>
+                        <div className="flex items-center gap-1">
+                            <span>翻译至</span>
+                            <select 
+                                value={targetLang} 
+                                onChange={(e) => handleLanguageSwitch(e.target.value as Language)}
+                                className="bg-transparent font-bold text-blue-600 outline-none cursor-pointer hover:text-blue-700 py-0 pr-6 border-none focus:ring-0 text-sm dark:text-blue-400"
+                            >
+                                {Object.values(Language).map(l => <option key={l} value={l}>{l}</option>)}
+                            </select>
+                        </div>
+                    </div>
                  )}
-                 <div className={`prose prose-slate prose-lg max-w-none prose-img:rounded-xl dark:prose-invert ${showTranslation ? 'opacity-30 grayscale hover:opacity-100 hover:grayscale-0 transition-all' : ''}`} dangerouslySetInnerHTML={{ __html: proxiedArticleContent }} />
+
+                 {/* Content Area (Switches between Translation and Original) */}
+                 <div 
+                   className={`prose prose-slate prose-lg max-w-none prose-img:rounded-xl dark:prose-invert`} 
+                   dangerouslySetInnerHTML={{ __html: showTranslation && translatedContent ? translatedContent : proxiedArticleContent }} 
+                 />
+
                </div>
              </div>
            </div>
