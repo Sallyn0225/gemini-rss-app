@@ -1,7 +1,5 @@
-
-
 import React, { useState } from 'react';
-import { Article } from '../types';
+import { Article, ArticleCategory } from '../types';
 
 interface ArticleCardProps {
   article: Article;
@@ -26,7 +24,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
     minute: '2-digit',
     hour12: false,
   }).replace(',', '');
-
+  
+  const isRetweet = /^RT\s/i.test(article.title) || /^Re\s/i.test(article.title);
 
   return (
     <div 
@@ -60,7 +59,12 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
              <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm uppercase tracking-wider border border-slate-100 dark:bg-slate-900/90 dark:text-slate-200 dark:border-slate-800">
                {article.feedTitle}
              </span>
-             {article.aiCategory && (
+             {isRetweet && (
+                <span className="bg-slate-600/90 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm tracking-wider border border-slate-500/20">
+                  {ArticleCategory.RETWEET}
+                </span>
+             )}
+             {article.aiCategory && article.aiCategory !== ArticleCategory.RETWEET && (
                 <span className="bg-indigo-500/90 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm tracking-wider border border-indigo-400/20">
                   {article.aiCategory}
                 </span>

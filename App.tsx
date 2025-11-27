@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchRSS, proxyImageUrl, fetchSystemFeeds } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
@@ -239,7 +237,20 @@ const App: React.FC = () => {
     } catch (e) { console.error("Analysis failed", e); } finally { setIsAnalyzing(false); }
   };
 
-  const handleFilterToggle = (filter: string) => { setActiveFilters(prev => prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter]); if (!activeFilters.includes(filter) && baseArticles.some(a => !articleClassifications[a.guid])) { handleRunAnalysis(); } };
+  const handleFilterToggle = (filter: string) => { 
+    setActiveFilters(prev => {
+        const isActive = prev.includes(filter);
+        return isActive ? prev.filter(f => f !== filter) : [...prev, filter];
+    });
+    
+    // Auto-analyze only if we are activating a new filter AND it is NOT the RETWEET filter
+    // We check !activeFilters.includes(filter) here, which reflects the state BEFORE update (which is correct for "is currently not active")
+    const isActivating = !activeFilters.includes(filter);
+    
+    if (isActivating && filter !== ArticleCategory.RETWEET && baseArticles.some(a => !articleClassifications[a.guid])) { 
+        handleRunAnalysis(); 
+    } 
+  };
   
   const handleArticleSelect = (article: Article) => {
     if (articleListRef.current) {
@@ -431,7 +442,9 @@ const App: React.FC = () => {
                  {filteredArticles.map(article => (
                     <ArticleCard 
                         key={article.guid || article.link} 
-                        article={{ ...article, aiCategory: isRetweet(article) ? ArticleCategory.RETWEET : articleClassifications[article.guid] }} 
+                        // aiCategory passed directly so semantic category shows up. 
+                        // ArticleCard will handle displaying Retweet badge separately.
+                        article={{ ...article, aiCategory: articleClassifications[article.guid] }} 
                         isSelected={false} 
                         isRead={readArticleIds.has(article.guid || article.link)}
                         onClick={() => handleArticleSelect(article)} 
