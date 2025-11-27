@@ -134,6 +134,16 @@ const App: React.FC = () => {
     }
   });
 
+  const isAiConfigured = useMemo(() => {
+    const { providers, tasks } = aiSettings;
+    if (providers.length === 0) return false;
+    const generalConfig = tasks.general;
+    if (generalConfig && generalConfig.providerId && generalConfig.modelId && providers.some(p => p.id === generalConfig.providerId)) {
+        return true;
+    }
+    return false;
+  }, [aiSettings]);
+
   useEffect(() => { if (darkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); } }, [darkMode]);
   useEffect(() => { let lastIsDesktop = window.innerWidth >= 1024; const handleResize = () => { const isDesktop = window.innerWidth >= 1024; if (isDesktop !== lastIsDesktop) { setIsSidebarOpen(isDesktop); setIsRightSidebarOpen(isDesktop); lastIsDesktop = isDesktop; } }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
 
@@ -222,6 +232,12 @@ const App: React.FC = () => {
 
   const handleRunAnalysis = async () => {
     if (!selectedFeed || isAnalyzing) return;
+    
+    if (!isAiConfigured) {
+      alert("AI 功能未配置。请点击左下角的“设置”按钮，添加 API 提供商并配置「总模型」后重试。");
+      return;
+    }
+
     setIsAnalyzing(true); setAnalysisSuccess(false);
     try {
       const dateContext = selectedDate || new Date();
@@ -278,7 +294,14 @@ const App: React.FC = () => {
   const handleBackToDashboard = () => { setSelectedFeed(null); setActiveArticle(null); setSelectedDate(null); };
 
   const handleTranslateToggle = useCallback(async () => {
-    if (!activeArticle) return; if (showTranslation) { setShowTranslation(false); return; }
+    if (!activeArticle) return;
+    
+    if (!isAiConfigured) {
+      alert("AI 功能未配置。请点击左下角的“设置”按钮，添加 API 提供商并配置「总模型」后重试。");
+      return;
+    }
+
+    if (showTranslation) { setShowTranslation(false); return; }
     if (translatedContent && lastTranslatedLang === targetLang) { setShowTranslation(true); return; }
     setIsTranslating(true);
     try {
@@ -292,7 +315,7 @@ const App: React.FC = () => {
     } finally { 
       setIsTranslating(false); 
     }
-  }, [activeArticle, targetLang, showTranslation, translatedContent, lastTranslatedLang, aiSettings]);
+  }, [activeArticle, targetLang, showTranslation, translatedContent, lastTranslatedLang, aiSettings, isAiConfigured]);
 
   const handleLanguageSwitch = async (newLang: Language) => {
     setTargetLang(newLang);
