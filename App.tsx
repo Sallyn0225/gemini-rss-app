@@ -150,19 +150,24 @@ const App: React.FC = () => {
 
       // 2. Fetch Content
       const results = await Promise.allSettled(
-        feedConfigs.map(config => fetchRSS(config.id).then(feed => ({...feed, ...config})))
+        feedConfigs.map(config => fetchRSS(config.id))
       );
       
       const loadedFeeds: Feed[] = [];
       results.forEach((result, index) => { 
         if (result.status === 'fulfilled') { 
-          const config = feedConfigs[index]; 
-          loadedFeeds.push({ ...result.value, category: config.category, isSub: config.isSub }); 
-        } 
+          const config = feedConfigs[index];
+          const fetchedFeed = result.value;
+          
+          const finalFeed: Feed = {
+            ...fetchedFeed,
+            title: config.customTitle || fetchedFeed.title,
+            category: config.category,
+            isSub: config.isSub,
+          };
+          loadedFeeds.push(finalFeed);
+        }
       });
-      
-      // Preserve predefined order implicitly by array index
-      // loadedFeeds.sort((a, b) => PREDEFINED_FEEDS.findIndex(p => p.url === a.url) - PREDEFINED_FEEDS.findIndex(p => p.url === b.url));
       
       if (loadedFeeds.length === 0) setErrorMsg("Could not load feeds.");
       setFeeds(loadedFeeds); 

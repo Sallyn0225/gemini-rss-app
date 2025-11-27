@@ -22,6 +22,7 @@ export interface SystemFeedConfig {
   id: string;
   category: string;
   isSub: boolean;
+  customTitle?: string;
   // URL is hidden by server
 }
 
@@ -61,6 +62,7 @@ export const addSystemFeed = async (
   url: string, 
   category: string, 
   isSub: boolean, 
+  customTitle: string,
   secret: string
 ): Promise<void> => {
   const response = await fetch('/api/feeds/add', {
@@ -69,7 +71,7 @@ export const addSystemFeed = async (
       'Content-Type': 'application/json',
       'x-admin-secret': secret
     },
-    body: JSON.stringify({ id, url, category, isSub })
+    body: JSON.stringify({ id, url, category, isSub, customTitle })
   });
   
   if (!response.ok) {

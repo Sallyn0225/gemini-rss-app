@@ -41,7 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const [isVerifying, setIsVerifying] = useState(false);
   const [fullFeedList, setFullFeedList] = useState<FullSystemFeedConfig[]>([]);
   const [isEditingFeed, setIsEditingFeed] = useState(false);
-  const [feedForm, setFeedForm] = useState({ id: '', url: '', category: '', isSub: false });
+  const [feedForm, setFeedForm] = useState({ id: '', url: '', category: '', isSub: false, customTitle: '' });
   const [feedStatus, setFeedStatus] = useState<{msg: string, type: 'success' | 'error' | null}>({ msg: '', type: null });
   const [isSubmittingFeed, setIsSubmittingFeed] = useState(false);
 
@@ -156,9 +156,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     setIsSubmittingFeed(true);
     setFeedStatus({ msg: `${isEditingFeed ? 'Updating' : 'Adding'} feed...`, type: null });
     try {
-      await addSystemFeed(feedForm.id, feedForm.url, feedForm.category, feedForm.isSub, verifiedSecret);
+      await addSystemFeed(feedForm.id, feedForm.url, feedForm.category, feedForm.isSub, feedForm.customTitle, verifiedSecret);
       setFeedStatus({ msg: `Feed ${isEditingFeed ? 'updated' : 'added'} successfully! The list will refresh.`, type: 'success' });
-      setFeedForm({ id: '', url: '', category: '', isSub: false });
+      setFeedForm({ id: '', url: '', category: '', isSub: false, customTitle: '' });
       setIsEditingFeed(false);
       await handleLoadFeeds(verifiedSecret);
     } catch (e: any) {
@@ -169,13 +169,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   const startEditFeed = (feed: FullSystemFeedConfig) => {
-    setFeedForm({ id: feed.id, url: feed.url, category: feed.category || '', isSub: feed.isSub || false });
+    setFeedForm({ id: feed.id, url: feed.url, category: feed.category || '', isSub: feed.isSub || false, customTitle: feed.customTitle || '' });
     setIsEditingFeed(true);
     window.scrollTo(0, document.body.scrollHeight);
   };
   
   const cancelEditFeed = () => {
-    setFeedForm({ id: '', url: '', category: '', isSub: false });
+    setFeedForm({ id: '', url: '', category: '', isSub: false, customTitle: '' });
     setIsEditingFeed(false);
   }
 
@@ -355,7 +355,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 {fullFeedList.map(feed => (
                                     <div key={feed.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700/50">
                                         <div>
-                                            <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">{feed.id}</p>
+                                            <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">{feed.customTitle || feed.id}</p>
                                             <p className="text-xs text-slate-500 dark:text-slate-400">{feed.category} {feed.isSub && '(Sub)'}</p>
                                         </div>
                                         <div className="flex gap-2">
@@ -373,6 +373,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                          {feedStatus.msg && (<div className={`mb-4 px-4 py-3 rounded-lg text-sm font-semibold ${feedStatus.type === 'success' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' : feedStatus.type === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-blue-50 text-blue-700'}`}>{feedStatus.msg}</div>)}
                          <div className="space-y-4">
                             <div><label className={labelClass}>Unique ID (Code)</label><input type="text" className={inputClass} placeholder="e.g., bandori_official_twitter" value={feedForm.id} onChange={e => setFeedForm({...feedForm, id: e.target.value})} disabled={isEditingFeed} /></div>
+                            <div><label className={labelClass}>Custom Title (Optional)</label><input type="text" className={inputClass} placeholder="Overrides default title from feed" value={feedForm.customTitle} onChange={e => setFeedForm({...feedForm, customTitle: e.target.value})} /></div>
                             <div><label className={labelClass}>Source URL (Hidden)</label><input type="text" className={inputClass} placeholder="https://your-rss-service.com/..." value={feedForm.url} onChange={e => setFeedForm({...feedForm, url: e.target.value})} /></div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className={labelClass}>Category</label><input type="text" className={inputClass} placeholder="e.g., BanG Dream" value={feedForm.category} onChange={e => setFeedForm({...feedForm, category: e.target.value})} /></div>

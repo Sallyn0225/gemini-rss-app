@@ -18,12 +18,12 @@ const PROXY_CONFIG = {
 
 // --- Default Feeds (Fallback/Initial) ---
 const DEFAULT_FEEDS = [
-  { id: 'bang_dream_info', url: 'http://server.sallyn.site:1200/twitter/user/bang_dream_info?readable=1', category: 'BanG Dream Project', isSub: false },
-  { id: 'bang_dream_mygo', url: 'http://server.sallyn.site:1200/twitter/user/bang_dream_mygo?readable=1', category: 'BanG Dream Project', isSub: true },
-  { id: 'bdp_avemujica', url: 'http://server.sallyn.site:1200/twitter/user/BDP_AveMujica?readable=1', category: 'BanG Dream Project', isSub: true },
-  { id: 'imas_official', url: 'http://server.sallyn.site:1200/twitter/user/imas_official?readable=1', category: 'iDOLM@STER Project', isSub: false },
-  { id: 'shinyc_official', url: 'http://server.sallyn.site:1200/twitter/user/shinyc_official?readable=1', category: 'iDOLM@STER Project', isSub: true },
-  { id: 'gkmas_official', url: 'http://server.sallyn.site:1200/twitter/user/gkmas_official?readable=1', category: 'iDOLM@STER Project', isSub: true }
+  { id: 'bang_dream_info', url: 'http://server.sallyn.site:1200/twitter/user/bang_dream_info?readable=1', category: 'BanG Dream Project', isSub: false, customTitle: '' },
+  { id: 'bang_dream_mygo', url: 'http://server.sallyn.site:1200/twitter/user/bang_dream_mygo?readable=1', category: 'BanG Dream Project', isSub: true, customTitle: '' },
+  { id: 'bdp_avemujica', url: 'http://server.sallyn.site:1200/twitter/user/BDP_AveMujica?readable=1', category: 'BanG Dream Project', isSub: true, customTitle: '' },
+  { id: 'imas_official', url: 'http://server.sallyn.site:1200/twitter/user/imas_official?readable=1', category: 'iDOLM@STER Project', isSub: false, customTitle: '' },
+  { id: 'shinyc_official', url: 'http://server.sallyn.site:1200/twitter/user/shinyc_official?readable=1', category: 'iDOLM@STER Project', isSub: true, customTitle: '' },
+  { id: 'gkmas_official', url: 'http://server.sallyn.site:1200/twitter/user/gkmas_official?readable=1', category: 'iDOLM@STER Project', isSub: true, customTitle: '' }
 ];
 
 // --- Helper: Load Feeds ---
@@ -100,7 +100,8 @@ const server = http.createServer((req, res) => {
     const safeFeeds = feeds.map(f => ({
       id: f.id,
       category: f.category,
-      isSub: f.isSub || false
+      isSub: f.isSub || false,
+      customTitle: f.customTitle || ''
     }));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(safeFeeds));
@@ -133,9 +134,9 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
-        const { id, url, category, isSub } = JSON.parse(body);
+        const { id, url, category, isSub, customTitle } = JSON.parse(body);
         if (!id || !url) throw new Error("Missing ID or URL");
-        saveFeed({ id, url, category, isSub: !!isSub });
+        saveFeed({ id, url, category, isSub: !!isSub, customTitle });
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
       } catch (e) {
