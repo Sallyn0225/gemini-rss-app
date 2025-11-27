@@ -1,8 +1,8 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { AISettings, AIProvider, AIModelConfig, AIProviderType } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, FullSystemFeedConfig } from '../services/rssService';
+import { fetchProviderModels } from '../services/geminiService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -32,8 +32,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     name: '',
     type: 'openai',
     baseUrl: '',
-    apiKey: ''
+    apiKey: '',
+    enabledModels: []
   });
+
+  // Model Management State
+  const [activeProviderForModels, setActiveProviderForModels] = useState<string | null>(null);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   // Feed Management State
   const [adminSecret, setAdminSecret] = useState('');
@@ -52,6 +59,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       setVerifiedSecret(null);
       setAdminSecret('');
       setFullFeedList([]);
+      
+      // Select first provider for models tab if exists
+      if (settings?.providers?.length > 0) {
+        setActiveProviderForModels(settings.providers[0].id);
+      }
     }
   }, [isOpen, settings]);
 
@@ -81,7 +93,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     }
     setIsEditingProvider(false);
     setEditingProviderId(null);
-    setEditForm({ name: '', type: 'openai', baseUrl: '', apiKey: '' });
+    setEditForm({ name: '', type: 'openai', baseUrl: '', apiKey: '', enabledModels: [] });
   };
 
   const handleDeleteProvider = (id: string) => {
@@ -98,27 +110,90 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
           tasks: newTasks
         };
       });
+      if (activeProviderForModels === id) setActiveProviderForModels(null);
     }
   };
 
   const startEditProvider = (provider?: AIProvider) => {
     if (provider) {
       setEditingProviderId(provider.id);
-      setEditForm({ name: provider.name, type: provider.type, baseUrl: provider.baseUrl, apiKey: provider.apiKey });
+      setEditForm({ 
+        name: provider.name, 
+        type: provider.type, 
+        baseUrl: provider.baseUrl, 
+        apiKey: provider.apiKey,
+        enabledModels: provider.enabledModels || []
+      });
     } else {
       setEditingProviderId(null);
-      setEditForm({ name: '', type: 'openai', baseUrl: 'https://api.openai.com/v1', apiKey: '' });
+      setEditForm({ name: '', type: 'openai', baseUrl: 'https://api.openai.com/v1', apiKey: '', enabledModels: [] });
     }
     setIsEditingProvider(true);
+  };
+
+  // --- Model Library Handlers ---
+  const handleFetchModels = async () => {
+    if (!activeProviderForModels) return;
+    const provider = localSettings.providers.find(p => p.id === activeProviderForModels);
+    if (!provider) return;
+
+    setIsFetchingModels(true);
+    setFetchError(null);
+    try {
+      const models = await fetchProviderModels(provider);
+      if (models.length === 0) {
+        setFetchError("未找到任何可用模型。请检查 API Key 权限或网络连接。");
+      } else {
+        setAvailableModels(models);
+        // Automatically merge new models into available set if strict mode wasn't desired, but here we just list them.
+      }
+    } catch (e: any) {
+      setFetchError(e.message);
+    } finally {
+      setIsFetchingModels(false);
+    }
+  };
+
+  const toggleEnabledModel = (providerId: string, modelId: string) => {
+    setLocalSettings(prev => ({
+      ...prev,
+      providers: prev.providers.map(p => {
+        if (p.id === providerId) {
+          const current = p.enabledModels || [];
+          const exists = current.includes(modelId);
+          return {
+            ...p,
+            enabledModels: exists ? current.filter(m => m !== modelId) : [...current, modelId]
+          };
+        }
+        return p;
+      })
+    }));
+  };
+  
+  const getEnabledModelsForProvider = (providerId: string) => {
+    return localSettings.providers.find(p => p.id === providerId)?.enabledModels || [];
   };
 
   // --- Model Config Handlers ---
   const handleModelChange = (task: keyof AISettings['tasks'], field: keyof AIModelConfig, value: string) => {
     setLocalSettings(prev => {
       const currentConfig = prev.tasks[task] || { providerId: '', modelId: '', modelName: '' };
-      if (field === 'providerId' && value === '') {
-         return { ...prev, tasks: { ...prev.tasks, [task]: null } };
+      
+      // If changing provider, clear the model ID unless we want to try to keep it (usually different providers have different models)
+      if (field === 'providerId') {
+         if (value === '') {
+             return { ...prev, tasks: { ...prev.tasks, [task]: null } };
+         }
+         return { 
+           ...prev, 
+           tasks: { 
+             ...prev.tasks, 
+             [task]: { ...currentConfig, providerId: value, modelId: '' } // Reset model ID on provider change
+           } 
+         };
       }
+      
       return { ...prev, tasks: { ...prev.tasks, [task]: { ...currentConfig, [field]: value } } };
     });
   };
@@ -297,33 +372,204 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
             {/* --- MODELS TAB --- */}
             {activeTab === 'models' && (
-              <div className="space-y-8 max-w-3xl mx-auto">
+              <div className="space-y-10 max-w-4xl mx-auto">
+                
+                {/* 1. SELECT ENABLED MODELS SECTION */}
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">模型任务配置</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">为不同的任务指定使用的模型。若特定任务未配置，将默认使用「总模型」。</p>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">选择启用的模型 (Select Enabled Models)</h3>
+                  <p className="text-sm text-slate-500 mb-4 dark:text-slate-400">选择提供商并获取可用模型列表，勾选您希望在任务配置中使用的模型。</p>
+                  
+                  {localSettings.providers.length === 0 ? (
+                    <div className="p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm dark:bg-yellow-900/30 dark:text-yellow-400">请先在“API 提供商”页面添加提供商。</div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden dark:bg-slate-800 dark:border-slate-700">
+                      {/* Provider Tabs */}
+                      <div className="flex overflow-x-auto border-b border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 p-2 gap-2">
+                         {localSettings.providers.map(p => (
+                            <button 
+                              key={p.id} 
+                              onClick={() => { setActiveProviderForModels(p.id); setAvailableModels([]); setFetchError(null); }}
+                              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeProviderForModels === p.id ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-800'}`}
+                            >
+                               <span className={`w-2 h-2 rounded-full ${p.type === 'gemini' ? 'bg-purple-500' : 'bg-emerald-500'}`}></span>
+                               {p.name}
+                            </button>
+                         ))}
+                      </div>
+                      
+                      {/* Active Provider Config Area */}
+                      {activeProviderForModels && (
+                        <div className="p-6">
+                           <div className="flex items-center justify-between mb-4">
+                              <h4 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <span className="text-sm px-2 py-0.5 bg-slate-100 rounded text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                                   {localSettings.providers.find(p => p.id === activeProviderForModels)?.type === 'gemini' ? 'Gemini API' : 'OpenAI Compatible'}
+                                </span>
+                              </h4>
+                              <button 
+                                onClick={handleFetchModels}
+                                disabled={isFetchingModels}
+                                className="px-4 py-2 bg-indigo-50 text-indigo-600 text-sm font-bold rounded-lg hover:bg-indigo-100 transition-colors disabled:opacity-50 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
+                              >
+                                {isFetchingModels ? '获取中...' : '获取所有可用模型'}
+                              </button>
+                           </div>
+                           
+                           {fetchError && (
+                             <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg dark:bg-red-900/30 dark:text-red-300">
+                               <strong>获取失败:</strong> {fetchError}
+                             </div>
+                           )}
+
+                           {/* Render Available Models (if fetched) OR Currently Enabled Models */}
+                           <div className="space-y-2">
+                             {availableModels.length > 0 && (
+                               <div className="mb-4 p-3 bg-blue-50 text-blue-700 text-xs rounded-lg dark:bg-blue-900/30 dark:text-blue-300">
+                                 已获取 {availableModels.length} 个模型。请勾选您想启用的模型。
+                               </div>
+                             )}
+                             
+                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-1">
+                               {/* Combine available models and already enabled models to ensure checked ones are always visible even if not fetched yet */}
+                               {Array.from(new Set([...availableModels, ...getEnabledModelsForProvider(activeProviderForModels)])).sort().map(modelId => {
+                                 const isEnabled = getEnabledModelsForProvider(activeProviderForModels).includes(modelId);
+                                 return (
+                                   <label key={modelId} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isEnabled ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'bg-white border-slate-200 hover:border-blue-200 dark:bg-slate-800 dark:border-slate-700'}`}>
+                                      <input 
+                                        type="checkbox" 
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                        checked={isEnabled}
+                                        onChange={() => toggleEnabledModel(activeProviderForModels, modelId)}
+                                      />
+                                      <span className={`text-sm truncate ${isEnabled ? 'font-bold text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`} title={modelId}>
+                                        {modelId}
+                                      </span>
+                                   </label>
+                                 );
+                               })}
+                               {availableModels.length === 0 && getEnabledModelsForProvider(activeProviderForModels).length === 0 && (
+                                  <div className="col-span-full text-center py-8 text-slate-400 italic">
+                                     暂无模型数据，请点击“获取所有可用模型”按钮。
+                                  </div>
+                               )}
+                             </div>
+                           </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="bg-white p-6 rounded-xl border-l-4 border-blue-500 shadow-md dark:bg-slate-800 dark:shadow-none">
-                    <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4 dark:border-slate-700">
-                      <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-blue-900 dark:text-blue-300">Default</span>
-                      <h4 className="font-bold text-slate-900 text-lg dark:text-white">总模型 (General Model)</h4><span className="text-xs text-red-500 font-medium ml-auto">* 必填</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                      <div><label className={labelClass}>选择提供商</label><div className="relative"><select className={`${inputClass} appearance-none cursor-pointer`} value={localSettings.tasks.general?.providerId || ''} onChange={e => handleModelChange('general', 'providerId', e.target.value)}><option value="">请选择...</option>{localSettings.providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div></div></div>
-                      <div><label className={labelClass}>模型 ID</label><input type="text" className={inputClass} placeholder="e.g. gpt-4o" value={localSettings.tasks.general?.modelId || ''} onChange={e => handleModelChange('general', 'modelId', e.target.value)} /></div>
-                      <div><label className={labelClass}>备注名称</label><input type="text" className={inputClass} placeholder="给个好记的名字" value={localSettings.tasks.general?.modelName || ''} onChange={e => handleModelChange('general', 'modelName', e.target.value)} /></div>
-                    </div>
+
+                {/* 2. TASK CONFIGURATION SECTION */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">模型任务配置 (Model Task Configuration)</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">为不同的任务指定使用的模型。若特定任务未配置，将默认使用「总模型」。</p>
                   </div>
-                  {[{ key: 'translation', label: 'AI 翻译', hint: '建议使用速度快、成本低的小模型 (e.g. gemini-flash, gpt-4o-mini)' }, { key: 'summary', label: 'AI 总结', hint: '用于生成简单的摘要' }, { key: 'analysis', label: 'AI 分析', hint: '用于复杂的分类和深度分析任务' },].map(task => { const taskKey = task.key as keyof AISettings['tasks']; const config = localSettings.tasks[taskKey]; return (
-                      <div key={taskKey} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md dark:bg-slate-800 dark:border-slate-700">
-                        <div className="flex items-center gap-2 mb-2"><span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-slate-700 dark:text-slate-300">Optional</span><h4 className="font-bold text-slate-800 text-lg dark:text-white">{task.label}</h4></div>
-                        <p className="text-xs text-slate-400 mb-6 dark:text-slate-500">{task.hint}</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                          <div><label className={labelClass}>选择提供商</label><div className="relative"><select className={`${inputClass} appearance-none cursor-pointer`} value={config?.providerId || ''} onChange={e => handleModelChange(taskKey, 'providerId', e.target.value)}><option value="">默认 (使用总模型)</option>{localSettings.providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div></div></div>
-                          {config?.providerId && (<><div><label className={labelClass}>模型 ID</label><input type="text" className={inputClass} placeholder="Model ID" value={config.modelId || ''} onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)} /></div><div><label className={labelClass}>备注名称</label><input type="text" className={inputClass} placeholder="Remark" value={config.modelName || ''} onChange={e => handleModelChange(taskKey, 'modelName', e.target.value)} /></div></>)}
+                  
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* General Model Config */}
+                    <div className="bg-white p-6 rounded-xl border-l-4 border-blue-500 shadow-md dark:bg-slate-800 dark:shadow-none">
+                      <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4 dark:border-slate-700">
+                        <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-blue-900 dark:text-blue-300">DEFAULT</span>
+                        <h4 className="font-bold text-slate-900 text-lg dark:text-white">总模型 (General Model)</h4><span className="text-xs text-red-500 font-medium ml-auto">* 必填</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div>
+                          <label className={labelClass}>选择提供商</label>
+                          <div className="relative">
+                            <select className={`${inputClass} appearance-none cursor-pointer`} value={localSettings.tasks.general?.providerId || ''} onChange={e => handleModelChange('general', 'providerId', e.target.value)}>
+                              <option value="">请选择...</option>
+                              {localSettings.providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                          </div>
+                        </div>
+                        <div>
+                          <label className={labelClass}>模型 ID</label>
+                          {/* Intelligent Dropdown Logic */}
+                          {localSettings.tasks.general?.providerId ? (
+                             getEnabledModelsForProvider(localSettings.tasks.general.providerId).length > 0 ? (
+                               <div className="relative">
+                                 <select 
+                                   className={`${inputClass} appearance-none cursor-pointer`} 
+                                   value={localSettings.tasks.general.modelId || ''} 
+                                   onChange={e => handleModelChange('general', 'modelId', e.target.value)}
+                                 >
+                                    <option value="">请选择模型...</option>
+                                    {getEnabledModelsForProvider(localSettings.tasks.general.providerId).map(m => (
+                                      <option key={m} value={m}>{m}</option>
+                                    ))}
+                                 </select>
+                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                               </div>
+                             ) : (
+                               <input type="text" className={inputClass} placeholder="未启用模型，请手动输入 ID" value={localSettings.tasks.general.modelId || ''} onChange={e => handleModelChange('general', 'modelId', e.target.value)} />
+                             )
+                          ) : (
+                             <input type="text" className={inputClass} disabled placeholder="请先选择提供商" />
+                          )}
+                        </div>
+                        <div>
+                          <label className={labelClass}>备注名称</label>
+                          <input type="text" className={inputClass} placeholder="给个好记的名字" value={localSettings.tasks.general?.modelName || ''} onChange={e => handleModelChange('general', 'modelName', e.target.value)} />
                         </div>
                       </div>
-                  );})}
+                    </div>
+
+                    {/* Specific Task Configs */}
+                    {[{ key: 'translation', label: 'AI 翻译', hint: '建议使用速度快、成本低的小模型 (e.g. gemini-flash, gpt-4o-mini)' }, { key: 'summary', label: 'AI 总结', hint: '用于生成简单的摘要' }, { key: 'analysis', label: 'AI 分析', hint: '用于复杂的分类和深度分析任务' },].map(task => { const taskKey = task.key as keyof AISettings['tasks']; const config = localSettings.tasks[taskKey]; 
+                      const activeProviderId = config?.providerId || '';
+                      const enabledModels = activeProviderId ? getEnabledModelsForProvider(activeProviderId) : [];
+                      
+                      return (
+                        <div key={taskKey} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md dark:bg-slate-800 dark:border-slate-700">
+                          <div className="flex items-center gap-2 mb-2"><span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-slate-700 dark:text-slate-300">OPTIONAL</span><h4 className="font-bold text-slate-800 text-lg dark:text-white">{task.label}</h4></div>
+                          <p className="text-xs text-slate-400 mb-6 dark:text-slate-500">{task.hint}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                              <label className={labelClass}>选择提供商</label>
+                              <div className="relative">
+                                <select className={`${inputClass} appearance-none cursor-pointer`} value={config?.providerId || ''} onChange={e => handleModelChange(taskKey, 'providerId', e.target.value)}>
+                                  <option value="">默认 (使用总模型)</option>
+                                  {localSettings.providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                              </div>
+                            </div>
+                            
+                            {config?.providerId && (
+                              <>
+                                <div>
+                                  <label className={labelClass}>模型 ID</label>
+                                  {enabledModels.length > 0 ? (
+                                     <div className="relative">
+                                       <select 
+                                         className={`${inputClass} appearance-none cursor-pointer`} 
+                                         value={config.modelId || ''} 
+                                         onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)}
+                                       >
+                                          <option value="">请选择模型...</option>
+                                          {enabledModels.map(m => (
+                                            <option key={m} value={m}>{m}</option>
+                                          ))}
+                                       </select>
+                                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                                     </div>
+                                  ) : (
+                                     <input type="text" className={inputClass} placeholder="未启用模型，请手动输入" value={config.modelId || ''} onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)} />
+                                  )}
+                                </div>
+                                <div>
+                                  <label className={labelClass}>备注名称</label>
+                                  <input type="text" className={inputClass} placeholder="备注" value={config.modelName || ''} onChange={e => handleModelChange(taskKey, 'modelName', e.target.value)} />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                    );})}
+                  </div>
                 </div>
               </div>
             )}

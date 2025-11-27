@@ -1,3 +1,4 @@
+
 export interface Enclosure {
   link: string;
   type: string;
@@ -60,6 +61,7 @@ export interface AIProvider {
   type: AIProviderType;
   baseUrl: string;
   apiKey: string;
+  enabledModels?: string[]; // List of model IDs enabled by the user
 }
 
 export interface AIModelConfig {

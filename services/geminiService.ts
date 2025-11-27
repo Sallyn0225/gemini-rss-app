@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { Language, Article, AISettings, AIModelConfig, AIProvider } from "../types";
 
@@ -61,6 +62,52 @@ const parseApiError = async (response: Response, providerName: string): Promise<
   else if (status >= 500) summary = `服务器错误 (${status})：API 提供商服务异常`;
 
   return `${summary}。\n来自 ${providerName} 的反馈：${details}`;
+};
+
+// --- Helper: Fetch Models List ---
+export const fetchProviderModels = async (provider: AIProvider): Promise<string[]> => {
+  const isGemini = provider.type === 'gemini';
+  const baseUrl = provider.baseUrl.replace(/\/+$/, '');
+
+  try {
+    if (isGemini) {
+      // Gemini: GET /v1beta/models
+      const url = `${baseUrl}/v1beta/models?key=${provider.apiKey}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, 'Gemini API'));
+      }
+
+      const data = await response.json();
+      // Gemini returns names like "models/gemini-pro". We usually just want the ID part.
+      if (data.models && Array.isArray(data.models)) {
+        return data.models.map((m: any) => m.name.replace(/^models\//, ''));
+      }
+      return [];
+    } else {
+      // OpenAI: GET /models
+      const url = `${baseUrl}/models`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${provider.apiKey}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, 'OpenAI API'));
+      }
+
+      const data = await response.json();
+      if (data.data && Array.isArray(data.data)) {
+        return data.data.map((m: any) => m.id);
+      }
+      return [];
+    }
+  } catch (error: any) {
+    console.error("Fetch Models Error:", error);
+    throw new Error(`获取模型列表失败: ${error.message}`);
+  }
 };
 
 // --- Helper: Call LLM (Generic) ---
