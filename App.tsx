@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { fetchRSS, proxyImageUrl, fetchSystemFeeds } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
 import { Feed, Article, Language, ArticleCategory, AISettings } from './types';
@@ -85,7 +85,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, on
         ) : (
           <>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
-              <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM9 15a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 019 15z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM9 15a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 019 15z" clipRule="evenodd" />
             </svg>
             <span>AI Analyze</span>
           </>
@@ -124,6 +124,9 @@ const App: React.FC = () => {
   const [showTranslation, setShowTranslation] = useState<boolean>(false);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
   
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const articleListRef = useRef<HTMLDivElement>(null);
+
   const [readArticleIds, setReadArticleIds] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('read_articles');
@@ -183,6 +186,19 @@ const App: React.FC = () => {
     initFeeds();
   }, [initFeeds]);
 
+  useEffect(() => {
+    // When returning to the article list view, restore the scroll position.
+    if (!activeArticle && selectedFeed && articleListRef.current) {
+      // A timeout ensures this runs after the list has been rendered.
+      const timer = setTimeout(() => {
+        if (articleListRef.current) {
+          articleListRef.current.scrollTop = scrollPosition;
+        }
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [activeArticle, selectedFeed]);
+
   const baseArticles = useMemo(() => {
     if (!selectedFeed) return [];
     if (selectedDate) return selectedFeed.items.filter(item => { const d = new Date(item.pubDate); return d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear(); });
@@ -225,7 +241,10 @@ const App: React.FC = () => {
 
   const handleFilterToggle = (filter: string) => { setActiveFilters(prev => prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter]); if (!activeFilters.includes(filter) && baseArticles.some(a => !articleClassifications[a.guid])) { handleRunAnalysis(); } };
   
-  const handleArticleSelect = (article: Article) => { 
+  const handleArticleSelect = (article: Article) => {
+    if (articleListRef.current) {
+      setScrollPosition(articleListRef.current.scrollTop);
+    }
     setActiveArticle(article); 
     setTranslatedContent(null); 
     setLastTranslatedLang(null); 
@@ -407,7 +426,7 @@ const App: React.FC = () => {
                </div>
              </div>
              <FilterBar activeFilters={activeFilters} onToggleFilter={handleFilterToggle} onReset={() => setActiveFilters([])} onAnalyze={handleRunAnalysis} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess} />
-             <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+             <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
                  {filteredArticles.map(article => (
                     <ArticleCard 
