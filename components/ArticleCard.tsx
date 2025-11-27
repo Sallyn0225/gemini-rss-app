@@ -14,7 +14,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
   // Strip HTML for the preview
   const preview = article.description 
     ? article.description.replace(/<[^>]+>/g, '').substring(0, 150) + '...'
-    : 'No preview available.';
+    : '无可用预览。';
   
   const formattedDateTime = new Date(article.pubDate).toLocaleString([], {
     year: 'numeric',
@@ -97,7 +97,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                </span>
             )}
-            <span className="font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 dark:text-blue-400">Read &rarr;</span>
+            <span className="font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 dark:text-blue-400">阅读 &rarr;</span>
           </div>
         </div>
       </div>

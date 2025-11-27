@@ -78,7 +78,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect })
         <img src={feed.image || fallbackAvatar} alt="" className="w-9 h-9 rounded-lg object-cover bg-slate-200 shrink-0 border border-slate-100 dark:border-slate-700" onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }} />
         <div className="flex-1 overflow-hidden">
           <p className={`font-semibold text-sm truncate ${isSelected ? 'text-blue-800 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>{feed.title}</p>
-          <p className="text-xs text-slate-400 truncate">{feed.items.length} updates</p>
+          <p className="text-xs text-slate-400 truncate">{feed.items.length} 条更新</p>
         </div>
       </button>
     </div>
@@ -101,21 +101,21 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, on
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span>Analyzing...</span>
+            <span>分析中...</span>
           </>
         ) : analysisSuccess ? (
           <>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
               <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
             </svg>
-            <span>Done</span>
+            <span>完成</span>
           </>
         ) : (
           <>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
               <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM9 15a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 019 15z" clipRule="evenodd" />
             </svg>
-            <span>AI Analyze</span>
+            <span>AI 分析</span>
           </>
         )}
       </button>
@@ -210,11 +210,11 @@ const App: React.FC = () => {
         }
       });
       
-      if (loadedFeeds.length === 0) setErrorMsg("Could not load feeds.");
+      if (loadedFeeds.length === 0) setErrorMsg("无法加载订阅源。");
       setFeeds(loadedFeeds); 
     } catch (e) {
       console.error(e);
-      setErrorMsg("Error initializing feeds.");
+      setErrorMsg("初始化订阅源时出错。");
     } finally {
       setLoading(false);
     }
@@ -409,13 +409,13 @@ const App: React.FC = () => {
         <div className="p-6 border-b border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800">
           <div className="flex items-center justify-between mb-2">
             <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2 group"><div className="bg-blue-600 text-white p-1.5 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M3.75 4.5a.75.75 0 01.75-.75h.75c8.284 0 15 6.716 15 15v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.75C18 11.75 14.25 8 9.625 8H3.75a.75.75 0 01-.75-.75V4.5zM3.75 18.75a.75.75 0 01.75-.75h.75c1.036 0 1.875.84 1.875 1.875v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.75zm3.75-9a.75.75 0 01.75-.75h.75c4.97 0 9 4.03 9 9v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75V18.75c0-3.314-2.686-6-6-6H4.5a.75.75 0 01-.75-.75v-.75z" clipRule="evenodd" /></svg></div><h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">Gemini RSS</h1></div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg dark:hover:bg-slate-800" title="Collapse Sidebar"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 lg:hidden"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 hidden lg:block"><path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg></button>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg dark:hover:bg-slate-800" title="收起侧边栏"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 lg:hidden"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 hidden lg:block"><path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg></button>
           </div>
-          <p className="text-xs text-slate-400">Curated updates from BanG Dream & IMAS</p>
+          <p className="text-xs text-slate-400">来自 BanG Dream 和 IMAS 的精选更新</p>
           {errorMsg && <p className="text-xs text-red-500 mt-2 px-1">{errorMsg}</p>}
         </div>
         <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Subscriptions</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">订阅源</span>
           <div className="flex bg-slate-100 rounded-lg p-1 gap-1 dark:bg-slate-800">
             <button onClick={() => setSidebarMode('list')} className={`p-1.5 rounded-md transition-all ${sidebarMode === 'list' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700' : 'text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'}`}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
@@ -443,9 +443,9 @@ const App: React.FC = () => {
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 0a20.832 20.832 0 011.439-4.283c.267-.579.976-.78 1.527-.461l.657.38c.523.301.71.96.463 1.511a18.058 18.058 0 01-.985 2.783m2.49 5.06a18.057 18.057 0 01-.99-2.662m0 0a18.055 18.055 0 01.99-2.662m-1.98 5.324a18.046 18.046 0 01-3.56-5.323m0 0a18.046 18.046 0 013.56-5.323" />
             </svg>
-            <span className="text-sm">设置 (Settings)</span>
+            <span className="text-sm">设置</span>
           </button>
-          <button onClick={() => setDarkMode(!darkMode)} className="p-2 aspect-square flex items-center justify-center text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl dark:text-slate-400 dark:hover:bg-slate-800" title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}>
+          <button onClick={() => setDarkMode(!darkMode)} className="p-2 aspect-square flex items-center justify-center text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl dark:text-slate-400 dark:hover:bg-slate-800" title={darkMode ? "切换到浅色模式" : "切换到深色模式"}>
             {darkMode ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
@@ -464,13 +464,13 @@ const App: React.FC = () => {
              <div className="max-w-5xl mx-auto">
                <header className="mb-10 flex items-center gap-4">
                  {!isSidebarOpen && (
-                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="Expand Sidebar">
+                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="展开侧边栏">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                       </svg>
                    </button>
                  )}
-                 <div><h2 className="text-3xl font-bold text-slate-800 dark:text-white">Dashboard</h2><p className="text-slate-500 dark:text-slate-400">Overview of your news ecosystem.</p></div>
+                 <div><h2 className="text-3xl font-bold text-slate-800 dark:text-white">仪表盘</h2><p className="text-slate-500 dark:text-slate-400">您的新闻生态系统概览。</p></div>
                </header>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
@@ -480,7 +480,7 @@ const App: React.FC = () => {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">Total Articles</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">文章总数</p>
                       <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{feeds.reduce((acc, f) => acc + f.items.length, 0)}</h3>
                     </div>
                  </div>
@@ -491,7 +491,7 @@ const App: React.FC = () => {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">Active Feeds</p>
+                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">活跃订阅源</p>
                       <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{feeds.length}</h3>
                     </div>
                  </div>
@@ -505,7 +505,7 @@ const App: React.FC = () => {
              <div className="h-20 px-4 md:px-8 flex items-center justify-between bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20 shrink-0 dark:bg-slate-900 dark:border-slate-800">
                <div className="flex items-center gap-3 overflow-hidden">
                  {!isSidebarOpen && (
-                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="Expand Sidebar">
+                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="展开侧边栏">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                       </svg>
@@ -514,11 +514,11 @@ const App: React.FC = () => {
                  <img src={selectedFeed.image} className="w-10 h-10 object-contain rounded-md border border-slate-100 hidden sm:block" alt="" />
                  <div className="overflow-hidden">
                    <h2 className="text-lg md:text-xl font-bold text-slate-800 truncate dark:text-slate-100">{selectedFeed.title}</h2>
-                   <p className="text-xs text-slate-400 font-medium uppercase tracking-wider hidden sm:block">{selectedDate ? `Filtered: ${selectedDate.toLocaleDateString()}` : 'Latest Articles'}</p>
+                   <p className="text-xs text-slate-400 font-medium uppercase tracking-wider hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
                  </div>
                </div>
                <div className="flex items-center gap-2">
-                 <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="Toggle Right Sidebar">
+                 <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="切换右侧边栏">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
@@ -558,7 +558,7 @@ const App: React.FC = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                     </svg>
-                    <span className="font-semibold text-sm hidden sm:inline">Back</span>
+                    <span className="font-semibold text-sm hidden sm:inline">返回</span>
                  </button>
                </div>
                <div className="flex items-center gap-1 md:gap-3">
@@ -590,12 +590,12 @@ const App: React.FC = () => {
                      </>
                    )}
                  </button>
-                 <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-blue-600 rounded-lg dark:hover:bg-slate-800" title="Open Original Article">
+                 <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-blue-600 rounded-lg dark:hover:bg-slate-800" title="打开原文链接">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                     </svg>
                  </a>
-                 <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white ml-2 dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="Toggle Right Sidebar">
+                 <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white ml-2 dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="切换右侧边栏">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
@@ -649,7 +649,7 @@ const App: React.FC = () => {
         <div className={`fixed inset-y-0 right-0 z-30 w-80 bg-slate-50/80 backdrop-blur-xl border-l border-slate-200 shadow-lg transform transition-transform duration-300 ${isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:translate-x-0 lg:shadow-none lg:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 ${!isRightSidebarOpen && 'lg:hidden'}`}>
           <div className="flex flex-col h-full p-4 gap-4 overflow-y-auto">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-bold text-slate-600 dark:text-slate-300">Filters & AI</h3>
+              <h3 className="font-bold text-slate-600 dark:text-slate-300">筛选与 AI</h3>
               <button onClick={() => setIsRightSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded dark:hover:bg-slate-800">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -657,30 +657,30 @@ const App: React.FC = () => {
               </button>
             </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Filter by Date</h4>
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">按日期筛选</h4>
               <CalendarWidget selectedDate={selectedDate} onDateSelect={handleDateSelect} />
             </div>
             <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden dark:bg-slate-800 dark:border-slate-700">
               <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 flex items-center justify-between dark:from-indigo-900/20 dark:border-slate-700">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-700 text-sm dark:text-slate-200">AI Daily Summary</h3>
+                  <h3 className="font-bold text-slate-700 text-sm dark:text-slate-200">AI 每日摘要</h3>
                 </div>
-                {!selectedDate && <span className="text-[10px] text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 dark:bg-orange-900/30">Select Date</span>}
+                {!selectedDate && <span className="text-[10px] text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 dark:bg-orange-900/30">请选择日期</span>}
               </div>
               <div className="flex-1 p-4 overflow-y-auto">
                 {!selectedDate ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                    <p className="text-slate-400 text-sm mb-2">Select a specific date on the calendar above to generate a summary.</p>
+                    <p className="text-slate-400 text-sm mb-2">请在上方日历中选择一个具体日期以生成摘要。</p>
                   </div>
                 ) : baseArticles.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                    <p className="text-slate-400 text-sm">No articles found on this date.</p>
+                    <p className="text-slate-400 text-sm">该日期下没有文章。</p>
                   </div>
                 ) : dailySummary ? (
                   <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap animate-fade-in font-sans dark:text-slate-300">{dailySummary}</div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center">
-                    <button onClick={handleRunAnalysis} disabled={isSummarizing || isAnalyzing} className="group relative inline-flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-white transition-all duration-200 bg-indigo-600 rounded-full hover:bg-indigo-700">Summarize {baseArticles.length} articles</button>
+                    <button onClick={handleRunAnalysis} disabled={isSummarizing || isAnalyzing} className="group relative inline-flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-white transition-all duration-200 bg-indigo-600 rounded-full hover:bg-indigo-700">总结 {baseArticles.length} 篇文章</button>
                   </div>
                 )}
               </div>

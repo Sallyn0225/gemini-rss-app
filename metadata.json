@@ -1,5 +1,5 @@
 {
-  "name": "Gemini RSS Translator",
-  "description": "A modern, visualized RSS reader that uses Google Gemini to translate articles into your preferred language instantly.",
+  "name": "NSYC订阅站",
+  "description": "一个女声优吃的订阅站，利用RSS+AI服务，可以将每日的信息分类、总结。",
   "requestFramePermissions": []
 }

@@ -19,7 +19,7 @@ export const StatsChart: React.FC<StatsChartProps> = ({ feeds }) => {
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-64 flex flex-col dark:bg-slate-800 dark:border-slate-700">
-      <h3 className="text-sm font-semibold text-slate-500 mb-4 uppercase tracking-wider dark:text-slate-400">Feed Activity</h3>
+      <h3 className="text-sm font-semibold text-slate-500 mb-4 uppercase tracking-wider dark:text-slate-400">订阅源活跃度</h3>
       <div className="flex-1 w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>

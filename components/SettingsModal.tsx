@@ -54,6 +54,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
   // Refs for smooth scrolling
   const taskConfigRef = useRef<HTMLDivElement>(null);
+  const feedFormRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     if (isOpen) {
@@ -203,7 +205,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
   const handleSaveAll = () => {
     if (!localSettings.tasks.general?.providerId || !localSettings.tasks.general?.modelId) {
-      alert("必须配置「总模型」（General Model）作为默认兜底。");
+      alert("必须配置「总模型」作为默认兜底。");
       return;
     }
     onSave(localSettings);
@@ -219,7 +221,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       setFullFeedList(feeds);
       setVerifiedSecret(secret);
     } catch (e: any) {
-      setFeedStatus({msg: e.message || 'Failed to load feeds. Is secret correct?', type: 'error'});
+      setFeedStatus({msg: e.message || '加载订阅源失败，请检查密钥是否正确。', type: 'error'});
       setVerifiedSecret(null);
     } finally {
       setIsVerifying(false);
@@ -228,19 +230,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
   const handleUpsertFeed = async () => {
     if (!feedForm.id || !feedForm.url || !verifiedSecret) {
-      setFeedStatus({ msg: 'ID and URL are required.', type: 'error' });
+      setFeedStatus({ msg: 'ID 和 URL 是必填项。', type: 'error' });
       return;
     }
     setIsSubmittingFeed(true);
-    setFeedStatus({ msg: `${isEditingFeed ? 'Updating' : 'Adding'} feed...`, type: null });
+    setFeedStatus({ msg: `正在${isEditingFeed ? '更新' : '添加'}订阅源...`, type: null });
     try {
       await addSystemFeed(feedForm.id, feedForm.url, feedForm.category, feedForm.isSub, feedForm.customTitle, verifiedSecret);
-      setFeedStatus({ msg: `Feed ${isEditingFeed ? 'updated' : 'added'} successfully! The list will refresh.`, type: 'success' });
+      setFeedStatus({ msg: `订阅源已${isEditingFeed ? '更新' : '添加'}，列表即将刷新。`, type: 'success' });
       setFeedForm({ id: '', url: '', category: '', isSub: false, customTitle: '' });
       setIsEditingFeed(false);
       await handleLoadFeeds(verifiedSecret);
     } catch (e: any) {
-      setFeedStatus({ msg: e.message || 'Failed to submit feed.', type: 'error' });
+      setFeedStatus({ msg: e.message || '提交订阅源失败。', type: 'error' });
     } finally {
       setIsSubmittingFeed(false);
     }
@@ -249,7 +251,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const startEditFeed = (feed: FullSystemFeedConfig) => {
     setFeedForm({ id: feed.id, url: feed.url, category: feed.category || '', isSub: feed.isSub || false, customTitle: feed.customTitle || '' });
     setIsEditingFeed(true);
-    window.scrollTo(0, document.body.scrollHeight);
+    feedFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
   const cancelEditFeed = () => {
@@ -258,15 +260,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   }
 
   const handleDeleteFeed = async (id: string) => {
-    if (verifiedSecret && confirm(`Are you sure you want to delete feed with ID: ${id}? This cannot be undone.`)) {
+    if (verifiedSecret && confirm(`确定要删除 ID 为 “${id}” 的订阅源吗？此操作无法撤销。`)) {
         setIsSubmittingFeed(true);
-        setFeedStatus({msg: 'Deleting feed...', type: null});
+        setFeedStatus({msg: '正在删除订阅源...', type: null});
         try {
             await deleteSystemFeed(id, verifiedSecret);
-            setFeedStatus({msg: 'Feed deleted. The list will refresh.', type: 'success'});
+            setFeedStatus({msg: '订阅源已删除，列表即将刷新。', type: 'success'});
             await handleLoadFeeds(verifiedSecret);
         } catch (e: any) {
-            setFeedStatus({msg: e.message || 'Failed to delete feed.', type: 'error'});
+            setFeedStatus({msg: e.message || '删除订阅源失败。', type: 'error'});
         } finally {
             setIsSubmittingFeed(false);
         }
@@ -284,7 +286,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 dark:bg-slate-900 dark:border-slate-700 shrink-0">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">设置 (Settings)</h2>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">设置</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 dark:hover:bg-slate-700 dark:text-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -297,7 +299,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
           <div className="w-full md:w-48 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-2 md:p-4 flex flex-row md:flex-col gap-2 shrink-0 dark:bg-slate-900 dark:border-slate-700 overflow-x-auto">
             <button onClick={() => setActiveTab('providers')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'providers' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>API 提供商</button>
             <button onClick={() => setActiveTab('models')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'models' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>模型配置</button>
-            <button onClick={() => setActiveTab('feeds')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'feeds' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>Feed 管理</button>
+            <button onClick={() => setActiveTab('feeds')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'feeds' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>订阅源管理</button>
           </div>
 
           {/* Main Panel */}
@@ -329,7 +331,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         <label className={labelClass}>API 格式</label>
                         <div className="relative">
                           <select className={`${inputClass} appearance-none cursor-pointer`} value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value as AIProviderType})}>
-                            <option value="openai">OpenAI Compatible</option>
+                            <option value="openai">OpenAI 兼容</option>
                             <option value="gemini">Gemini API</option>
                           </select>
                           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
@@ -379,7 +381,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 
                 {/* 1. SELECT ENABLED MODELS SECTION */}
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">选择启用的模型 (Select Enabled Models)</h3>
+                  <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">启用模型管理</h3>
                   <p className="text-sm text-slate-500 mb-4 dark:text-slate-400">选择提供商并获取可用模型列表，勾选您希望在任务配置中使用的模型。</p>
                   
                   {localSettings.providers.length === 0 ? (
@@ -407,7 +409,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                               <h4 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                                 <span className="text-sm px-2 py-0.5 bg-slate-100 rounded text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-                                   {localSettings.providers.find(p => p.id === activeProviderForModels)?.type === 'gemini' ? 'Gemini API' : 'OpenAI Compatible'}
+                                   {localSettings.providers.find(p => p.id === activeProviderForModels)?.type === 'gemini' ? 'Gemini API' : 'OpenAI 兼容'}
                                 </span>
                               </h4>
                               <button 
@@ -429,7 +431,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                              <input 
                                type="text" 
                                className={`${inputClass} pl-10`} 
-                               placeholder="搜索模型 (Search Models)..."
+                               placeholder="搜索模型..."
                                value={modelSearchQuery}
                                onChange={(e) => setModelSearchQuery(e.target.value)}
                              />
@@ -506,7 +508,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 {/* 2. TASK CONFIGURATION SECTION */}
                 <div className="space-y-6" ref={taskConfigRef}>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">模型任务配置 (Model Task Configuration)</h3>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">模型任务配置</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">为不同的任务指定使用的模型。若特定任务未配置，将默认使用「总模型」。</p>
                   </div>
                   
@@ -514,8 +516,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                     {/* General Model Config */}
                     <div className="bg-white p-6 rounded-xl border-l-4 border-blue-500 shadow-md dark:bg-slate-800 dark:shadow-none">
                       <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4 dark:border-slate-700">
-                        <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-blue-900 dark:text-blue-300">DEFAULT</span>
-                        <h4 className="font-bold text-slate-900 text-lg dark:text-white">总模型 (General Model)</h4><span className="text-xs text-red-500 font-medium ml-auto">* 必填</span>
+                        <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-blue-900 dark:text-blue-300">默认</span>
+                        <h4 className="font-bold text-slate-900 text-lg dark:text-white">总模型</h4><span className="text-xs text-red-500 font-medium ml-auto">* 必填</span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div>
@@ -555,146 +557,132 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         </div>
                         <div>
                           <label className={labelClass}>备注名称</label>
-                          <input type="text" className={inputClass} placeholder="给个好记的名字 (留空则显示模型 ID)" value={localSettings.tasks.general?.modelName || ''} onChange={e => handleModelChange('general', 'modelName', e.target.value)} />
+                          <input type="text" className={inputClass} placeholder="给个好记的名字（留空则显示模型 ID）" value={localSettings.tasks.general?.modelName || ''} onChange={e => handleModelChange('general', 'modelName', e.target.value)} />
                         </div>
                       </div>
                     </div>
 
                     {/* Specific Task Configs */}
-                    {[{ key: 'translation', label: 'AI 翻译', hint: '建议使用速度快、成本低的小模型 (e.g. gemini-flash, gpt-4o-mini)' }, { key: 'summary', label: 'AI 总结', hint: '用于生成简单的摘要' }, { key: 'analysis', label: 'AI 分析', hint: '用于复杂的分类和深度分析任务' },].map(task => { const taskKey = task.key as keyof AISettings['tasks']; const config = localSettings.tasks[taskKey]; 
+                    {[{ key: 'translation', label: 'AI 翻译', hint: '建议使用速度快、成本低的小模型 (e.g. gemini-flash, gpt-4o-mini)' }, { key: 'summary', label: 'AI 总结', hint: '用于生成简单的摘要' }, { key: 'analysis', label: 'AI 分析', hint: '用于复杂的分类和深度分析任务' },].map(task => { 
+                      const taskKey = task.key as keyof AISettings['tasks']; 
+                      const config = localSettings.tasks[taskKey]; 
                       const activeProviderId = config?.providerId || '';
                       const enabledModels = activeProviderId ? getEnabledModelsForProvider(activeProviderId) : [];
                       
                       return (
                         <div key={taskKey} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md dark:bg-slate-800 dark:border-slate-700">
-                          <div className="flex items-center gap-2 mb-2"><span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-slate-700 dark:text-slate-300">OPTIONAL</span><h4 className="font-bold text-slate-800 text-lg dark:text-white">{task.label}</h4></div>
+                          <div className="flex items-center gap-2 mb-2"><span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-slate-700 dark:text-slate-300">可选</span><h4 className="font-bold text-slate-800 text-lg dark:text-white">{task.label}</h4></div>
                           <p className="text-xs text-slate-400 mb-6 dark:text-slate-500">{task.hint}</p>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                             <div>
                               <label className={labelClass}>选择提供商</label>
                               <div className="relative">
                                 <select className={`${inputClass} appearance-none cursor-pointer`} value={config?.providerId || ''} onChange={e => handleModelChange(taskKey, 'providerId', e.target.value)}>
-                                  <option value="">默认 (使用总模型)</option>
+                                  <option value="">默认（使用总模型）</option>
                                   {localSettings.providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
                               </div>
                             </div>
-                            
-                            {config?.providerId && (
-                              <>
-                                <div>
-                                  <label className={labelClass}>模型 ID</label>
-                                  {enabledModels.length > 0 ? (
-                                     <div className="relative">
-                                       <select 
-                                         className={`${inputClass} appearance-none cursor-pointer`} 
-                                         value={config.modelId || ''} 
-                                         onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)}
-                                       >
-                                          <option value="">请选择模型...</option>
-                                          {enabledModels.map(m => (
-                                            <option key={m} value={m}>{m}</option>
-                                          ))}
-                                       </select>
-                                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
-                                     </div>
-                                  ) : (
-                                     <input type="text" className={inputClass} placeholder="未启用模型，请手动输入" value={config.modelId || ''} onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)} />
-                                  )}
-                                </div>
-                                <div>
-                                  <label className={labelClass}>备注名称</label>
-                                  <input type="text" className={inputClass} placeholder="备注名称 (留空则显示模型 ID)" value={config.modelName || ''} onChange={e => handleModelChange(taskKey, 'modelName', e.target.value)} />
-                                </div>
-                              </>
-                            )}
+                             <div>
+                              <label className={labelClass}>模型 ID</label>
+                              {activeProviderId ? (
+                                 enabledModels.length > 0 ? (
+                                   <div className="relative">
+                                     <select className={`${inputClass} appearance-none cursor-pointer`} value={config?.modelId || ''} onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)}>
+                                        <option value="">默认（使用总模型）</option>
+                                        {enabledModels.map(m => <option key={m} value={m}>{m}</option>)}
+                                     </select>
+                                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                                   </div>
+                                 ) : (
+                                   <input type="text" className={inputClass} placeholder="手动输入或从上方启用" value={config?.modelId || ''} onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)} />
+                                 )
+                              ) : (
+                                 <input type="text" className={inputClass} disabled placeholder="请先选择提供商" />
+                              )}
+                            </div>
+                            <div>
+                              <label className={labelClass}>备注名称</label>
+                              <input type="text" className={inputClass} placeholder="留空则显示模型 ID" value={config?.modelName || ''} onChange={e => handleModelChange(taskKey, 'modelName', e.target.value)} />
+                            </div>
                           </div>
                         </div>
-                    );})}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             )}
-            
-            {/* --- FEED MANAGEMENT TAB --- */}
-            {activeTab === 'feeds' && (
-              <div className="space-y-8 max-w-3xl mx-auto">
-                <div><h3 className="text-lg font-bold text-slate-800 dark:text-white">Feed Manager</h3><p className="text-sm text-slate-500 dark:text-slate-400">Add, edit, or delete RSS feeds. Changes require closing settings to take effect.</p></div>
 
+            {/* --- FEEDS TAB --- */}
+            {activeTab === 'feeds' && (
+              <div className="space-y-6 max-w-3xl mx-auto">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white">系统订阅源管理</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">此功能用于后台管理订阅源，需要管理员密钥。</p>
+                </div>
                 {!verifiedSecret ? (
                   <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
-                    <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-2">Admin Access Required</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Enter the admin secret key to manage feeds.</p>
-                    {feedStatus.msg && (<div className={`mb-4 px-4 py-3 rounded-lg text-sm font-semibold ${feedStatus.type === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-blue-50 text-blue-700'}`}>{feedStatus.msg}</div>)}
+                    <label className={labelClass}>管理员密钥</label>
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <input type="password" className={inputClass} placeholder="Enter Admin Secret" value={adminSecret} onChange={e => setAdminSecret(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLoadFeeds(adminSecret)} />
-                      <button onClick={() => handleLoadFeeds(adminSecret)} disabled={isVerifying} className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center disabled:bg-indigo-400">
-                        {isVerifying && <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                        Unlock & Load
+                      <input type="password" className={inputClass} placeholder="请输入密钥以解锁管理功能" value={adminSecret} onChange={(e) => setAdminSecret(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLoadFeeds(adminSecret)} />
+                      <button onClick={() => handleLoadFeeds(adminSecret)} disabled={isVerifying || !adminSecret} className="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-600 dark:hover:bg-slate-500 whitespace-nowrap">
+                        {isVerifying ? '验证中...' : '验证并加载'}
                       </button>
                     </div>
+                    {feedStatus.type === 'error' && <p className="text-red-500 text-xs mt-2">{feedStatus.msg}</p>}
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-700 pb-2">Subscription List</h4>
-                        {fullFeedList.length > 0 ? (
-                            <div className="space-y-2">
-                                {fullFeedList.map(feed => (
-                                    <div key={feed.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700/50">
-                                        <div>
-                                            <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">{feed.customTitle || feed.id}</p>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400">{feed.category} {feed.isSub && '(Sub)'}</p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => startEditFeed(feed)} className="p-2 text-slate-400 hover:text-blue-600 rounded-md hover:bg-blue-50 dark:hover:bg-slate-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg></button>
-                                            <button onClick={() => handleDeleteFeed(feed.id)} className="p-2 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 dark:hover:bg-slate-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
-                                        </div>
-                                    </div>
-                                ))}
+                    <div className="space-y-3">
+                      {fullFeedList.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl dark:border-slate-700">暂无订阅源数据。</div>
+                      ) : (
+                        fullFeedList.map(feed => (
+                          <div key={feed.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-200 rounded-xl shadow-sm gap-4 dark:bg-slate-800 dark:border-slate-700">
+                            <div className="min-w-0">
+                                <p className="text-xs text-slate-400 dark:text-slate-500">{feed.category || '无分类'}{feed.isSub ? ' (子项)' : ''}</p>
+                                <h4 className="font-bold text-slate-800 text-base dark:text-white truncate" title={feed.customTitle || feed.id}>{feed.customTitle || feed.id}</h4>
+                                <p className="text-xs text-slate-400 font-mono truncate max-w-[200px] bg-slate-100 px-1.5 py-0.5 rounded inline-block mt-1 dark:bg-slate-700 dark:text-slate-300" title={feed.url}>{feed.url}</p>
                             </div>
-                        ) : <p className="text-sm text-center text-slate-500 py-4">No feeds found.</p>}
+                            <div className="flex items-center gap-2 justify-end sm:justify-start shrink-0">
+                                <button onClick={() => startEditFeed(feed)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:hover:bg-blue-900/30" title="编辑"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg></button>
+                                <button onClick={() => handleDeleteFeed(feed.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/30" title="删除"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
-
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
-                        <h4 className="font-bold text-slate-800 dark:text-white mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">{isEditingFeed ? 'Edit Feed' : 'Add New Feed'}</h4>
-                         {feedStatus.msg && (<div className={`mb-4 px-4 py-3 rounded-lg text-sm font-semibold ${feedStatus.type === 'success' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' : feedStatus.type === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-blue-50 text-blue-700'}`}>{feedStatus.msg}</div>)}
-                         <div className="space-y-4">
-                            <div><label className={labelClass}>Unique ID (Code)</label><input type="text" className={inputClass} placeholder="e.g., bandori_official_twitter" value={feedForm.id} onChange={e => setFeedForm({...feedForm, id: e.target.value})} disabled={isEditingFeed} /></div>
-                            <div><label className={labelClass}>Custom Title (Optional)</label><input type="text" className={inputClass} placeholder="Overrides default title from feed" value={feedForm.customTitle} onChange={e => setFeedForm({...feedForm, customTitle: e.target.value})} /></div>
-                            <div><label className={labelClass}>Source URL (Hidden)</label><input type="text" className={inputClass} placeholder="https://your-rss-service.com/..." value={feedForm.url} onChange={e => setFeedForm({...feedForm, url: e.target.value})} /></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className={labelClass}>Category</label><input type="text" className={inputClass} placeholder="e.g., BanG Dream" value={feedForm.category} onChange={e => setFeedForm({...feedForm, category: e.target.value})} /></div>
-                                <div className="flex items-end pb-3"><label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" checked={feedForm.isSub} onChange={e => setFeedForm({...feedForm, isSub: e.target.checked})} /><span className="text-sm font-medium text-slate-700 dark:text-slate-300">Is Sub-feed?</span></label></div>
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                                {isEditingFeed && <button onClick={cancelEditFeed} className="w-full py-2.5 bg-slate-200 text-slate-800 rounded-lg font-bold hover:bg-slate-300 transition-colors">Cancel Edit</button>}
-                                <button onClick={handleUpsertFeed} disabled={isSubmittingFeed} className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center disabled:bg-indigo-400 disabled:cursor-not-allowed">
-                                    {isSubmittingFeed && <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                                    {isEditingFeed ? (isSubmittingFeed ? 'Updating...' : 'Update Feed') : (isSubmittingFeed ? 'Adding...' : 'Add Feed')}
-                                </button>
-                            </div>
-                         </div>
+                    <div ref={feedFormRef} className="bg-white p-6 rounded-xl border border-slate-200 shadow-md animate-slide-in dark:bg-slate-800 dark:border-slate-700">
+                      <h4 className="font-bold text-slate-800 mb-6 border-b border-slate-100 pb-3 dark:text-white dark:border-slate-700">{isEditingFeed ? '编辑订阅源' : '添加新订阅源'}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                        <div><label className={labelClass}>ID (唯一标识)</label><input type="text" className={inputClass} placeholder="例如: bang_dream_mygo" value={feedForm.id} onChange={e => setFeedForm({...feedForm, id: e.target.value})} disabled={isEditingFeed} /></div>
+                        <div><label className={labelClass}>分类</label><input type="text" className={inputClass} placeholder="例如: BanG Dream Project" value={feedForm.category} onChange={e => setFeedForm({...feedForm, category: e.target.value})} /></div>
+                        <div className="md:col-span-2"><label className={labelClass}>订阅源 URL</label><input type="text" className={`${inputClass} font-mono`} placeholder="http://.../feed.xml" value={feedForm.url} onChange={e => setFeedForm({...feedForm, url: e.target.value})} /></div>
+                        <div><label className={labelClass}>自定义标题 (可选)</label><input type="text" className={inputClass} placeholder="留空则使用源标题" value={feedForm.customTitle} onChange={e => setFeedForm({...feedForm, customTitle: e.target.value})} /></div>
+                        <div><label className={labelClass}>选项</label><label className="flex items-center gap-2 text-sm p-2"><input type="checkbox" className="w-4 h-4" checked={feedForm.isSub} onChange={e => setFeedForm({...feedForm, isSub: e.target.checked})} />作为子订阅源显示</label></div>
+                      </div>
+                      <div className="flex justify-end items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                        {feedStatus.msg && <p className={`text-xs mr-auto ${feedStatus.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{feedStatus.msg}</p>}
+                        {isEditingFeed && <button onClick={cancelEditFeed} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium dark:text-slate-300 dark:hover:bg-slate-700">取消编辑</button>}
+                        <button onClick={handleUpsertFeed} disabled={isSubmittingFeed} className="px-5 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md disabled:opacity-50">
+                            {isSubmittingFeed ? '提交中...' : (isEditingFeed ? '更新订阅源' : '添加订阅源')}
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}
               </div>
             )}
-            
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3 shrink-0 dark:bg-slate-900 dark:border-slate-700">
-          <button onClick={onClose} className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors dark:text-slate-300 dark:hover:bg-slate-800">
-            关闭
-          </button>
-          <button onClick={handleSaveAll} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-0.5 transition-all dark:shadow-none dark:hover:bg-blue-500">
-            保存配置
-          </button>
+        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end shrink-0 dark:bg-slate-900 dark:border-slate-700">
+          <button onClick={onClose} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors dark:text-slate-300 dark:hover:bg-slate-700">取消</button>
+          <button onClick={handleSaveAll} className="ml-3 px-8 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md">保存设置</button>
         </div>
-
       </div>
     </div>
   );

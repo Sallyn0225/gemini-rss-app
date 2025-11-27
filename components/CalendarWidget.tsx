@@ -8,8 +8,8 @@ interface CalendarWidgetProps {
 type ViewMode = 'day' | 'month' | 'year';
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  '一月', '二月', '三月', '四月', '五月', '六月',
+  '七月', '八月', '九月', '十月', '十一月', '十二月'
 ];
 
 export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, onDateSelect }) => {
@@ -96,7 +96,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
         }}
         className="p-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg dark:text-slate-300 dark:hover:bg-slate-700"
       >
-        {m.substring(0, 3)}
+        {m}
       </button>
     ));
   };
@@ -132,7 +132,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
         <button onClick={handleHeaderClick} className="text-sm font-bold text-slate-800 hover:text-blue-600 transition-colors dark:text-slate-100 dark:hover:text-blue-400">
-          {viewMode === 'day' && `${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`}
+          {viewMode === 'day' && `${viewDate.getFullYear()}年 ${MONTHS[viewDate.getMonth()]}`}
           {viewMode === 'month' && `${viewDate.getFullYear()}`}
           {viewMode === 'year' && `${Math.floor(viewDate.getFullYear() / 10) * 10} - ${Math.floor(viewDate.getFullYear() / 10) * 10 + 9}`}
         </button>
@@ -146,7 +146,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
         {viewMode === 'day' && (
           <>
             <div className="grid grid-cols-7 mb-2">
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
+              {['日', '一', '二', '三', '四', '五', '六'].map(d => (
                 <div key={d} className="text-center text-[10px] text-slate-400 font-bold dark:text-slate-500">{d}</div>
               ))}
             </div>
@@ -172,7 +172,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
           onClick={() => onDateSelect(null)} 
           className="w-full mt-3 text-xs text-slate-400 hover:text-red-500 py-1 border-t border-slate-100 dark:border-slate-700"
         >
-          Clear Selection
+          清除选择
         </button>
       )}
     </div>

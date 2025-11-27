@@ -226,7 +226,7 @@ export const translateContent = async (
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    return response.text || "Translation result empty.";
+    return response.text || "翻译结果为空。";
   } catch (error: any) {
     console.error("System Gemini Error:", error);
     let msg = error.message || "未知错误";
@@ -310,7 +310,7 @@ export const analyzeFeedContent = async (
       const text = await callLLM(config.provider, config.modelId, prompt, true);
       const result = JSON.parse(text);
       return {
-        summary: result.summary || "Summary generation failed.",
+        summary: result.summary || "总结生成失败。",
         classifications: Array.isArray(result.classifications) ? result.classifications : []
       };
     } catch (e: any) {
@@ -325,7 +325,7 @@ export const analyzeFeedContent = async (
 
   // 2. Fallback to System Default
   if (!systemApiKey) {
-    return { summary: "System API Key missing. Please configure settings.", classifications: [] };
+    return { summary: "缺少系统 API Key，请在设置中配置。", classifications: [] };
   }
 
   try {
@@ -339,7 +339,7 @@ export const analyzeFeedContent = async (
     const result = JSON.parse(text);
     
     return {
-      summary: result.summary || "Summary generation failed.",
+      summary: result.summary || "总结生成失败。",
       classifications: Array.isArray(result.classifications) ? result.classifications : []
     };
   } catch (error: any) {

@@ -15,8 +15,7 @@ services:
     environment:
       - NODE_ENV=production
       # Define your admin secret here
-      - ADMIN_SECRET=admin123
-    
+      - ADMIN_SECRET=pwd123 # 记得修改成强密码
     volumes:
       # Mount a directory for persistent data, not a single file
       # This prevents Docker from creating a directory instead of a file
