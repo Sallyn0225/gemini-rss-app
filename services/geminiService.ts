@@ -26,6 +26,43 @@ const getModelForTask = (settings: AISettings | null, task: 'translation' | 'sum
   return null;
 };
 
+// --- Helper: Parse API Error to Chinese ---
+const parseApiError = async (response: Response, providerName: string): Promise<string> => {
+  let errorBody = "";
+  try {
+    errorBody = await response.text();
+  } catch {
+    errorBody = "(无法读取响应内容)";
+  }
+
+  let details = "";
+  try {
+    const json = JSON.parse(errorBody);
+    if (json.error) {
+       // Gemini often uses error.message, OpenAI uses error.message or just string
+       const errObj = json.error;
+       if (typeof errObj === 'string') details = errObj;
+       else if (errObj.message) details = errObj.message;
+       else details = JSON.stringify(errObj);
+    } else {
+       details = errorBody.substring(0, 300);
+    }
+  } catch {
+    details = errorBody.substring(0, 300);
+  }
+
+  const status = response.status;
+  let summary = `请求失败 (${status})`;
+  
+  if (status === 401) summary = "认证失败 (401)：API Key 无效或过期";
+  else if (status === 403) summary = "拒绝访问 (403)：权限不足、余额不足或 WAF 拦截";
+  else if (status === 404) summary = "未找到 (404)：模型 ID 不存在或接口地址错误";
+  else if (status === 429) summary = "请求受限 (429)：触发速率限制或配额已用完";
+  else if (status >= 500) summary = `服务器错误 (${status})：API 提供商服务异常`;
+
+  return `${summary}。\n来自 ${providerName} 的反馈：${details}`;
+};
+
 // --- Helper: Call LLM (Generic) ---
 const callLLM = async (
   provider: AIProvider,
@@ -37,6 +74,9 @@ const callLLM = async (
   
   // Clean URL: Remove trailing slash
   const baseUrl = provider.baseUrl.replace(/\/+$/, '');
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s Timeout
 
   try {
     if (isGemini) {
@@ -50,12 +90,12 @@ const callLLM = async (
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal: controller.signal
       });
 
       if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Gemini API Error: ${response.status} - ${err}`);
+        throw new Error(await parseApiError(response, 'Gemini REST API'));
       }
 
       const data = await response.json();
@@ -76,20 +116,29 @@ const callLLM = async (
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${provider.apiKey}`
         },
-        body: JSON.stringify(body)
+        body: JSON.stringify(body),
+        signal: controller.signal
       });
 
       if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`OpenAI API Error: ${response.status} - ${err}`);
+        throw new Error(await parseApiError(response, 'OpenAI API'));
       }
 
       const data = await response.json();
       return data.choices?.[0]?.message?.content || '';
     }
-  } catch (e) {
+  } catch (e: any) {
+    if (e.name === 'AbortError') {
+      throw new Error(`请求超时：连接 API 服务器超过 60 秒无响应。请检查您的网络连接或代理配置。`);
+    }
+    // Handle standard fetch network errors (DNS, Connection Refused, CORS)
+    if (e instanceof TypeError && e.message === 'Failed to fetch') {
+      throw new Error(`网络连接失败：无法连接到 ${baseUrl}。\n可能原因：\n1. 域名解析失败或地址错误\n2. 网络环境无法访问该地址 (需检查 VPN/代理)\n3. 浏览器跨域 (CORS) 限制`);
+    }
     console.error("LLM Call Failed:", e);
     throw e;
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
@@ -116,16 +165,13 @@ export const translateContent = async (
   // 1. Try Custom Settings
   const config = getModelForTask(settings, 'translation');
   if (config) {
-    try {
-      return await callLLM(config.provider, config.modelId, prompt);
-    } catch (e) {
-      console.warn("Custom translation provider failed, falling back to system default.", e);
-    }
+    // Directly return (or throw) so the UI receives the specific error from the custom provider
+    return await callLLM(config.provider, config.modelId, prompt);
   }
 
   // 2. Fallback to System Default (Gemini SDK)
   if (!systemApiKey) {
-    throw new Error("API Key is missing. Please configure settings or environment.");
+    throw new Error("API Key 未配置。请在设置中添加 API 提供商，或配置系统环境变量。");
   }
 
   try {
@@ -133,10 +179,13 @@ export const translateContent = async (
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    return response.text || "Translation failed.";
-  } catch (error) {
+    return response.text || "Translation result empty.";
+  } catch (error: any) {
     console.error("System Gemini Error:", error);
-    return "Error: Could not translate content.";
+    let msg = error.message || "未知错误";
+    if (msg.includes('fetch failed')) msg = "网络连接失败 (System Gemini SDK)。请检查网络或代理。";
+    else if (msg.includes('401') || msg.includes('API key not valid')) msg = "System API Key 无效。";
+    throw new Error(`System Model Error: ${msg}`);
   }
 };
 
@@ -217,8 +266,13 @@ export const analyzeFeedContent = async (
         summary: result.summary || "Summary generation failed.",
         classifications: Array.isArray(result.classifications) ? result.classifications : []
       };
-    } catch (e) {
-      console.warn("Custom analysis provider failed, falling back to system.", e);
+    } catch (e: any) {
+      console.warn("Custom analysis provider failed:", e);
+      // Return error in summary so user sees it in the dashboard widget
+      return {
+        summary: `分析失败：${e.message}`,
+        classifications: []
+      };
     }
   }
 
@@ -241,10 +295,10 @@ export const analyzeFeedContent = async (
       summary: result.summary || "Summary generation failed.",
       classifications: Array.isArray(result.classifications) ? result.classifications : []
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
     return {
-      summary: "Error: Could not generate analysis. Please try again later.",
+      summary: `System Gemini Error: ${error.message}`,
       classifications: []
     };
   }

@@ -284,7 +284,13 @@ const App: React.FC = () => {
     try {
       const result = await translateContent(activeArticle.content || activeArticle.description, targetLang, aiSettings);
       setTranslatedContent(result); setLastTranslatedLang(targetLang); setShowTranslation(true);
-    } catch (error) { console.error(error); alert("Translation failed."); } finally { setIsTranslating(false); }
+    } catch (error: any) { 
+      console.error(error); 
+      // Show specific error message from the service
+      alert(`翻译失败:\n${error.message || "未知错误，请检查网络或配置。"}`); 
+    } finally { 
+      setIsTranslating(false); 
+    }
   }, [activeArticle, targetLang, showTranslation, translatedContent, lastTranslatedLang, aiSettings]);
 
   const handleSaveSettings = (newSettings: AISettings) => { setAiSettings(newSettings); localStorage.setItem('rss_ai_settings', JSON.stringify(newSettings)); };
