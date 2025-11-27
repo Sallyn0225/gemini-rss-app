@@ -14,7 +14,13 @@ services:
     restart: always
     environment:
       - NODE_ENV=production
+      # Define your admin secret here
+      - ADMIN_SECRET=admin123
     
+    volumes:
+      # Persist the dynamic feeds configuration
+      - ./feeds.json:/app/feeds.json
+
     # 日志轮转，防止日志占满磁盘
     logging:
       driver: "json-file"

@@ -1,4 +1,5 @@
 
+
 import { Feed, Article } from '../types';
 
 const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
@@ -14,6 +15,47 @@ export const proxyImageUrl = (url: string): string => {
     return url; // Return empty or relative URLs as is
   }
   return `/api/image?url=${encodeURIComponent(url)}`;
+};
+
+// --- New: Fetch Feed Configuration from Server ---
+export interface SystemFeedConfig {
+  id: string;
+  category: string;
+  isSub: boolean;
+  // URL is hidden by server
+}
+
+export const fetchSystemFeeds = async (): Promise<SystemFeedConfig[]> => {
+  try {
+    const response = await fetch('/api/feeds/list');
+    if (!response.ok) throw new Error("Failed to load feed configuration");
+    return await response.json();
+  } catch (e) {
+    console.error("Could not fetch system feeds:", e);
+    return [];
+  }
+};
+
+export const addSystemFeed = async (
+  id: string, 
+  url: string, 
+  category: string, 
+  isSub: boolean, 
+  secret: string
+): Promise<void> => {
+  const response = await fetch('/api/feeds/add', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': secret
+    },
+    body: JSON.stringify({ id, url, category, isSub })
+  });
+  
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Failed to add feed");
+  }
 };
 
 // Helper to extract image from HTML content safely and robustly
@@ -123,8 +165,10 @@ const parseXML = (xmlText: string, url: string): Feed => {
 export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
   const timestamp = Date.now(); // Cache buster
 
+  // Check if it's a known System ID (no protocol) or a raw URL
   if (!urlOrId.startsWith('http')) {
       try {
+          // Pass the ID to the proxy
           const response = await fetch(`/api/feed?id=${encodeURIComponent(urlOrId)}`);
           if (!response.ok) {
               const errorText = await response.text();

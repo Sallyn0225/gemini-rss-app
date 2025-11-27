@@ -1,23 +1,13 @@
 
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { fetchRSS, proxyImageUrl } from './services/rssService';
+import { fetchRSS, proxyImageUrl, fetchSystemFeeds } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
 import { Feed, Article, Language, ArticleCategory, AISettings } from './types';
 import { StatsChart } from './components/StatsChart';
 import { ArticleCard } from './components/ArticleCard';
 import { CalendarWidget } from './components/CalendarWidget';
 import { SettingsModal } from './components/SettingsModal';
-
-// Predefined Feeds Configuration
-const PREDEFINED_FEEDS = [
-  { url: 'bang_dream_info', category: 'BanG Dream Project', isSub: false },
-  { url: 'bang_dream_mygo', category: 'BanG Dream Project', isSub: true },
-  { url: 'bdp_avemujica', category: 'BanG Dream Project', isSub: true },
-  { url: 'imas_official', category: 'iDOLM@STER Project', isSub: false },
-  { url: 'shinyc_official', category: 'iDOLM@STER Project', isSub: true },
-  { url: 'gkmas_official', category: 'iDOLM@STER Project', isSub: true }
-];
 
 type SidebarViewMode = 'list' | 'grid';
 
@@ -134,7 +124,6 @@ const App: React.FC = () => {
   const [showTranslation, setShowTranslation] = useState<boolean>(false);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
   
-  // New state for Read/Unread tracking
   const [readArticleIds, setReadArticleIds] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('read_articles');
@@ -147,18 +136,47 @@ const App: React.FC = () => {
   useEffect(() => { if (darkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); } }, [darkMode]);
   useEffect(() => { let lastIsDesktop = window.innerWidth >= 1024; const handleResize = () => { const isDesktop = window.innerWidth >= 1024; if (isDesktop !== lastIsDesktop) { setIsSidebarOpen(isDesktop); setIsRightSidebarOpen(isDesktop); lastIsDesktop = isDesktop; } }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
 
-  useEffect(() => {
-    const initFeeds = async () => {
-      setLoading(true); setErrorMsg(null);
-      const results = await Promise.allSettled(PREDEFINED_FEEDS.map(config => fetchRSS(config.url).then(feed => ({...feed, ...config}))));
+  const initFeeds = useCallback(async () => {
+    setLoading(true); setErrorMsg(null);
+    try {
+      // 1. Fetch Configuration from Server
+      const feedConfigs = await fetchSystemFeeds();
+      
+      if (feedConfigs.length === 0) {
+        setFeeds([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch Content
+      const results = await Promise.allSettled(
+        feedConfigs.map(config => fetchRSS(config.id).then(feed => ({...feed, ...config})))
+      );
+      
       const loadedFeeds: Feed[] = [];
-      results.forEach((result, index) => { if (result.status === 'fulfilled') { const config = PREDEFINED_FEEDS[index]; loadedFeeds.push({ ...result.value, category: config.category, isSub: config.isSub }); } });
-      loadedFeeds.sort((a, b) => PREDEFINED_FEEDS.findIndex(p => p.url === a.url) - PREDEFINED_FEEDS.findIndex(p => p.url === b.url));
-      if (loadedFeeds.length === 0) setErrorMsg("Could not load predefined feeds.");
-      setFeeds(loadedFeeds); setLoading(false);
-    };
-    initFeeds();
+      results.forEach((result, index) => { 
+        if (result.status === 'fulfilled') { 
+          const config = feedConfigs[index]; 
+          loadedFeeds.push({ ...result.value, category: config.category, isSub: config.isSub }); 
+        } 
+      });
+      
+      // Preserve predefined order implicitly by array index
+      // loadedFeeds.sort((a, b) => PREDEFINED_FEEDS.findIndex(p => p.url === a.url) - PREDEFINED_FEEDS.findIndex(p => p.url === b.url));
+      
+      if (loadedFeeds.length === 0) setErrorMsg("Could not load feeds.");
+      setFeeds(loadedFeeds); 
+    } catch (e) {
+      console.error(e);
+      setErrorMsg("Error initializing feeds.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    initFeeds();
+  }, [initFeeds]);
 
   const baseArticles = useMemo(() => {
     if (!selectedFeed) return [];
@@ -208,7 +226,6 @@ const App: React.FC = () => {
     setLastTranslatedLang(null); 
     setShowTranslation(false); 
 
-    // Mark as read
     const id = article.guid || article.link;
     if (!readArticleIds.has(id)) {
       const newSet = new Set(readArticleIds);
@@ -526,7 +543,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} settings={aiSettings} onSave={handleSaveSettings} />
+      <SettingsModal isOpen={showSettings} onClose={() => { setShowSettings(false); initFeeds(); }} settings={aiSettings} onSave={handleSaveSettings} />
     </div>
   );
 };

@@ -1,5 +1,8 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { AISettings, AIProvider, AIModelConfig, AIProviderType } from '../types';
+import { addSystemFeed } from '../services/rssService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -20,7 +23,7 @@ const DEFAULT_SETTINGS: AISettings = {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave }) => {
   const [localSettings, setLocalSettings] = useState<AISettings>(settings || DEFAULT_SETTINGS);
-  const [activeTab, setActiveTab] = useState<'providers' | 'models'>('providers');
+  const [activeTab, setActiveTab] = useState<'providers' | 'models' | 'feeds'>('providers');
 
   // Form state for adding/editing provider
   const [isEditingProvider, setIsEditingProvider] = useState(false);
@@ -31,6 +34,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     baseUrl: '',
     apiKey: ''
   });
+
+  // Feed Management State
+  const [feedForm, setFeedForm] = useState({ id: '', url: '', category: '', isSub: false, secret: '' });
+  const [feedStatus, setFeedStatus] = useState<{msg: string, type: 'success' | 'error' | null}>({ msg: '', type: null });
 
   useEffect(() => {
     if (isOpen) {
@@ -134,6 +141,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     onClose();
   };
 
+  // --- Feed Handlers ---
+  const handleAddFeed = async () => {
+    if (!feedForm.id || !feedForm.url || !feedForm.secret) {
+        setFeedStatus({ msg: 'ID, URL and Secret are required.', type: 'error' });
+        return;
+    }
+    setFeedStatus({ msg: 'Adding feed...', type: null });
+    try {
+        await addSystemFeed(feedForm.id, feedForm.url, feedForm.category, feedForm.isSub, feedForm.secret);
+        setFeedStatus({ msg: 'Feed added successfully!', type: 'success' });
+        setFeedForm({ id: '', url: '', category: '', isSub: false, secret: feedForm.secret }); // Keep secret for convenience
+    } catch (e: any) {
+        setFeedStatus({ msg: e.message || 'Failed to add feed.', type: 'error' });
+    }
+  };
+
   // Common Styles
   const inputClass = "w-full bg-white text-slate-900 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-400 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder-slate-500";
   const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-1.5 tracking-wide dark:text-slate-400";
@@ -144,7 +167,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 dark:bg-slate-900 dark:border-slate-700 shrink-0">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">AI 设置 (Settings)</h2>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">设置 (Settings)</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 dark:hover:bg-slate-700 dark:text-slate-400">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -166,6 +189,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
               className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'models' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
             >
               模型配置
+            </button>
+            <button 
+              onClick={() => setActiveTab('feeds')}
+              className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'feeds' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
+            >
+              Feed 管理
             </button>
           </div>
 
@@ -404,6 +433,85 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
                 </div>
               </div>
+            )}
+            
+            {/* --- FEED MANAGEMENT TAB --- */}
+            {activeTab === 'feeds' && (
+                <div className="space-y-6 max-w-2xl mx-auto">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">Feed Manager</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Add new RSS feeds safely. The actual URL will be hidden from public users.</p>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
+                         {feedStatus.msg && (
+                            <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-semibold ${feedStatus.type === 'success' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' : feedStatus.type === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-blue-50 text-blue-700'}`}>
+                                {feedStatus.msg}
+                            </div>
+                         )}
+                         <div className="space-y-4">
+                            <div>
+                                <label className={labelClass}>Unique ID (Code)</label>
+                                <input 
+                                    type="text" 
+                                    className={inputClass} 
+                                    placeholder="e.g. my_new_feed"
+                                    value={feedForm.id}
+                                    onChange={e => setFeedForm({...feedForm, id: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Source URL (Hidden)</label>
+                                <input 
+                                    type="text" 
+                                    className={inputClass} 
+                                    placeholder="http://server.site:1200/rss/..."
+                                    value={feedForm.url}
+                                    onChange={e => setFeedForm({...feedForm, url: e.target.value})}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={labelClass}>Category</label>
+                                    <input 
+                                        type="text" 
+                                        className={inputClass} 
+                                        placeholder="Category Name"
+                                        value={feedForm.category}
+                                        onChange={e => setFeedForm({...feedForm, category: e.target.value})}
+                                    />
+                                </div>
+                                <div className="flex items-end pb-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                            checked={feedForm.isSub}
+                                            onChange={e => setFeedForm({...feedForm, isSub: e.target.checked})}
+                                        />
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Is Sub-feed?</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="pt-4 border-t border-slate-100 dark:border-slate-700 mt-2">
+                                <label className={labelClass}>Admin Secret (Required)</label>
+                                <input 
+                                    type="password" 
+                                    className={inputClass} 
+                                    placeholder="Enter server admin secret..."
+                                    value={feedForm.secret}
+                                    onChange={e => setFeedForm({...feedForm, secret: e.target.value})}
+                                />
+                            </div>
+                            <button 
+                                onClick={handleAddFeed}
+                                className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-md mt-2"
+                            >
+                                Add Feed
+                            </button>
+                         </div>
+                    </div>
+                </div>
             )}
             
           </div>
