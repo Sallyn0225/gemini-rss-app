@@ -75,6 +75,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   if (!isOpen) return null;
 
   // --- Provider Handlers ---
+  const handleProviderTypeChange = (newType: AIProviderType) => {
+    const baseUrl = newType === 'gemini' ? 'https://generativelanguage.googleapis.com' : 'https://api.openai.com/v1';
+    setEditForm(prev => ({ ...prev, type: newType, baseUrl }));
+  };
+
   const handleSaveProvider = () => {
     if (!editForm.name || !editForm.baseUrl || !editForm.apiKey) {
       alert("请填写完整的提供商信息");
@@ -330,7 +335,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                       <div>
                         <label className={labelClass}>API 格式</label>
                         <div className="relative">
-                          <select className={`${inputClass} appearance-none cursor-pointer`} value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value as AIProviderType})}>
+                          <select className={`${inputClass} appearance-none cursor-pointer`} value={editForm.type} onChange={e => handleProviderTypeChange(e.target.value as AIProviderType)}>
                             <option value="openai">OpenAI 兼容</option>
                             <option value="gemini">Gemini API</option>
                           </select>
