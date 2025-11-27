@@ -38,6 +38,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   // Feed Management State
   const [feedForm, setFeedForm] = useState({ id: '', url: '', category: '', isSub: false, secret: '' });
   const [feedStatus, setFeedStatus] = useState<{msg: string, type: 'success' | 'error' | null}>({ msg: '', type: null });
+  const [isAddingFeed, setIsAddingFeed] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -147,13 +148,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         setFeedStatus({ msg: 'ID, URL and Secret are required.', type: 'error' });
         return;
     }
+    setIsAddingFeed(true);
     setFeedStatus({ msg: 'Adding feed...', type: null });
     try {
         await addSystemFeed(feedForm.id, feedForm.url, feedForm.category, feedForm.isSub, feedForm.secret);
-        setFeedStatus({ msg: 'Feed added successfully!', type: 'success' });
+        setFeedStatus({ msg: 'Feed added successfully! You can close this window to see the update.', type: 'success' });
         setFeedForm({ id: '', url: '', category: '', isSub: false, secret: feedForm.secret }); // Keep secret for convenience
     } catch (e: any) {
         setFeedStatus({ msg: e.message || 'Failed to add feed.', type: 'error' });
+    } finally {
+        setIsAddingFeed(false);
     }
   };
 
@@ -455,7 +459,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 <input 
                                     type="text" 
                                     className={inputClass} 
-                                    placeholder="e.g. my_new_feed"
+                                    placeholder="e.g., bandori_official_twitter"
                                     value={feedForm.id}
                                     onChange={e => setFeedForm({...feedForm, id: e.target.value})}
                                 />
@@ -465,7 +469,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 <input 
                                     type="text" 
                                     className={inputClass} 
-                                    placeholder="http://server.site:1200/rss/..."
+                                    placeholder="https://your-rss-service.com/..."
                                     value={feedForm.url}
                                     onChange={e => setFeedForm({...feedForm, url: e.target.value})}
                                 />
@@ -476,7 +480,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                     <input 
                                         type="text" 
                                         className={inputClass} 
-                                        placeholder="Category Name"
+                                        placeholder="e.g., BanG Dream"
                                         value={feedForm.category}
                                         onChange={e => setFeedForm({...feedForm, category: e.target.value})}
                                     />
@@ -498,16 +502,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 <input 
                                     type="password" 
                                     className={inputClass} 
-                                    placeholder="Enter server admin secret..."
+                                    placeholder="The secret key set in docker-compose.yml"
                                     value={feedForm.secret}
                                     onChange={e => setFeedForm({...feedForm, secret: e.target.value})}
                                 />
                             </div>
                             <button 
                                 onClick={handleAddFeed}
-                                className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-md mt-2"
+                                disabled={isAddingFeed}
+                                className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-md mt-2 flex items-center justify-center disabled:bg-indigo-400 disabled:cursor-not-allowed"
                             >
-                                Add Feed
+                                {isAddingFeed && <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                                {isAddingFeed ? 'Adding...' : 'Add Feed'}
                             </button>
                          </div>
                     </div>

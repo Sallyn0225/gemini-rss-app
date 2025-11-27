@@ -6,7 +6,7 @@ const url = require('url');
 
 // --- Configuration ---
 const PORT = 3000;
-const DATA_DIR = path.join(__dirname, 'data'); // Changed from file to directory
+const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'feeds.json');
 const STATIC_PATH = path.join(__dirname, 'dist');
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin123'; // Default secret if not set
@@ -28,20 +28,23 @@ const DEFAULT_FEEDS = [
 
 // --- Helper: Load Feeds ---
 const loadFeeds = () => {
-  // FIX: Ensure the data directory exists before trying to access the file
+  // Ensure the data directory exists before trying to access the file
   if (!fs.existsSync(DATA_DIR)) {
+    console.log(`[Init] Data directory not found. Creating at: ${DATA_DIR}`);
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
   
   if (!fs.existsSync(DATA_FILE)) {
     // Initialize with defaults if file doesn't exist
+    console.log(`[Init] Feeds file not found. Creating with defaults at: ${DATA_FILE}`);
     fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_FEEDS, null, 2));
     return DEFAULT_FEEDS;
   }
   try {
     const data = fs.readFileSync(DATA_FILE, 'utf8');
     // Handle empty file case
-    if (!data) {
+    if (!data.trim()) {
+        console.warn(`[Warning] feeds.json is empty. Initializing with defaults.`);
         fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_FEEDS, null, 2));
         return DEFAULT_FEEDS;
     }
@@ -49,8 +52,10 @@ const loadFeeds = () => {
   } catch (e) {
     console.error("Error reading feeds.json:", e);
     // If parsing fails, backup and create a new one
+    const backupPath = `${DATA_FILE}.${Date.now()}.bak`;
     try {
-       fs.renameSync(DATA_FILE, `${DATA_FILE}.${Date.now()}.bak`);
+       fs.renameSync(DATA_FILE, backupPath);
+       console.log(`[Recovery] Corrupted feeds.json backed up to ${backupPath}`);
     } catch (renameErr) {
        console.error("Could not backup corrupted feeds.json", renameErr);
     }
@@ -245,7 +250,9 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
-  console.log(`Proxy target: ${PROXY_CONFIG.host}:${PROXY_CONFIG.port}`);
-  console.log(`Admin Secret: ${ADMIN_SECRET.substring(0, 3)}***`);
+  console.log('--- Running Updated Server Code (v2) ---');
+  console.log(`[OK] Server running at http://localhost:${PORT}/`);
+  console.log(`[OK] Data will be stored in: ${DATA_FILE}`);
+  console.log(`[OK] Proxy target: ${PROXY_CONFIG.host}:${PROXY_CONFIG.port}`);
+  console.log(`[OK] Admin Secret: ${ADMIN_SECRET.substring(0, 3)}***`);
 });
