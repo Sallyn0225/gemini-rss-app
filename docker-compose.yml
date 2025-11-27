@@ -18,8 +18,9 @@ services:
       - ADMIN_SECRET=admin123
     
     volumes:
-      # Persist the dynamic feeds configuration
-      - ./feeds.json:/app/feeds.json
+      # Mount a directory for persistent data, not a single file
+      # This prevents Docker from creating a directory instead of a file
+      - ./data:/app/data
 
     # 日志轮转，防止日志占满磁盘
     logging:

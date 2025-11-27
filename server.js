@@ -6,7 +6,8 @@ const url = require('url');
 
 // --- Configuration ---
 const PORT = 3000;
-const DATA_FILE = path.join(__dirname, 'feeds.json');
+const DATA_DIR = path.join(__dirname, 'data'); // Changed from file to directory
+const DATA_FILE = path.join(DATA_DIR, 'feeds.json');
 const STATIC_PATH = path.join(__dirname, 'dist');
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin123'; // Default secret if not set
 
@@ -27,6 +28,11 @@ const DEFAULT_FEEDS = [
 
 // --- Helper: Load Feeds ---
 const loadFeeds = () => {
+  // FIX: Ensure the data directory exists before trying to access the file
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  
   if (!fs.existsSync(DATA_FILE)) {
     // Initialize with defaults if file doesn't exist
     fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_FEEDS, null, 2));
@@ -34,9 +40,21 @@ const loadFeeds = () => {
   }
   try {
     const data = fs.readFileSync(DATA_FILE, 'utf8');
+    // Handle empty file case
+    if (!data) {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_FEEDS, null, 2));
+        return DEFAULT_FEEDS;
+    }
     return JSON.parse(data);
   } catch (e) {
     console.error("Error reading feeds.json:", e);
+    // If parsing fails, backup and create a new one
+    try {
+       fs.renameSync(DATA_FILE, `${DATA_FILE}.${Date.now()}.bak`);
+    } catch (renameErr) {
+       console.error("Could not backup corrupted feeds.json", renameErr);
+    }
+    fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_FEEDS, null, 2));
     return DEFAULT_FEEDS;
   }
 };
