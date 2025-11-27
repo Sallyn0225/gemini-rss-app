@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { AISettings, AIProvider, AIModelConfig, AIProviderType } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, FullSystemFeedConfig } from '../services/rssService';
@@ -556,7 +555,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         </div>
                         <div>
                           <label className={labelClass}>备注名称</label>
-                          <input type="text" className={inputClass} placeholder="给个好记的名字" value={localSettings.tasks.general?.modelName || ''} onChange={e => handleModelChange('general', 'modelName', e.target.value)} />
+                          <input type="text" className={inputClass} placeholder="给个好记的名字 (留空则显示模型 ID)" value={localSettings.tasks.general?.modelName || ''} onChange={e => handleModelChange('general', 'modelName', e.target.value)} />
                         </div>
                       </div>
                     </div>
@@ -606,7 +605,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 </div>
                                 <div>
                                   <label className={labelClass}>备注名称</label>
-                                  <input type="text" className={inputClass} placeholder="备注" value={config.modelName || ''} onChange={e => handleModelChange(taskKey, 'modelName', e.target.value)} />
+                                  <input type="text" className={inputClass} placeholder="备注名称 (留空则显示模型 ID)" value={config.modelName || ''} onChange={e => handleModelChange(taskKey, 'modelName', e.target.value)} />
                                 </div>
                               </>
                             )}

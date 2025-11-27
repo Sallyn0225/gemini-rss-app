@@ -316,8 +316,21 @@ const App: React.FC = () => {
   const handleSaveSettings = (newSettings: AISettings) => { setAiSettings(newSettings); localStorage.setItem('rss_ai_settings', JSON.stringify(newSettings)); };
 
   const getTranslatorName = useCallback(() => {
-    if (aiSettings.tasks.translation?.modelName) return aiSettings.tasks.translation.modelName;
-    if (aiSettings.tasks.general?.modelName) return aiSettings.tasks.general.modelName;
+    // 1. Check Specific Translation Task Configuration
+    // If the user has explicitly configured a provider for translation, we should use that configuration.
+    const transTask = aiSettings.tasks.translation;
+    if (transTask && transTask.providerId) {
+       // Return the custom remark if present, otherwise fallback to the Model ID
+       return transTask.modelName || transTask.modelId || "Custom AI";
+    }
+
+    // 2. Fallback to General Configuration
+    const genTask = aiSettings.tasks.general;
+    if (genTask && genTask.providerId) {
+        return genTask.modelName || genTask.modelId || "General Model";
+    }
+
+    // 3. Absolute Fallback (System Default)
     return "Gemini AI";
   }, [aiSettings]);
 
