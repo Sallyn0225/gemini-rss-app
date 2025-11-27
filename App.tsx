@@ -408,10 +408,10 @@ const App: React.FC = () => {
       <div className={`fixed inset-y-0 left-0 z-40 w-80 flex flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 ease-in-out dark:bg-slate-900 dark:border-slate-800 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${!isSidebarOpen && 'lg:hidden'} shrink-0`}>
         <div className="p-6 border-b border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800">
           <div className="flex items-center justify-between mb-2">
-            <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2 group"><div className="bg-blue-600 text-white p-1.5 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M3.75 4.5a.75.75 0 01.75-.75h.75c8.284 0 15 6.716 15 15v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.75C18 11.75 14.25 8 9.625 8H3.75a.75.75 0 01-.75-.75V4.5zM3.75 18.75a.75.75 0 01.75-.75h.75c1.036 0 1.875.84 1.875 1.875v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.75zm3.75-9a.75.75 0 01.75-.75h.75c4.97 0 9 4.03 9 9v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75V18.75c0-3.314-2.686-6-6-6H4.5a.75.75 0 01-.75-.75v-.75z" clipRule="evenodd" /></svg></div><h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">Gemini RSS</h1></div>
+            <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2 group"><div className="bg-blue-600 text-white p-1.5 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M3.75 4.5a.75.75 0 01.75-.75h.75c8.284 0 15 6.716 15 15v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.75C18 11.75 14.25 8 9.625 8H3.75a.75.75 0 01-.75-.75V4.5zM3.75 18.75a.75.75 0 01.75-.75h.75c1.036 0 1.875.84 1.875 1.875v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.75zm3.75-9a.75.75 0 01.75-.75h.75c4.97 0 9 4.03 9 9v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75V18.75c0-3.314-2.686-6-6-6H4.5a.75.75 0 01-.75-.75v-.75z" clipRule="evenodd" /></svg></div><h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">NSYC订阅站</h1></div>
             <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg dark:hover:bg-slate-800" title="收起侧边栏"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 lg:hidden"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 hidden lg:block"><path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg></button>
           </div>
-          <p className="text-xs text-slate-400">来自 BanG Dream 和 IMAS 的精选更新</p>
+          <p className="text-xs text-slate-400">Make Josei Seiyu Great Again</p>
           {errorMsg && <p className="text-xs text-red-500 mt-2 px-1">{errorMsg}</p>}
         </div>
         <div className="flex items-center justify-between px-6 py-4">
@@ -470,7 +470,7 @@ const App: React.FC = () => {
                       </svg>
                    </button>
                  )}
-                 <div><h2 className="text-3xl font-bold text-slate-800 dark:text-white">仪表盘</h2><p className="text-slate-500 dark:text-slate-400">您的新闻生态系统概览。</p></div>
+                 <div><h2 className="text-3xl font-bold text-slate-800 dark:text-white">仪表盘</h2><p className="text-slate-500 dark:text-slate-400">您的多媒体企划新闻生态系统概览。</p></div>
                </header>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
