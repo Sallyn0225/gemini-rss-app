@@ -9,6 +9,36 @@ import { SettingsModal } from './components/SettingsModal';
 
 type SidebarViewMode = 'list' | 'grid';
 
+// --- New Helper Function to Proxy Media in HTML ---
+const proxyHtmlImages = (html: string | null | undefined): string => {
+  if (!html) return '';
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Proxy images
+    doc.querySelectorAll('img').forEach(img => {
+      const originalSrc = img.getAttribute('src');
+      if (originalSrc && originalSrc.startsWith('http')) {
+        img.setAttribute('src', proxyImageUrl(originalSrc));
+      }
+    });
+
+    // Proxy video posters
+    doc.querySelectorAll('video').forEach(video => {
+      const posterSrc = video.getAttribute('poster');
+      if (posterSrc && posterSrc.startsWith('http')) {
+        video.setAttribute('poster', proxyImageUrl(posterSrc));
+      }
+    });
+
+    return doc.body.innerHTML;
+  } catch (e) {
+    console.error("Failed to parse and proxy HTML content:", e);
+    return html; // Fallback on parsing error
+  }
+};
+
 // --- Extracted FeedItem Component ---
 interface FeedItemProps {
   feed: Feed;
@@ -307,7 +337,10 @@ const App: React.FC = () => {
     try {
       const content = activeArticle.content || activeArticle.description;
       const result = await translateContent(content, targetLang, aiSettings);
-      setTranslatedContent(result); setLastTranslatedLang(targetLang); setShowTranslation(true);
+      const proxiedResult = proxyHtmlImages(result);
+      setTranslatedContent(proxiedResult); 
+      setLastTranslatedLang(targetLang); 
+      setShowTranslation(true);
     } catch (error: any) { 
       console.error(error); 
       // Show specific error message from the service
@@ -325,7 +358,8 @@ const App: React.FC = () => {
         try {
             const content = activeArticle.content || activeArticle.description || '';
             const result = await translateContent(content, newLang, aiSettings);
-            setTranslatedContent(result);
+            const proxiedResult = proxyHtmlImages(result);
+            setTranslatedContent(proxiedResult);
             setLastTranslatedLang(newLang);
         } catch (error: any) {
             console.error(error);
@@ -358,21 +392,8 @@ const App: React.FC = () => {
   }, [aiSettings]);
 
   const proxiedArticleContent = useMemo(() => {
-    if (!activeArticle?.content) return activeArticle?.description || '';
-    try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(activeArticle.content, 'text/html');
-      const images = doc.querySelectorAll('img');
-      images.forEach(img => {
-        const originalSrc = img.getAttribute('src');
-        if (originalSrc) {
-          img.setAttribute('src', proxyImageUrl(originalSrc));
-        }
-      });
-      return doc.body.innerHTML;
-    } catch (e) {
-      return activeArticle.content; // Fallback on parsing error
-    }
+    if (!activeArticle) return '';
+    return proxyHtmlImages(activeArticle.content || activeArticle.description);
   }, [activeArticle]);
   
   const readingViewAvatar = useMemo(() => {
