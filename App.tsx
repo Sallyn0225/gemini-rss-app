@@ -155,6 +155,9 @@ const App: React.FC = () => {
   const [scrollPosition, setScrollPosition] = useState(0);
   const articleListRef = useRef<HTMLDivElement>(null);
 
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const lastScrollTopRef = useRef(0);
+
   const [readArticleIds, setReadArticleIds] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('read_articles');
@@ -236,6 +239,33 @@ const App: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [activeArticle, selectedFeed]);
+
+  useEffect(() => {
+    const listEl = articleListRef.current;
+    if (!listEl) return;
+
+    const handleScroll = () => {
+        const currentScrollTop = listEl.scrollTop;
+        
+        // Show button if we scroll down past a certain point
+        if (currentScrollTop > lastScrollTopRef.current && currentScrollTop > 300) {
+            setShowScrollToTop(true);
+        } 
+        // Hide button if we scroll up or are near the top
+        else if (currentScrollTop < lastScrollTopRef.current || currentScrollTop <= 300) {
+            setShowScrollToTop(false);
+        }
+        
+        lastScrollTopRef.current = currentScrollTop <= 0 ? 0 : currentScrollTop;
+    };
+
+    listEl.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Cleanup
+    return () => {
+        listEl.removeEventListener('scroll', handleScroll);
+    };
+  }, [selectedFeed, activeArticle]);
 
   const baseArticles = useMemo(() => {
     if (!selectedFeed) return [];
@@ -371,6 +401,13 @@ const App: React.FC = () => {
   };
 
   const handleSaveSettings = (newSettings: AISettings) => { setAiSettings(newSettings); localStorage.setItem('rss_ai_settings', JSON.stringify(newSettings)); };
+  
+  const handleScrollToTop = () => {
+    articleListRef.current?.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+    });
+  };
 
   const getTranslatorName = useCallback(() => {
     // 1. Check Specific Translation Task Configuration
@@ -541,6 +578,20 @@ const App: React.FC = () => {
                  ))}
                </div>
              </div>
+             <button
+                onClick={handleScrollToTop}
+                aria-label="返回顶部"
+                className={`
+                    md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg 
+                    flex items-center justify-center transition-all duration-300 ease-in-out 
+                    hover:bg-blue-700 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                    ${showScrollToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}
+                `}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                </svg>
+            </button>
            </div>
          )}
          {activeArticle && (
