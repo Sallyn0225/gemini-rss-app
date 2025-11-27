@@ -25,6 +25,11 @@ export interface SystemFeedConfig {
   // URL is hidden by server
 }
 
+// New type for admin panel, includes the URL
+export interface FullSystemFeedConfig extends SystemFeedConfig {
+  url: string;
+}
+
 export const fetchSystemFeeds = async (): Promise<SystemFeedConfig[]> => {
   try {
     const response = await fetch('/api/feeds/list');
@@ -35,6 +40,21 @@ export const fetchSystemFeeds = async (): Promise<SystemFeedConfig[]> => {
     return [];
   }
 };
+
+// New admin-only function to get all feed data
+export const fetchAllSystemFeeds = async (secret: string): Promise<FullSystemFeedConfig[]> => {
+  const response = await fetch('/api/feeds/list/all', {
+    headers: {
+      'x-admin-secret': secret
+    }
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Failed to fetch full feed list");
+  }
+  return await response.json();
+};
+
 
 export const addSystemFeed = async (
   id: string, 
@@ -54,7 +74,23 @@ export const addSystemFeed = async (
   
   if (!response.ok) {
     const err = await response.json();
-    throw new Error(err.error || "Failed to add feed");
+    throw new Error(err.error || "Failed to add or update feed");
+  }
+};
+
+// New admin-only function to delete a feed
+export const deleteSystemFeed = async (id: string, secret: string): Promise<void> => {
+  const response = await fetch('/api/feeds/delete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': secret
+    },
+    body: JSON.stringify({ id })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Failed to delete feed");
   }
 };
 

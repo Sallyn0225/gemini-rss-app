@@ -64,10 +64,10 @@ const loadFeeds = () => {
   }
 };
 
-// --- Helper: Save Feeds ---
+// --- Helper: Save/Update Feeds ---
 const saveFeed = (newFeed) => {
   const feeds = loadFeeds();
-  // Check if ID exists
+  // Check if ID exists to update, otherwise add
   const index = feeds.findIndex(f => f.id === newFeed.id);
   if (index >= 0) {
     feeds[index] = { ...feeds[index], ...newFeed };
@@ -78,13 +78,25 @@ const saveFeed = (newFeed) => {
   return feeds;
 };
 
+// --- Helper: Delete Feed ---
+const deleteFeed = (feedId) => {
+  let feeds = loadFeeds();
+  const initialLength = feeds.length;
+  feeds = feeds.filter(f => f.id !== feedId);
+  if (feeds.length === initialLength) {
+    return false; // Not found
+  }
+  fs.writeFileSync(DATA_FILE, JSON.stringify(feeds, null, 2));
+  return true;
+};
+
+
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
 
   // === API: Get Feed List (Public - Hides URL) ===
   if (parsedUrl.pathname === '/api/feeds/list' && req.method === 'GET') {
     const feeds = loadFeeds();
-    // Return only necessary frontend data, HIDE the 'url'
     const safeFeeds = feeds.map(f => ({
       id: f.id,
       category: f.category,
@@ -95,7 +107,21 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Add Feed (Protected) ===
+  // === API: Get FULL Feed List (Protected) ===
+  if (parsedUrl.pathname === '/api/feeds/list/all' && req.method === 'GET') {
+    const secret = req.headers['x-admin-secret'];
+    if (secret !== ADMIN_SECRET) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Invalid Admin Secret' }));
+      return;
+    }
+    const feeds = loadFeeds(); // This loads the full feed objects
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(feeds));
+    return;
+  }
+
+  // === API: Add/Update Feed (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/add' && req.method === 'POST') {
     const secret = req.headers['x-admin-secret'];
     if (secret !== ADMIN_SECRET) {
@@ -103,18 +129,45 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ error: 'Unauthorized: Invalid Admin Secret' }));
       return;
     }
-
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
         const { id, url, category, isSub } = JSON.parse(body);
-        if (!id || !url) {
-          throw new Error("Missing ID or URL");
-        }
+        if (!id || !url) throw new Error("Missing ID or URL");
         saveFeed({ id, url, category, isSub: !!isSub });
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // === API: Delete Feed (Protected) ===
+  if (parsedUrl.pathname === '/api/feeds/delete' && req.method === 'POST') {
+    const secret = req.headers['x-admin-secret'];
+    if (secret !== ADMIN_SECRET) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Invalid Admin Secret' }));
+      return;
+    }
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { id } = JSON.parse(body);
+        if (!id) throw new Error("Missing ID");
+        const deleted = deleteFeed(id);
+        if (deleted) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true }));
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `Feed with id '${id}' not found.` }));
+        }
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
@@ -129,7 +182,6 @@ const server = http.createServer((req, res) => {
     const feeds = loadFeeds();
     const feedConfig = feeds.find(f => f.id === feedId);
     
-    // Fallback logic for raw URLs if passed directly (optional, but keeping for compatibility)
     const targetUrl = feedConfig ? feedConfig.url : (feedId.startsWith('http') ? feedId : null);
 
     if (!targetUrl) {
@@ -142,14 +194,8 @@ const server = http.createServer((req, res) => {
     const targetUrlObj = url.parse(targetUrl);
     
     const proxyOptions = {
-      hostname: PROXY_CONFIG.host,
-      port: PROXY_CONFIG.port,
-      path: targetUrl,
-      method: 'GET',
-      headers: {
-        'Host': targetUrlObj.host,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
-      },
+      hostname: PROXY_CONFIG.host, port: PROXY_CONFIG.port, path: targetUrl, method: 'GET',
+      headers: { 'Host': targetUrlObj.host, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36' },
       timeout: 15000
     };
 
@@ -164,10 +210,7 @@ const server = http.createServer((req, res) => {
           });
           return;
       }
-      res.writeHead(proxyRes.statusCode, {
-        'Content-Type': proxyRes.headers['content-type'] || 'application/xml',
-        'Access-Control-Allow-Origin': '*'
-      });
+      res.writeHead(proxyRes.statusCode, { 'Content-Type': proxyRes.headers['content-type'] || 'application/xml', 'Access-Control-Allow-Origin': '*' });
       proxyRes.pipe(res);
     });
 
@@ -194,29 +237,17 @@ const server = http.createServer((req, res) => {
 
     const targetUrlObj = url.parse(imageUrl);
     const proxyOptions = {
-      hostname: PROXY_CONFIG.host,
-      port: PROXY_CONFIG.port,
-      path: imageUrl,
-      method: 'GET',
-      headers: {
-        'Host': targetUrlObj.host,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-        'Referer': targetUrlObj.protocol + '//' + targetUrlObj.host
-      },
+      hostname: PROXY_CONFIG.host, port: PROXY_CONFIG.port, path: imageUrl, method: 'GET',
+      headers: { 'Host': targetUrlObj.host, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', 'Referer': targetUrlObj.protocol + '//' + targetUrlObj.host },
       timeout: 20000
     };
 
     const proxyReq = http.request(proxyOptions, (proxyRes) => {
       if (proxyRes.statusCode >= 400) {
         console.error(`[Image Proxy] Upstream error for ${imageUrl}: ${proxyRes.statusCode}`);
-        res.writeHead(proxyRes.statusCode);
-        res.end();
-        return;
+        res.writeHead(proxyRes.statusCode); res.end(); return;
       }
-      res.writeHead(proxyRes.statusCode, {
-        'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg',
-        'Cache-Control': 'public, max-age=86400'
-      });
+      res.writeHead(proxyRes.statusCode, { 'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
       proxyRes.pipe(res);
     });
     
