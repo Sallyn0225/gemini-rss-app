@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AISettings, AIProvider, AIModelConfig, AIProviderType } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, FullSystemFeedConfig } from '../services/rssService';
 import { fetchProviderModels } from '../services/geminiService';
@@ -41,6 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
 
   // Feed Management State
   const [adminSecret, setAdminSecret] = useState('');
@@ -51,6 +52,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const [feedForm, setFeedForm] = useState({ id: '', url: '', category: '', isSub: false, customTitle: '' });
   const [feedStatus, setFeedStatus] = useState<{msg: string, type: 'success' | 'error' | null}>({ msg: '', type: null });
   const [isSubmittingFeed, setIsSubmittingFeed] = useState(false);
+
+  // Refs for smooth scrolling
+  const taskConfigRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -388,7 +392,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                          {localSettings.providers.map(p => (
                             <button 
                               key={p.id} 
-                              onClick={() => { setActiveProviderForModels(p.id); setAvailableModels([]); setFetchError(null); }}
+                              onClick={() => { setActiveProviderForModels(p.id); setAvailableModels([]); setFetchError(null); setModelSearchQuery(''); }}
                               className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeProviderForModels === p.id ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-800'}`}
                             >
                                <span className={`w-2 h-2 rounded-full ${p.type === 'gemini' ? 'bg-purple-500' : 'bg-emerald-500'}`}></span>
@@ -400,7 +404,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                       {/* Active Provider Config Area */}
                       {activeProviderForModels && (
                         <div className="p-6">
-                           <div className="flex items-center justify-between mb-4">
+                           {/* Improved Mobile Layout */}
+                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                               <h4 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                                 <span className="text-sm px-2 py-0.5 bg-slate-100 rounded text-slate-500 dark:bg-slate-700 dark:text-slate-400">
                                    {localSettings.providers.find(p => p.id === activeProviderForModels)?.type === 'gemini' ? 'Gemini API' : 'OpenAI Compatible'}
@@ -409,10 +414,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                               <button 
                                 onClick={handleFetchModels}
                                 disabled={isFetchingModels}
-                                className="px-4 py-2 bg-indigo-50 text-indigo-600 text-sm font-bold rounded-lg hover:bg-indigo-100 transition-colors disabled:opacity-50 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
+                                className="w-full sm:w-auto px-4 py-2 bg-indigo-50 text-indigo-600 text-sm font-bold rounded-lg hover:bg-indigo-100 transition-colors disabled:opacity-50 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50 whitespace-nowrap"
                               >
                                 {isFetchingModels ? '获取中...' : '获取所有可用模型'}
                               </button>
+                           </div>
+                           
+                           {/* Search Box */}
+                           <div className="relative mb-4">
+                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                               </svg>
+                             </div>
+                             <input 
+                               type="text" 
+                               className={`${inputClass} pl-10`} 
+                               placeholder="搜索模型 (Search Models)..."
+                               value={modelSearchQuery}
+                               onChange={(e) => setModelSearchQuery(e.target.value)}
+                             />
                            </div>
                            
                            {fetchError && (
@@ -423,15 +444,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
                            {/* Render Available Models (if fetched) OR Currently Enabled Models */}
                            <div className="space-y-2">
-                             {availableModels.length > 0 && (
-                               <div className="mb-4 p-3 bg-blue-50 text-blue-700 text-xs rounded-lg dark:bg-blue-900/30 dark:text-blue-300">
-                                 已获取 {availableModels.length} 个模型。请勾选您想启用的模型。
+                             {(availableModels.length > 0 || getEnabledModelsForProvider(activeProviderForModels).length > 0) && (
+                               <div className="mb-2 p-2 bg-blue-50 text-blue-700 text-xs rounded-lg dark:bg-blue-900/30 dark:text-blue-300 flex justify-between items-center">
+                                 <span>请勾选您想启用的模型。未列出的模型可手动输入。</span>
                                </div>
                              )}
                              
                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-1">
-                               {/* Combine available models and already enabled models to ensure checked ones are always visible even if not fetched yet */}
-                               {Array.from(new Set([...availableModels, ...getEnabledModelsForProvider(activeProviderForModels)])).sort().map(modelId => {
+                               {Array.from(new Set([...availableModels, ...getEnabledModelsForProvider(activeProviderForModels)]))
+                                 .filter(m => m.toLowerCase().includes(modelSearchQuery.toLowerCase()))
+                                 .sort()
+                                 .map(modelId => {
                                  const isEnabled = getEnabledModelsForProvider(activeProviderForModels).includes(modelId);
                                  return (
                                    <label key={modelId} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isEnabled ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'bg-white border-slate-200 hover:border-blue-200 dark:bg-slate-800 dark:border-slate-700'}`}>
@@ -452,6 +475,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                      暂无模型数据，请点击“获取所有可用模型”按钮。
                                   </div>
                                )}
+                               {availableModels.length > 0 && Array.from(new Set([...availableModels, ...getEnabledModelsForProvider(activeProviderForModels)])).filter(m => m.toLowerCase().includes(modelSearchQuery.toLowerCase())).length === 0 && (
+                                  <div className="col-span-full text-center py-4 text-slate-400">
+                                     未找到匹配的模型。
+                                  </div>
+                               )}
+                             </div>
+                             
+                             {/* Save/Confirm Selection Guidance Button */}
+                             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                    已启用 {getEnabledModelsForProvider(activeProviderForModels).length} 个模型
+                                </span>
+                                <button 
+                                    onClick={() => taskConfigRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                    className="px-4 py-2 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-700 transition-colors dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center gap-2 shadow-sm whitespace-nowrap"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-green-400">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    确认选择并配置任务
+                                </button>
                              </div>
                            </div>
                         </div>
@@ -461,7 +505,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 </div>
 
                 {/* 2. TASK CONFIGURATION SECTION */}
-                <div className="space-y-6">
+                <div className="space-y-6" ref={taskConfigRef}>
                   <div>
                     <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">模型任务配置 (Model Task Configuration)</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">为不同的任务指定使用的模型。若特定任务未配置，将默认使用「总模型」。</p>
