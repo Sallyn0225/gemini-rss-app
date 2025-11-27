@@ -167,31 +167,6 @@ const App: React.FC = () => {
     }
   });
 
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
-
-  useEffect(() => {
-      const handler = (e: Event) => {
-          e.preventDefault();
-          console.log('beforeinstallprompt event fired');
-          setInstallPrompt(e);
-      };
-      window.addEventListener('beforeinstallprompt', handler);
-      return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstallClick = () => {
-      if (!installPrompt) return;
-      installPrompt.prompt();
-      installPrompt.userChoice.then((choiceResult: { outcome: string }) => {
-          if (choiceResult.outcome === 'accepted') {
-              console.log('User accepted the A2HS prompt');
-          } else {
-              console.log('User dismissed the A2HS prompt');
-          }
-          setInstallPrompt(null);
-      });
-  };
-
   const isAiConfigured = useMemo(() => {
     const { providers, tasks } = aiSettings;
     if (providers.length === 0) return false;
@@ -501,15 +476,7 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="p-4 border-t border-slate-100 bg-slate-50 mt-auto flex gap-3 dark:bg-slate-900 dark:border-slate-800">
-          {installPrompt && (
-            <button onClick={handleInstallClick} className="flex-1 flex items-center justify-center gap-3 px-4 py-2 text-green-700 bg-green-50 hover:bg-green-100 rounded-xl font-semibold dark:text-green-300 dark:bg-green-500/10 dark:hover:bg-green-500/20 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                <span className="text-sm">安装应用</span>
-            </button>
-          )}
-          <button onClick={() => setShowSettings(true)} className={`${!installPrompt ? 'flex-1' : ''} flex items-center justify-center gap-3 px-4 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl font-semibold dark:text-slate-400 dark:hover:bg-slate-800`}>
+          <button onClick={() => setShowSettings(true)} className="flex-1 flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl font-semibold dark:text-slate-400 dark:hover:bg-slate-800">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 0a20.832 20.832 0 011.439-4.283c.267-.579.976-.78 1.527-.461l.657.38c.523.301.71.96.463 1.511a18.058 18.058 0 01-.985 2.783m2.49 5.06a18.057 18.057 0 01-.99-2.662m0 0a18.055 18.055 0 01.99-2.662m-1.98 5.324a18.046 18.046 0 01-3.56-5.323m0 0a18.046 18.046 0 013.56-5.323" />
             </svg>
