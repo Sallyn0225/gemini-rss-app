@@ -15,7 +15,7 @@ const proxyHtmlImages = (html: string | null | undefined): string => {
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    
+
     // Proxy images
     doc.querySelectorAll('img').forEach(img => {
       const originalSrc = img.getAttribute('src');
@@ -49,7 +49,7 @@ interface FeedItemProps {
 
 const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect }) => {
   const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(feed.title)}&background=3b82f6&color=fff&size=128`), [feed.title]);
-  
+
   if (mode === 'grid') {
     return (
       <div className="relative group w-full">
@@ -91,7 +91,7 @@ interface FilterBarProps {
   onAnalyze: () => void; isAnalyzing: boolean; analysisSuccess: boolean;
 }
 const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, onReset, onAnalyze, isAnalyzing, analysisSuccess }) => {
-  const filters = [ ArticleCategory.OFFICIAL, ArticleCategory.MEDIA, ArticleCategory.EVENT, ArticleCategory.COMMUNITY, ArticleCategory.RETWEET, ];
+  const filters = [ArticleCategory.OFFICIAL, ArticleCategory.MEDIA, ArticleCategory.EVENT, ArticleCategory.COMMUNITY, ArticleCategory.RETWEET,];
   return (
     <div className="flex items-center gap-2 py-3 px-4 md:px-8 border-b border-slate-200 overflow-x-auto custom-scrollbar bg-white sticky top-[81px] z-10 shrink-0 dark:bg-slate-900 dark:border-slate-800">
       <button onClick={onAnalyze} disabled={isAnalyzing} className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm ${isAnalyzing ? 'bg-yellow-50 text-yellow-700 border-yellow-200 cursor-wait dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800' : analysisSuccess ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-indigo-600 text-white border-transparent hover:bg-indigo-700'}`}>
@@ -151,7 +151,7 @@ const App: React.FC = () => {
   const [lastTranslatedLang, setLastTranslatedLang] = useState<Language | null>(null);
   const [showTranslation, setShowTranslation] = useState<boolean>(false);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
-  
+
   const [scrollPosition, setScrollPosition] = useState(0);
   const articleListRef = useRef<HTMLDivElement>(null);
 
@@ -172,7 +172,7 @@ const App: React.FC = () => {
     if (providers.length === 0) return false;
     const generalConfig = tasks.general;
     if (generalConfig && generalConfig.providerId && generalConfig.modelId && providers.some(p => p.id === generalConfig.providerId)) {
-        return true;
+      return true;
     }
     return false;
   }, [aiSettings]);
@@ -185,7 +185,7 @@ const App: React.FC = () => {
     try {
       // 1. Fetch Configuration from Server
       const feedConfigs = await fetchSystemFeeds();
-      
+
       if (feedConfigs.length === 0) {
         setFeeds([]);
         setLoading(false);
@@ -196,13 +196,13 @@ const App: React.FC = () => {
       const results = await Promise.allSettled(
         feedConfigs.map(config => fetchRSS(config.id))
       );
-      
+
       const loadedFeeds: Feed[] = [];
-      results.forEach((result, index) => { 
-        if (result.status === 'fulfilled') { 
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
           const config = feedConfigs[index];
           const fetchedFeed = result.value;
-          
+
           const finalFeed: Feed = {
             ...fetchedFeed,
             title: config.customTitle || fetchedFeed.title,
@@ -212,9 +212,30 @@ const App: React.FC = () => {
           loadedFeeds.push(finalFeed);
         }
       });
-      
+
+      // Sort feeds to ensure proper grouping in the sidebar
+      loadedFeeds.sort((a, b) => {
+        const catA = a.category || '';
+        const catB = b.category || '';
+
+        // Primary sort: by category
+        if (catA.localeCompare(catB) !== 0) {
+          return catA.localeCompare(catB);
+        }
+
+        // Secondary sort: main feeds (!isSub) before sub-feeds (isSub)
+        const isSubA = a.isSub || false;
+        const isSubB = b.isSub || false;
+        if (isSubA !== isSubB) {
+          return isSubA ? 1 : -1; // false comes before true
+        }
+
+        // Tertiary sort: by title
+        return a.title.localeCompare(b.title);
+      });
+
       if (loadedFeeds.length === 0) setErrorMsg("无法加载订阅源。");
-      setFeeds(loadedFeeds); 
+      setFeeds(loadedFeeds);
     } catch (e) {
       console.error(e);
       setErrorMsg("初始化订阅源时出错。");
@@ -245,25 +266,25 @@ const App: React.FC = () => {
     if (!listEl) return;
 
     const handleScroll = () => {
-        const currentScrollTop = listEl.scrollTop;
-        
-        // Show button if we scroll down past a certain point
-        if (currentScrollTop > lastScrollTopRef.current && currentScrollTop > 300) {
-            setShowScrollToTop(true);
-        } 
-        // Hide button if we scroll up or are near the top
-        else if (currentScrollTop < lastScrollTopRef.current || currentScrollTop <= 300) {
-            setShowScrollToTop(false);
-        }
-        
-        lastScrollTopRef.current = currentScrollTop <= 0 ? 0 : currentScrollTop;
+      const currentScrollTop = listEl.scrollTop;
+
+      // Show button if we scroll down past a certain point
+      if (currentScrollTop > lastScrollTopRef.current && currentScrollTop > 300) {
+        setShowScrollToTop(true);
+      }
+      // Hide button if we scroll up or are near the top
+      else if (currentScrollTop < lastScrollTopRef.current || currentScrollTop <= 300) {
+        setShowScrollToTop(false);
+      }
+
+      lastScrollTopRef.current = currentScrollTop <= 0 ? 0 : currentScrollTop;
     };
 
     listEl.addEventListener('scroll', handleScroll, { passive: true });
-    
+
     // Cleanup
     return () => {
-        listEl.removeEventListener('scroll', handleScroll);
+      listEl.removeEventListener('scroll', handleScroll);
     };
   }, [selectedFeed, activeArticle]);
 
@@ -292,7 +313,7 @@ const App: React.FC = () => {
 
   const handleRunAnalysis = async () => {
     if (!selectedFeed || isAnalyzing) return;
-    
+
     if (!isAiConfigured) {
       alert("AI 功能未配置。请点击左下角的“设置”按钮，添加 API 提供商并配置「总模型」后重试。");
       return;
@@ -306,36 +327,36 @@ const App: React.FC = () => {
       baseArticles.forEach((a, index) => { if (result.classifications[index]) { newClassifications[a.guid] = result.classifications[index]; } });
       setArticleClassifications(newClassifications);
       if (selectedDate) {
-         const key = `${selectedFeed.url}-${selectedDate.toDateString()}-${baseArticles.length}`;
-         setSummaryCache(prev => ({ ...prev, [key]: result.summary })); setDailySummary(result.summary);
+        const key = `${selectedFeed.url}-${selectedDate.toDateString()}-${baseArticles.length}`;
+        setSummaryCache(prev => ({ ...prev, [key]: result.summary })); setDailySummary(result.summary);
       }
       setAnalysisSuccess(true); setTimeout(() => setAnalysisSuccess(false), 3000);
     } catch (e) { console.error("Analysis failed", e); } finally { setIsAnalyzing(false); }
   };
 
-  const handleFilterToggle = (filter: string) => { 
+  const handleFilterToggle = (filter: string) => {
     setActiveFilters(prev => {
-        const isActive = prev.includes(filter);
-        return isActive ? prev.filter(f => f !== filter) : [...prev, filter];
+      const isActive = prev.includes(filter);
+      return isActive ? prev.filter(f => f !== filter) : [...prev, filter];
     });
-    
+
     // Auto-analyze only if we are activating a new filter AND it is NOT the RETWEET filter
     // We check !activeFilters.includes(filter) here, which reflects the state BEFORE update (which is correct for "is currently not active")
     const isActivating = !activeFilters.includes(filter);
-    
-    if (isActivating && filter !== ArticleCategory.RETWEET && baseArticles.some(a => !articleClassifications[a.guid])) { 
-        handleRunAnalysis(); 
-    } 
+
+    if (isActivating && filter !== ArticleCategory.RETWEET && baseArticles.some(a => !articleClassifications[a.guid])) {
+      handleRunAnalysis();
+    }
   };
-  
+
   const handleArticleSelect = (article: Article) => {
     if (articleListRef.current) {
       setScrollPosition(articleListRef.current.scrollTop);
     }
-    setActiveArticle(article); 
-    setTranslatedContent(null); 
-    setLastTranslatedLang(null); 
-    setShowTranslation(false); 
+    setActiveArticle(article);
+    setTranslatedContent(null);
+    setLastTranslatedLang(null);
+    setShowTranslation(false);
 
     const id = article.guid || article.link;
     if (!readArticleIds.has(id)) {
@@ -349,13 +370,13 @@ const App: React.FC = () => {
       }
     }
   };
-  
+
   const handleBackToArticles = () => setActiveArticle(null);
   const handleBackToDashboard = () => { setSelectedFeed(null); setActiveArticle(null); setSelectedDate(null); };
 
   const handleTranslateToggle = useCallback(async () => {
     if (!activeArticle) return;
-    
+
     if (!isAiConfigured) {
       alert("AI 功能未配置。请点击左下角的“设置”按钮，添加 API 提供商并配置「总模型」后重试。");
       return;
@@ -368,15 +389,15 @@ const App: React.FC = () => {
       const content = activeArticle.content || activeArticle.description;
       const result = await translateContent(content, targetLang, aiSettings);
       const proxiedResult = proxyHtmlImages(result);
-      setTranslatedContent(proxiedResult); 
-      setLastTranslatedLang(targetLang); 
+      setTranslatedContent(proxiedResult);
+      setLastTranslatedLang(targetLang);
       setShowTranslation(true);
-    } catch (error: any) { 
-      console.error(error); 
+    } catch (error: any) {
+      console.error(error);
       // Show specific error message from the service
-      alert(`翻译失败:\n${error.message || "未知错误，请检查网络或配置。"}`); 
-    } finally { 
-      setIsTranslating(false); 
+      alert(`翻译失败:\n${error.message || "未知错误，请检查网络或配置。"}`);
+    } finally {
+      setIsTranslating(false);
     }
   }, [activeArticle, targetLang, showTranslation, translatedContent, lastTranslatedLang, aiSettings, isAiConfigured]);
 
@@ -384,28 +405,28 @@ const App: React.FC = () => {
     setTargetLang(newLang);
     // If we are currently viewing a translation, refresh it immediately
     if (showTranslation && activeArticle) {
-        setIsTranslating(true);
-        try {
-            const content = activeArticle.content || activeArticle.description || '';
-            const result = await translateContent(content, newLang, aiSettings);
-            const proxiedResult = proxyHtmlImages(result);
-            setTranslatedContent(proxiedResult);
-            setLastTranslatedLang(newLang);
-        } catch (error: any) {
-            console.error(error);
-            alert(`翻译失败:\n${error.message}`);
-        } finally {
-            setIsTranslating(false);
-        }
+      setIsTranslating(true);
+      try {
+        const content = activeArticle.content || activeArticle.description || '';
+        const result = await translateContent(content, newLang, aiSettings);
+        const proxiedResult = proxyHtmlImages(result);
+        setTranslatedContent(proxiedResult);
+        setLastTranslatedLang(newLang);
+      } catch (error: any) {
+        console.error(error);
+        alert(`翻译失败:\n${error.message}`);
+      } finally {
+        setIsTranslating(false);
+      }
     }
   };
 
   const handleSaveSettings = (newSettings: AISettings) => { setAiSettings(newSettings); localStorage.setItem('rss_ai_settings', JSON.stringify(newSettings)); };
-  
+
   const handleScrollToTop = () => {
     articleListRef.current?.scrollTo({
-        top: 0,
-        behavior: 'smooth',
+      top: 0,
+      behavior: 'smooth',
     });
   };
 
@@ -414,14 +435,14 @@ const App: React.FC = () => {
     // If the user has explicitly configured a provider for translation, we should use that configuration.
     const transTask = aiSettings.tasks.translation;
     if (transTask && transTask.providerId) {
-       // Return the custom remark if present, otherwise fallback to the Model ID
-       return transTask.modelName || transTask.modelId || "Custom AI";
+      // Return the custom remark if present, otherwise fallback to the Model ID
+      return transTask.modelName || transTask.modelId || "Custom AI";
     }
 
     // 2. Fallback to General Configuration
     const genTask = aiSettings.tasks.general;
     if (genTask && genTask.providerId) {
-        return genTask.modelName || genTask.modelId || "General Model";
+      return genTask.modelName || genTask.modelId || "General Model";
     }
 
     // 3. Absolute Fallback (System Default)
@@ -432,11 +453,11 @@ const App: React.FC = () => {
     if (!activeArticle) return '';
     return proxyHtmlImages(activeArticle.content || activeArticle.description);
   }, [activeArticle]);
-  
+
   const readingViewAvatar = useMemo(() => {
-      const feedImage = selectedFeed?.image;
-      const fallback = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`);
-      return feedImage || fallback;
+    const feedImage = selectedFeed?.image;
+    const fallback = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`);
+    return feedImage || fallback;
   }, [selectedFeed]);
 
   return (
@@ -496,205 +517,205 @@ const App: React.FC = () => {
         </div>
       </div>
       <div className="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden min-w-0 dark:bg-black/90">
-         {!selectedFeed && (
-           <div className="h-full overflow-y-auto p-4 md:p-12 animate-fade-in custom-scrollbar">
-             <div className="max-w-5xl mx-auto">
-               <header className="mb-10 flex items-center gap-4">
-                 {!isSidebarOpen && (
-                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="展开侧边栏">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                      </svg>
-                   </button>
-                 )}
-                 <div><h2 className="text-3xl font-bold text-slate-800 dark:text-white">仪表盘</h2><p className="text-slate-500 dark:text-slate-400">您的多媒体企划新闻生态系统概览。</p></div>
-               </header>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
-                    <div className="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">文章总数</p>
-                      <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{feeds.reduce((acc, f) => acc + f.items.length, 0)}</h3>
-                    </div>
-                 </div>
-                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
-                    <div className="bg-purple-100 p-3 rounded-full text-purple-600 dark:bg-purple-900/30 dark:text-purple-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 19.5v-.75a7.5 7.5 0 00-7.5-7.5H4.5m0-6.75h.75c7.87 0 14.25 6.38 14.25 14.25v.75M6 18.75a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">活跃订阅源</p>
-                      <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{feeds.length}</h3>
-                    </div>
-                 </div>
-               </div>
-               <StatsChart feeds={feeds} />
-             </div>
-           </div>
-         )}
-         {selectedFeed && !activeArticle && (
-           <div className="h-full flex flex-col animate-fade-in bg-slate-50 dark:bg-slate-950/50">
-             <div className="h-20 px-4 md:px-8 flex items-center justify-between bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20 shrink-0 dark:bg-slate-900 dark:border-slate-800">
-               <div className="flex items-center gap-3 overflow-hidden">
-                 {!isSidebarOpen && (
-                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="展开侧边栏">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                      </svg>
-                   </button>
-                 )}
-                 <img src={selectedFeed.image} className="w-10 h-10 object-contain rounded-md border border-slate-100 hidden sm:block" alt="" />
-                 <div className="overflow-hidden">
-                   <h2 className="text-lg md:text-xl font-bold text-slate-800 truncate dark:text-slate-100">{selectedFeed.title}</h2>
-                   <p className="text-xs text-slate-400 font-medium uppercase tracking-wider hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
-                 </div>
-               </div>
-               <div className="flex items-center gap-2">
-                 <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="切换右侧边栏">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+        {!selectedFeed && (
+          <div className="h-full overflow-y-auto p-4 md:p-12 animate-fade-in custom-scrollbar">
+            <div className="max-w-5xl mx-auto">
+              <header className="mb-10 flex items-center gap-4">
+                {!isSidebarOpen && (
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="展开侧边栏">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
-                 </button>
-               </div>
-             </div>
-             <FilterBar activeFilters={activeFilters} onToggleFilter={handleFilterToggle} onReset={() => setActiveFilters([])} onAnalyze={handleRunAnalysis} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess} />
-             <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                 {filteredArticles.map(article => (
-                    <ArticleCard 
-                        key={article.guid || article.link} 
-                        // aiCategory passed directly so semantic category shows up. 
-                        // ArticleCard will handle displaying Retweet badge separately.
-                        article={{ ...article, aiCategory: articleClassifications[article.guid] }} 
-                        isSelected={false} 
-                        isRead={readArticleIds.has(article.guid || article.link)}
-                        onClick={() => handleArticleSelect(article)} 
-                    />
-                 ))}
-               </div>
-             </div>
-             <button
-                onClick={handleScrollToTop}
-                aria-label="返回顶部"
-                className={`
+                  </button>
+                )}
+                <div><h2 className="text-3xl font-bold text-slate-800 dark:text-white">仪表盘</h2><p className="text-slate-500 dark:text-slate-400">您的多媒体企划新闻生态系统概览。</p></div>
+              </header>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
+                  <div className="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">文章总数</p>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{feeds.reduce((acc, f) => acc + f.items.length, 0)}</h3>
+                  </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
+                  <div className="bg-purple-100 p-3 rounded-full text-purple-600 dark:bg-purple-900/30 dark:text-purple-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 19.5v-.75a7.5 7.5 0 00-7.5-7.5H4.5m0-6.75h.75c7.87 0 14.25 6.38 14.25 14.25v.75M6 18.75a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">活跃订阅源</p>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{feeds.length}</h3>
+                  </div>
+                </div>
+              </div>
+              <StatsChart feeds={feeds} />
+            </div>
+          </div>
+        )}
+        {selectedFeed && !activeArticle && (
+          <div className="h-full flex flex-col animate-fade-in bg-slate-50 dark:bg-slate-950/50">
+            <div className="h-20 px-4 md:px-8 flex items-center justify-between bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20 shrink-0 dark:bg-slate-900 dark:border-slate-800">
+              <div className="flex items-center gap-3 overflow-hidden">
+                {!isSidebarOpen && (
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="展开侧边栏">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                  </button>
+                )}
+                <img src={selectedFeed.image} className="w-10 h-10 object-contain rounded-md border border-slate-100 hidden sm:block" alt="" />
+                <div className="overflow-hidden">
+                  <h2 className="text-lg md:text-xl font-bold text-slate-800 truncate dark:text-slate-100">{selectedFeed.title}</h2>
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wider hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="切换右侧边栏">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <FilterBar activeFilters={activeFilters} onToggleFilter={handleFilterToggle} onReset={() => setActiveFilters([])} onAnalyze={handleRunAnalysis} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess} />
+            <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                {filteredArticles.map(article => (
+                  <ArticleCard
+                    key={article.guid || article.link}
+                    // aiCategory passed directly so semantic category shows up. 
+                    // ArticleCard will handle displaying Retweet badge separately.
+                    article={{ ...article, aiCategory: articleClassifications[article.guid] }}
+                    isSelected={false}
+                    isRead={readArticleIds.has(article.guid || article.link)}
+                    onClick={() => handleArticleSelect(article)}
+                  />
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={handleScrollToTop}
+              aria-label="返回顶部"
+              className={`
                     md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg 
                     flex items-center justify-center transition-all duration-300 ease-in-out 
                     hover:bg-blue-700 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
                     ${showScrollToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}
                 `}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+              </svg>
             </button>
-           </div>
-         )}
-         {activeArticle && (
-           <div className="h-full flex flex-col bg-white animate-slide-in dark:bg-slate-900">
-             <div className="h-16 border-b border-slate-200 flex items-center justify-between px-2 md:px-6 bg-white/95 backdrop-blur sticky top-0 z-20 shadow-sm dark:bg-slate-900/95 dark:border-slate-800">
-               <div className="flex items-center gap-2">
-                 {!isSidebarOpen && (
-                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg mr-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                      </svg>
-                   </button>
-                 )}
-                 <button onClick={handleBackToArticles} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                    </svg>
-                    <span className="font-semibold text-sm hidden sm:inline">返回</span>
-                 </button>
-               </div>
-               <div className="flex items-center gap-1 md:gap-3">
-                 <div className="flex items-center gap-2 mr-2">
-                   <select value={targetLang} onChange={(e) => setTargetLang(e.target.value as Language)} className="px-2 py-1.5 md:px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs md:text-sm text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 truncate max-w-[5rem] md:max-w-none">{Object.values(Language).map(lang => <option key={lang} value={lang}>{lang}</option>)}</select>
-                 </div>
-                 <button onClick={handleTranslateToggle} disabled={isTranslating} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${isTranslating ? 'bg-indigo-100 text-indigo-400 cursor-wait' : showTranslation ? 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:bg-slate-800 dark:border-indigo-800' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                   {isTranslating ? (
-                    <>
-                       <svg className="animate-spin h-4 w-4 md:mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                       </svg>
-                       <span className="hidden md:inline">翻译中...</span>
-                    </>
-                   ) : showTranslation ? (
-                     <>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:mr-2">
-                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                        </svg>
-                        <span className="hidden md:inline">查看原文</span>
-                     </>
-                   ) : (
-                     <>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:mr-2">
-                           <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
-                        </svg>
-                        <span className="hidden md:inline">AI 翻译</span>
-                     </>
-                   )}
-                 </button>
-                 <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-blue-600 rounded-lg dark:hover:bg-slate-800" title="打开原文链接">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                    </svg>
-                 </a>
-                 <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white ml-2 dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="切换右侧边栏">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+          </div>
+        )}
+        {activeArticle && (
+          <div className="h-full flex flex-col bg-white animate-slide-in dark:bg-slate-900">
+            <div className="h-16 border-b border-slate-200 flex items-center justify-between px-2 md:px-6 bg-white/95 backdrop-blur sticky top-0 z-20 shadow-sm dark:bg-slate-900/95 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                {!isSidebarOpen && (
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg mr-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
-                 </button>
-               </div>
-             </div>
-             <div className="flex-1 overflow-y-auto px-4 py-8 md:px-10 custom-scrollbar">
-               <div className="max-w-3xl mx-auto pb-20">
-                 <h1 className="text-2xl md:text-5xl font-extrabold text-slate-900 mb-6 dark:text-white">{activeArticle.title}</h1>
-                 <div className="flex items-center gap-3 text-sm text-slate-500 mb-10 pb-8 border-b border-slate-100 dark:text-slate-400 dark:border-slate-800">
-                   <img src={readingViewAvatar} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-50 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800" onError={(e) => { (e.target as HTMLImageElement).src = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`); }} />
-                   <div className="flex flex-col">
-                     <span className="font-semibold text-slate-800 dark:text-slate-200">{activeArticle.author || activeArticle.feedTitle}</span>
-                     <span>{new Date(activeArticle.pubDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
-                   </div>
-                 </div>
-                 
-                 {/* Translation Disclaimer / Header */}
-                 {showTranslation && translatedContent && (
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 mb-6 px-4 py-3 bg-slate-100 rounded-lg dark:bg-slate-800 dark:text-slate-400 border-l-4 border-blue-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-blue-500">
-                            <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 12.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm-1.5-6.5a.75.75 0 100 1.5.75.75 0 000-1.5z" />
-                        </svg>
-                        <span>由 <strong>{getTranslatorName()}</strong> 翻译，仅供参考</span>
-                        <span className="text-slate-300 mx-1">|</span>
-                        <div className="flex items-center gap-1">
-                            <span>翻译至</span>
-                            <select 
-                                value={targetLang} 
-                                onChange={(e) => handleLanguageSwitch(e.target.value as Language)}
-                                className="bg-transparent font-bold text-blue-600 outline-none cursor-pointer hover:text-blue-700 py-0 pr-6 border-none focus:ring-0 text-sm dark:text-blue-400"
-                            >
-                                {Object.values(Language).map(l => <option key={l} value={l}>{l}</option>)}
-                            </select>
-                        </div>
+                  </button>
+                )}
+                <button onClick={handleBackToArticles} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                  </svg>
+                  <span className="font-semibold text-sm hidden sm:inline">返回</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-1 md:gap-3">
+                <div className="flex items-center gap-2 mr-2">
+                  <select value={targetLang} onChange={(e) => setTargetLang(e.target.value as Language)} className="px-2 py-1.5 md:px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs md:text-sm text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 truncate max-w-[5rem] md:max-w-none">{Object.values(Language).map(lang => <option key={lang} value={lang}>{lang}</option>)}</select>
+                </div>
+                <button onClick={handleTranslateToggle} disabled={isTranslating} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${isTranslating ? 'bg-indigo-100 text-indigo-400 cursor-wait' : showTranslation ? 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:bg-slate-800 dark:border-indigo-800' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+                  {isTranslating ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 md:mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span className="hidden md:inline">翻译中...</span>
+                    </>
+                  ) : showTranslation ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:mr-2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                      </svg>
+                      <span className="hidden md:inline">查看原文</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:mr-2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
+                      </svg>
+                      <span className="hidden md:inline">AI 翻译</span>
+                    </>
+                  )}
+                </button>
+                <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-blue-600 rounded-lg dark:hover:bg-slate-800" title="打开原文链接">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                </a>
+                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white ml-2 dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="切换右侧边栏">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-8 md:px-10 custom-scrollbar">
+              <div className="max-w-3xl mx-auto pb-20">
+                <h1 className="text-2xl md:text-5xl font-extrabold text-slate-900 mb-6 dark:text-white">{activeArticle.title}</h1>
+                <div className="flex items-center gap-3 text-sm text-slate-500 mb-10 pb-8 border-b border-slate-100 dark:text-slate-400 dark:border-slate-800">
+                  <img src={readingViewAvatar} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-50 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800" onError={(e) => { (e.target as HTMLImageElement).src = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`); }} />
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{activeArticle.author || activeArticle.feedTitle}</span>
+                    <span>{new Date(activeArticle.pubDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
+                  </div>
+                </div>
+
+                {/* Translation Disclaimer / Header */}
+                {showTranslation && translatedContent && (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 mb-6 px-4 py-3 bg-slate-100 rounded-lg dark:bg-slate-800 dark:text-slate-400 border-l-4 border-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-blue-500">
+                      <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 12.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm-1.5-6.5a.75.75 0 100 1.5.75.75 0 000-1.5z" />
+                    </svg>
+                    <span>由 <strong>{getTranslatorName()}</strong> 翻译，仅供参考</span>
+                    <span className="text-slate-300 mx-1">|</span>
+                    <div className="flex items-center gap-1">
+                      <span>翻译至</span>
+                      <select
+                        value={targetLang}
+                        onChange={(e) => handleLanguageSwitch(e.target.value as Language)}
+                        className="bg-transparent font-bold text-blue-600 outline-none cursor-pointer hover:text-blue-700 py-0 pr-6 border-none focus:ring-0 text-sm dark:text-blue-400"
+                      >
+                        {Object.values(Language).map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
                     </div>
-                 )}
+                  </div>
+                )}
 
-                 {/* Content Area (Switches between Translation and Original) */}
-                 <div 
-                   className={`prose prose-slate prose-lg max-w-none prose-img:rounded-xl dark:prose-invert`} 
-                   dangerouslySetInnerHTML={{ __html: showTranslation && translatedContent ? translatedContent : proxiedArticleContent }} 
-                 />
+                {/* Content Area (Switches between Translation and Original) */}
+                <div
+                  className={`prose prose-slate prose-lg max-w-none prose-img:rounded-xl dark:prose-invert`}
+                  dangerouslySetInnerHTML={{ __html: showTranslation && translatedContent ? translatedContent : proxiedArticleContent }}
+                />
 
-               </div>
-             </div>
-           </div>
-         )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {selectedFeed && (
         <div className={`fixed inset-y-0 right-0 z-30 w-80 bg-slate-50/80 backdrop-blur-xl border-l border-slate-200 shadow-lg transform transition-transform duration-300 ${isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:translate-x-0 lg:shadow-none lg:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 ${!isRightSidebarOpen && 'lg:hidden'}`}>
