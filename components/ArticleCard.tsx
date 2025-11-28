@@ -11,10 +11,15 @@ interface ArticleCardProps {
 export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSelected, isRead }) => {
   const [imgError, setImgError] = useState(false);
 
-  // Strip HTML for the preview
-  const preview = article.description 
-    ? article.description.replace(/<[^>]+>/g, '').substring(0, 150) + '...'
-    : '无可用预览。';
+  // Check if article has a valid thumbnail
+  const hasValidThumbnail = !imgError && article.thumbnail;
+
+  // Strip HTML for the preview - show more text for articles without images
+  const previewLength = hasValidThumbnail ? 150 : 250;
+  const rawPreview = article.description?.replace(/<[^>]+>/g, '') || '';
+  const preview = rawPreview.length > previewLength
+    ? rawPreview.substring(0, previewLength).replace(/\s+\S*$/, '') + '...'
+    : rawPreview || '无可用预览。';
   
   const formattedDateTime = new Date(article.pubDate).toLocaleString([], {
     year: 'numeric',
@@ -37,9 +42,9 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
           : 'border-slate-100 hover:shadow-xl hover:-translate-y-1 hover:border-slate-200 dark:border-slate-700 dark:hover:border-slate-600'}
       `}
     >
-      {/* Thumbnail */}
-      <div className="h-48 w-full overflow-hidden bg-slate-100 relative dark:bg-slate-900">
-        {!imgError && article.thumbnail ? (
+      {/* Thumbnail - conditional height based on image availability */}
+      <div className={`${hasValidThumbnail ? 'h-48' : 'h-28'} w-full overflow-hidden bg-slate-100 relative dark:bg-slate-900 transition-all duration-300`}>
+        {hasValidThumbnail ? (
           <img 
             src={article.thumbnail} 
             alt="" 
@@ -47,12 +52,13 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-300 relative overflow-hidden dark:bg-slate-900 dark:text-slate-600">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 text-slate-400 relative overflow-hidden dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 dark:text-slate-500 px-4">
              {/* Abstract Pattern for placeholder */}
-             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, slate-400 1px, transparent 0)', backgroundSize: '16px 16px' }}></div>
-             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-12 h-12 relative z-10">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-             </svg>
+             <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
+             {/* Display truncated title as visual anchor */}
+             <span className="text-base font-semibold relative z-10 opacity-50 select-none text-center line-clamp-2 leading-snug">
+               {article.title.length > 30 ? article.title.substring(0, 30) + '...' : article.title}
+             </span>
           </div>
         )}
         <div className="absolute top-3 left-3 z-20 flex flex-col gap-1 items-start">
@@ -79,7 +85,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
           {article.title}
         </h3>
         
-        <p className="text-sm text-slate-500 leading-relaxed mb-4 line-clamp-3 flex-1 dark:text-slate-400">
+        <p className={`text-sm text-slate-500 leading-relaxed mb-4 flex-1 dark:text-slate-400 ${hasValidThumbnail ? 'line-clamp-3' : 'line-clamp-4'}`}>
           {preview}
         </p>
         

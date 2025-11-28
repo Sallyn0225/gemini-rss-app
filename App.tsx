@@ -357,6 +357,54 @@ const App: React.FC = () => {
   const handleBackToArticles = () => setActiveArticle(null);
   const handleBackToDashboard = () => { setSelectedFeed(null); setActiveArticle(null); setSelectedDate(null); };
 
+  // --- 移动端返回手势拦截逻辑 ---
+  // 用于追踪当前的"深度"，避免重复 pushState
+  const navigationDepthRef = useRef(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // 计算当前应该处于的深度：仪表盘=0，信息流=1，文章详情=2
+    let targetDepth = 0;
+    if (selectedFeed) targetDepth = 1;
+    if (activeArticle) targetDepth = 2;
+
+    // 如果深度增加了，push 新的历史记录
+    while (navigationDepthRef.current < targetDepth) {
+      window.history.pushState({ depth: navigationDepthRef.current + 1 }, '');
+      navigationDepthRef.current++;
+    }
+
+    // 如果深度减少了（用户通过 UI 按钮返回），同步 ref
+    // 这里不需要 popState，因为是用户主动点击返回按钮
+    if (navigationDepthRef.current > targetDepth) {
+      navigationDepthRef.current = targetDepth;
+    }
+  }, [selectedFeed, activeArticle]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePopState = (event: PopStateEvent) => {
+      // 浏览器后退触发时，根据当前状态决定返回到哪一层
+      if (activeArticle) {
+        // 当前在文章详情，返回到信息流
+        setActiveArticle(null);
+        navigationDepthRef.current = 1;
+      } else if (selectedFeed) {
+        // 当前在信息流，返回到仪表盘
+        setSelectedFeed(null);
+        setActiveArticle(null);
+        setSelectedDate(null);
+        navigationDepthRef.current = 0;
+      }
+      // 如果已经在仪表盘，不拦截，让浏览器正常后退
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeArticle, selectedFeed]);
+
   const handleTranslateToggle = useCallback(async () => {
     if (!activeArticle) return;
 
@@ -443,6 +491,116 @@ const App: React.FC = () => {
     return feedImage || fallback;
   }, [selectedFeed]);
 
+  // Pull-to-refresh states (mobile only)
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const pullStartYRef = useRef(0);
+  const isPullingRef = useRef(false);
+
+  // Refresh current selected feed (for pull-to-refresh)
+  const refreshSelectedFeed = useCallback(async () => {
+    if (!selectedFeed || isRefreshing) return;
+
+    setIsRefreshing(true);
+    setErrorMsg(null);
+    try {
+      const updated = await fetchRSS(selectedFeed.url);
+
+      // Preserve original config fields (title override, category, isSub)
+      setFeeds(prev =>
+        prev.map(f =>
+          f.url === selectedFeed.url
+            ? {
+                ...updated,
+                title: f.title,
+                category: f.category,
+                isSub: f.isSub,
+              }
+            : f
+        )
+      );
+
+      // Update selectedFeed reference
+      setSelectedFeed(prev =>
+        prev && prev.url === selectedFeed.url
+          ? {
+              ...updated,
+              title: prev.title,
+              category: prev.category,
+              isSub: prev.isSub,
+            }
+          : prev
+      );
+    } catch (e) {
+      console.error(e);
+      setErrorMsg("刷新订阅源时出错。");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [selectedFeed, isRefreshing]);
+
+  // Pull-to-refresh touch handlers (mobile only, article list view)
+  useEffect(() => {
+    const listEl = articleListRef.current;
+    // Only enable when viewing article list (not article detail)
+    if (!listEl || !selectedFeed || activeArticle) return;
+
+    const isMobile = () => window.innerWidth < 1024;
+    const PULL_THRESHOLD = 60;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (!isMobile()) return;
+      if (listEl.scrollTop > 0) return; // Only allow pull when at top
+
+      const touch = e.touches[0];
+      pullStartYRef.current = touch.clientY;
+      isPullingRef.current = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isMobile()) return;
+      if (isRefreshing) return;
+
+      const touch = e.touches[0];
+      const deltaY = touch.clientY - pullStartYRef.current;
+
+      // Only trigger pull-to-refresh when at top and pulling down
+      if (deltaY > 0 && listEl.scrollTop === 0) {
+        isPullingRef.current = true;
+        // Apply damping to avoid over-pulling
+        const distance = Math.min(deltaY * 0.5, 120);
+        setPullDistance(distance);
+        // Prevent default scroll behavior when pulling
+        e.preventDefault();
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!isMobile()) return;
+
+      if (isPullingRef.current && pullDistance >= PULL_THRESHOLD) {
+        // Trigger refresh
+        refreshSelectedFeed();
+      }
+
+      // Reset pull state
+      isPullingRef.current = false;
+      setPullDistance(0);
+    };
+
+    listEl.addEventListener('touchstart', onTouchStart, { passive: true });
+    listEl.addEventListener('touchmove', onTouchMove, { passive: false });
+    listEl.addEventListener('touchend', onTouchEnd, { passive: true });
+    listEl.addEventListener('touchcancel', onTouchEnd, { passive: true });
+
+    return () => {
+      listEl.removeEventListener('touchstart', onTouchStart);
+      listEl.removeEventListener('touchmove', onTouchMove);
+      listEl.removeEventListener('touchend', onTouchEnd);
+      listEl.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [selectedFeed, activeArticle, isRefreshing, pullDistance, refreshSelectedFeed]);
+
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
       <div className={`fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden ${isSidebarOpen ? 'block' : 'hidden'}`} onClick={() => setIsSidebarOpen(false)} />
@@ -465,7 +623,7 @@ const App: React.FC = () => {
             </button>
             <button onClick={() => setSidebarMode('grid')} className={`p-1.5 rounded-md transition-all ${sidebarMode === 'grid' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700' : 'text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'}`}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25zm0 0a2.25 2.25 0 01-2.25-2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5a2.25 2.25 0 012.25-2.25h2.25A2.25 2.25 0 0110.5 4v2.25a2.25 2.25 0 012.25 2.25V6z" />
               </svg>
             </button>
           </div>
@@ -568,6 +726,38 @@ const App: React.FC = () => {
             </div>
             <FilterBar activeFilters={activeFilters} onToggleFilter={handleFilterToggle} onReset={() => setActiveFilters([])} onAnalyze={handleRunAnalysis} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess} />
             <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+              {/* Pull-to-refresh indicator (mobile only) */}
+              <div
+                className="lg:hidden flex items-center justify-center text-xs text-slate-400 overflow-hidden transition-all duration-200 ease-out"
+                style={{
+                  height: pullDistance > 0 || isRefreshing ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0,
+                  opacity: pullDistance > 0 || isRefreshing ? 1 : 0,
+                }}
+              >
+                {isRefreshing ? (
+                  <div className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>正在刷新...</span>
+                  </div>
+                ) : pullDistance >= 60 ? (
+                  <div className="flex items-center gap-1 text-blue-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                    </svg>
+                    <span>释放刷新</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
+                    </svg>
+                    <span>下拉刷新</span>
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
                 {filteredArticles.map(article => (
                   <ArticleCard
