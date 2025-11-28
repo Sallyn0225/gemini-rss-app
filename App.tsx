@@ -210,31 +210,14 @@ const App: React.FC = () => {
             isSub: config.isSub,
           };
           loadedFeeds.push(finalFeed);
+        } else {
+          // Log the error for debugging
+          console.error(`Failed to fetch feed with ID ${feedConfigs[index].id}:`, result.reason);
         }
       });
 
-      // Sort feeds to ensure proper grouping in the sidebar
-      loadedFeeds.sort((a, b) => {
-        const catA = a.category || '';
-        const catB = b.category || '';
+      if (loadedFeeds.length === 0) setErrorMsg("无法加载订阅源。请检查网络连接或后台配置。");
 
-        // Primary sort: by category
-        if (catA.localeCompare(catB) !== 0) {
-          return catA.localeCompare(catB);
-        }
-
-        // Secondary sort: main feeds (!isSub) before sub-feeds (isSub)
-        const isSubA = a.isSub || false;
-        const isSubB = b.isSub || false;
-        if (isSubA !== isSubB) {
-          return isSubA ? 1 : -1; // false comes before true
-        }
-
-        // Tertiary sort: by title
-        return a.title.localeCompare(b.title);
-      });
-
-      if (loadedFeeds.length === 0) setErrorMsg("无法加载订阅源。");
       setFeeds(loadedFeeds);
     } catch (e) {
       console.error(e);

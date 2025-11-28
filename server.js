@@ -177,6 +177,49 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // === API: Reorder Feeds (Protected) ===
+  if (parsedUrl.pathname === '/api/feeds/reorder' && req.method === 'POST') {
+    const secret = req.headers['x-admin-secret'];
+    if (secret !== ADMIN_SECRET) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized: Invalid Admin Secret' }));
+      return;
+    }
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { ids } = JSON.parse(body); // Expecting array of IDs in desired order
+        if (!Array.isArray(ids)) throw new Error("Invalid input: ids must be an array");
+
+        // Create a map for quick lookup
+        const feedMap = new Map(FEEDS_CONFIG.map(f => [f.id, f]));
+        const newOrder = [];
+
+        // Add feeds in the order specified by ids
+        ids.forEach(id => {
+          if (feedMap.has(id)) {
+            newOrder.push(feedMap.get(id));
+            feedMap.delete(id);
+          }
+        });
+
+        // Append any remaining feeds (that were not in the ids list)
+        feedMap.forEach(feed => newOrder.push(feed));
+
+        FEEDS_CONFIG = newOrder;
+        fs.writeFileSync(DATA_FILE, JSON.stringify(FEEDS_CONFIG, null, 2));
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   // === API: RSS Proxy with Caching ===
   if (parsedUrl.pathname.startsWith('/api/feed')) {
     const feedId = parsedUrl.query.id;

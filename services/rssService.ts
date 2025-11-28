@@ -58,10 +58,10 @@ export const fetchAllSystemFeeds = async (secret: string): Promise<FullSystemFee
 
 
 export const addSystemFeed = async (
-  id: string, 
-  url: string, 
-  category: string, 
-  isSub: boolean, 
+  id: string,
+  url: string,
+  category: string,
+  isSub: boolean,
   customTitle: string,
   secret: string
 ): Promise<void> => {
@@ -73,7 +73,7 @@ export const addSystemFeed = async (
     },
     body: JSON.stringify({ id, url, category, isSub, customTitle })
   });
-  
+
   if (!response.ok) {
     const err = await response.json();
     throw new Error(err.error || "Failed to add or update feed");
@@ -96,13 +96,29 @@ export const deleteSystemFeed = async (id: string, secret: string): Promise<void
   }
 };
 
+// New admin-only function to reorder feeds
+export const reorderSystemFeeds = async (ids: string[], secret: string): Promise<void> => {
+  const response = await fetch('/api/feeds/reorder', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-secret': secret
+    },
+    body: JSON.stringify({ ids })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Failed to reorder feeds");
+  }
+};
+
 // Helper to extract image from HTML content safely and robustly
 const extractImageFromHtml = (html: string): string => {
   if (!html) return '';
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    
+
     const imgs = doc.querySelectorAll('img[src]');
     for (let i = 0; i < imgs.length; i++) {
       const src = imgs[i].getAttribute('src');
@@ -128,7 +144,7 @@ const parseXML = (xmlText: string, url: string): Feed => {
 
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-  
+
   const parserError = xmlDoc.querySelector('parsererror');
   if (parserError) throw new Error('XML Parse Error');
 
@@ -137,7 +153,7 @@ const parseXML = (xmlText: string, url: string): Feed => {
 
   const title = channel.querySelector('title')?.textContent || 'Untitled Feed';
   const description = channel.querySelector('description, subtitle')?.textContent || '';
-  
+
   let image = '';
   const imgNode = channel.querySelector('image url') || channel.querySelector('icon') || channel.querySelector('logo');
   if (imgNode) image = imgNode.textContent || '';
@@ -151,37 +167,37 @@ const parseXML = (xmlText: string, url: string): Feed => {
     const link = entry.querySelector('link')?.textContent || entry.querySelector('link')?.getAttribute('href') || '';
     const guid = entry.querySelector('guid, id')?.textContent || link;
     const author = entry.querySelector('author name, creator')?.textContent || '';
-    
+
     const desc = entry.querySelector('description, summary')?.textContent || '';
     const contentEncoded = entry.getElementsByTagNameNS('*', 'encoded')[0]?.textContent;
     const content = contentEncoded || entry.querySelector('content')?.textContent || desc;
 
     let thumbnail = '';
-    
+
     const mediaNodes = entry.getElementsByTagNameNS('*', 'content');
     if (mediaNodes.length > 0) {
-        for (let i = 0; i < mediaNodes.length; i++) {
-            const url = mediaNodes[i].getAttribute('url');
-            if (url && ( url.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
-                thumbnail = url; break;
-            }
+      for (let i = 0; i < mediaNodes.length; i++) {
+        const url = mediaNodes[i].getAttribute('url');
+        if (url && (url.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
+          thumbnail = url; break;
         }
+      }
     }
-    
+
     if (!thumbnail) {
-        const mediaThumb = entry.getElementsByTagNameNS('*', 'thumbnail');
-        if (mediaThumb.length > 0 && mediaThumb[0].getAttribute('url')) {
-            thumbnail = mediaThumb[0].getAttribute('url')!;
-        }
+      const mediaThumb = entry.getElementsByTagNameNS('*', 'thumbnail');
+      if (mediaThumb.length > 0 && mediaThumb[0].getAttribute('url')) {
+        thumbnail = mediaThumb[0].getAttribute('url')!;
+      }
     }
 
     let enclosure = { link: '', type: '' };
     const encNode = entry.querySelector('enclosure');
     if (encNode) {
-        enclosure = { link: encNode.getAttribute('url') || '', type: encNode.getAttribute('type') || '' };
-        if (!thumbnail && enclosure.type.startsWith('image')) {
-            thumbnail = enclosure.link;
-        }
+      enclosure = { link: encNode.getAttribute('url') || '', type: encNode.getAttribute('type') || '' };
+      if (!thumbnail && enclosure.type.startsWith('image')) {
+        thumbnail = enclosure.link;
+      }
     }
 
     if (!thumbnail) thumbnail = extractImageFromHtml(content || desc);
@@ -205,22 +221,22 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
 
   // Check if it's a known System ID (no protocol) or a raw URL
   if (!urlOrId.startsWith('http')) {
-      try {
-          // Pass the ID to the proxy
-          const response = await fetch(`/api/feed?id=${encodeURIComponent(urlOrId)}`);
-          if (!response.ok) {
-              const errorText = await response.text();
-              try {
-                  const errorJson = JSON.parse(errorText);
-                  throw new Error(`Backend fetch failed: ${response.status} - ${errorJson.error || errorText}`);
-              } catch { throw new Error(`Backend fetch failed: ${response.status} - ${errorText}`); }
-          }
-          const xmlText = await response.text();
-          return parseXML(xmlText, urlOrId);
-      } catch (error) {
-          console.error(`Internal Proxy failed for ID: ${urlOrId}`, error);
-          throw error;
+    try {
+      // Pass the ID to the proxy
+      const response = await fetch(`/api/feed?id=${encodeURIComponent(urlOrId)}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(`Backend fetch failed: ${response.status} - ${errorJson.error || errorText}`);
+        } catch { throw new Error(`Backend fetch failed: ${response.status} - ${errorText}`); }
       }
+      const xmlText = await response.text();
+      return parseXML(xmlText, urlOrId);
+    } catch (error) {
+      console.error(`Internal Proxy failed for ID: ${urlOrId}`, error);
+      throw error;
+    }
   }
 
   const url = urlOrId;
@@ -249,10 +265,10 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
         url: url, title: data.feed.title, description: data.feed.description,
         image: proxyImageUrl(data.feed.image), // PROXY
         items: data.items.map((item: any) => {
-           let thumbnail = item.thumbnail;
-           if (!thumbnail && item.enclosure?.type?.startsWith('image/')) thumbnail = item.enclosure.link;
-           if (!thumbnail) thumbnail = extractImageFromHtml(item.content || item.description);
-           return {
+          let thumbnail = item.thumbnail;
+          if (!thumbnail && item.enclosure?.type?.startsWith('image/')) thumbnail = item.enclosure.link;
+          if (!thumbnail) thumbnail = extractImageFromHtml(item.content || item.description);
+          return {
             ...item,
             thumbnail: proxyImageUrl(thumbnail), // PROXY
             feedTitle: data.feed.title
@@ -261,6 +277,6 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
       };
     }
   } catch (e) { console.warn(`RSS2JSON failed for ${url}`); }
-  
+
   throw new Error(`All fetch methods failed for ${url}`);
 };
