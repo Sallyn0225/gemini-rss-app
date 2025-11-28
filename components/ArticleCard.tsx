@@ -48,6 +48,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
           <img 
             src={article.thumbnail} 
             alt="" 
+            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
             onError={() => setImgError(true)}
           />

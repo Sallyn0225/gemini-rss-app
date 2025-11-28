@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { fetchRSS, proxyImageUrl, fetchSystemFeeds } from './services/rssService';
+import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
-import { Feed, Article, Language, ArticleCategory, AISettings } from './types';
+import { Feed, Article, Language, ArticleCategory, AISettings, ImageProxyMode } from './types';
 import { StatsChart } from './components/StatsChart';
 import { ArticleCard } from './components/ArticleCard';
 import { CalendarWidget } from './components/CalendarWidget';
 import { SettingsModal } from './components/SettingsModal';
 
+// ... (rest of the code remains the same)
 type SidebarViewMode = 'list' | 'grid';
 
 // --- New Helper Function to Proxy Media in HTML ---
@@ -156,6 +157,23 @@ const App: React.FC = () => {
   const [showTranslation, setShowTranslation] = useState<boolean>(false);
   const [isTranslating, setIsTranslating] = useState<boolean>(false);
 
+  // --- Image Proxy Mode & First Visit Modal ---
+  const [imageProxyMode, setImageProxyModeState] = useState<ImageProxyMode>(() => {
+    const stored = localStorage.getItem('image_proxy_mode');
+    if (stored && ['all', 'none', 'twitter-only'].includes(stored)) {
+      setImageProxyMode(stored as ImageProxyMode);
+      return stored as ImageProxyMode;
+    }
+    return 'all';
+  });
+  const [showProxyModal, setShowProxyModal] = useState<boolean>(() => {
+    return !localStorage.getItem('image_proxy_mode');
+  });
+
+  // --- Pagination State ---
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const ARTICLES_PER_PAGE = 10;
+
   const [scrollPosition, setScrollPosition] = useState(0);
   const articleListRef = useRef<HTMLDivElement>(null);
 
@@ -278,7 +296,7 @@ const App: React.FC = () => {
   const baseArticles = useMemo(() => {
     if (!selectedFeed) return [];
     if (selectedDate) return selectedFeed.items.filter(item => { const d = new Date(item.pubDate); return d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear(); });
-    return selectedFeed.items.slice(0, 20);
+    return selectedFeed.items;
   }, [selectedFeed, selectedDate]);
 
   const isRetweet = (article: Article) => /^RT\s/i.test(article.title) || /^Re\s/i.test(article.title);
@@ -287,6 +305,18 @@ const App: React.FC = () => {
     if (activeFilters.length === 0) return baseArticles;
     return baseArticles.filter(article => activeFilters.some(filter => filter === ArticleCategory.RETWEET ? isRetweet(article) : articleClassifications[article.guid] === filter));
   }, [baseArticles, activeFilters, articleClassifications]);
+
+  // --- Pagination Logic ---
+  const totalPages = Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE);
+  const paginatedArticles = useMemo(() => {
+    const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
+    return filteredArticles.slice(startIndex, startIndex + ARTICLES_PER_PAGE);
+  }, [filteredArticles, currentPage, ARTICLES_PER_PAGE]);
+
+  // Reset to page 1 when feed or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedFeed, selectedDate, activeFilters]);
 
   useEffect(() => {
     if (!selectedFeed || !selectedDate) { setDailySummary(null); return; }
@@ -457,6 +487,14 @@ const App: React.FC = () => {
   };
 
   const handleSaveSettings = (newSettings: AISettings) => { setAiSettings(newSettings); localStorage.setItem('rss_ai_settings', JSON.stringify(newSettings)); };
+
+  // --- Image Proxy Mode Handler ---
+  const handleImageProxyModeChange = (mode: ImageProxyMode) => {
+    setImageProxyModeState(mode);
+    setImageProxyMode(mode);
+    localStorage.setItem('image_proxy_mode', mode);
+    setShowProxyModal(false);
+  };
 
   const handleScrollToTop = () => {
     articleListRef.current?.scrollTo({
@@ -782,11 +820,9 @@ const App: React.FC = () => {
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                {filteredArticles.map(article => (
+                {paginatedArticles.map(article => (
                   <ArticleCard
                     key={article.guid || article.link}
-                    // aiCategory passed directly so semantic category shows up. 
-                    // ArticleCard will handle displaying Retweet badge separately.
                     article={{ ...article, aiCategory: articleClassifications[article.guid] }}
                     isSelected={false}
                     isRead={readArticleIds.has(article.guid || article.link)}
@@ -794,16 +830,44 @@ const App: React.FC = () => {
                   />
                 ))}
               </div>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 py-6 mt-4">
+                  <button
+                    onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
+                  >
+                    上一页
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => { setCurrentPage(page); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${currentPage === page ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700'}`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
+                  >
+                    下一页
+                  </button>
+                </div>
+              )}
+              <p className="text-center text-xs text-slate-400 pb-4">
+                共 {paginatedArticles.length} 篇文章，当前第 {currentPage} / {totalPages || 1} 页
+              </p>
             </div>
             <button
               onClick={handleScrollToTop}
               aria-label="返回顶部"
-              className={`
-                    md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg 
-                    flex items-center justify-center transition-all duration-300 ease-in-out 
-                    hover:bg-blue-700 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-                    ${showScrollToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}
-                `}
+              className={`md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out hover:bg-blue-700 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${showScrollToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
@@ -968,7 +1032,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-      <SettingsModal isOpen={showSettings} onClose={() => { setShowSettings(false); initFeeds(); }} settings={aiSettings} onSave={handleSaveSettings} />
+      <SettingsModal isOpen={showSettings} onClose={() => { setShowSettings(false); initFeeds(); }} settings={aiSettings} onSave={handleSaveSettings} imageProxyMode={imageProxyMode} onImageProxyModeChange={handleImageProxyModeChange} />
       {showHelp && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowHelp(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -984,6 +1048,40 @@ const App: React.FC = () => {
               <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h2:text-xl prose-h3:text-lg prose-p:text-slate-600 dark:prose-p:text-slate-300 prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-blockquote:border-blue-500 prose-blockquote:bg-blue-50 dark:prose-blockquote:bg-blue-900/20 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-li:text-slate-600 dark:prose-li:text-slate-300">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{helpContent}</ReactMarkdown>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Image Proxy Mode Selection Modal (First Visit) */}
+      {showProxyModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">欢迎使用 NSYC 订阅站</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">请选择图片加载模式。您可以稍后在设置中更改此选项。</p>
+            </div>
+            <div className="p-6 space-y-3">
+              <button
+                onClick={() => handleImageProxyModeChange('all')}
+                className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
+              >
+                <div className="font-semibold text-slate-800 dark:text-white">全部代理</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">所有图片通过服务器代理加载。适合无法直接访问 Twitter 等平台的用户。</div>
+              </button>
+              <button
+                onClick={() => handleImageProxyModeChange('twitter-only')}
+                className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
+              >
+                <div className="font-semibold text-slate-800 dark:text-white">只代理 Twitter 图片</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">仅代理 Twitter 图片，其他图片直接加载。节省服务器流量。</div>
+              </button>
+              <button
+                onClick={() => handleImageProxyModeChange('none')}
+                className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
+              >
+                <div className="font-semibold text-slate-800 dark:text-white">不代理图片</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">所有图片直接加载。适合可以直接访问所有图片源的用户。</div>
+              </button>
             </div>
           </div>
         </div>

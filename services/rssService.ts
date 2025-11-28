@@ -1,6 +1,6 @@
 
 
-import { Feed, Article } from '../types';
+import { Feed, Article, ImageProxyMode } from '../types';
 
 const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
 const ALL_ORIGINS_API = 'https://api.allorigins.win/get?url=';
@@ -9,12 +9,43 @@ const CORS_PROXY = 'https://corsproxy.io/?';
 const CODETABS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
 const THING_PROXY = 'https://thingproxy.freeboard.io/fetch/';
 
-// Helper to proxy image URLs through our backend
-export const proxyImageUrl = (url: string): string => {
+// --- Image Proxy Mode Management ---
+let currentImageProxyMode: ImageProxyMode = 'all';
+
+export const setImageProxyMode = (mode: ImageProxyMode): void => {
+  currentImageProxyMode = mode;
+};
+
+export const getImageProxyMode = (): ImageProxyMode => {
+  return currentImageProxyMode;
+};
+
+// Check if URL is a Twitter image
+const isTwitterImage = (url: string): boolean => {
+  return /twimg\.com|pbs\.twimg\.com|abs\.twimg\.com/i.test(url);
+};
+
+// Helper to proxy image URLs through our backend (respects user's proxy mode setting)
+export const proxyImageUrl = (url: string, forceProxy: boolean = false): string => {
   if (!url || !url.startsWith('http')) {
     return url; // Return empty or relative URLs as is
   }
-  return `/api/image?url=${encodeURIComponent(url)}`;
+
+  // If force proxy is requested (e.g., for thumbnails in list view), always proxy
+  if (forceProxy) {
+    return `/api/image?url=${encodeURIComponent(url)}`;
+  }
+
+  // Apply user's proxy mode preference
+  switch (currentImageProxyMode) {
+    case 'none':
+      return url; // Direct connection, no proxy
+    case 'twitter-only':
+      return isTwitterImage(url) ? `/api/image?url=${encodeURIComponent(url)}` : url;
+    case 'all':
+    default:
+      return `/api/image?url=${encodeURIComponent(url)}`;
+  }
 };
 
 // --- New: Fetch Feed Configuration from Server ---

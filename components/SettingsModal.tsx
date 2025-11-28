@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AISettings, AIProvider, AIModelConfig, AIProviderType } from '../types';
+import { AISettings, AIProvider, AIModelConfig, AIProviderType, ImageProxyMode } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, reorderSystemFeeds, FullSystemFeedConfig } from '../services/rssService';
 import { fetchProviderModels } from '../services/geminiService';
 
@@ -8,6 +8,8 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: AISettings;
   onSave: (newSettings: AISettings) => void;
+  imageProxyMode?: ImageProxyMode;
+  onImageProxyModeChange?: (mode: ImageProxyMode) => void;
 }
 
 const DEFAULT_SETTINGS: AISettings = {
@@ -20,9 +22,9 @@ const DEFAULT_SETTINGS: AISettings = {
   }
 };
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, imageProxyMode, onImageProxyModeChange }) => {
   const [localSettings, setLocalSettings] = useState<AISettings>(settings || DEFAULT_SETTINGS);
-  const [activeTab, setActiveTab] = useState<'providers' | 'models' | 'feeds'>('providers');
+  const [activeTab, setActiveTab] = useState<'providers' | 'models' | 'feeds' | 'display'>('providers');
 
   // Provider state
   const [isEditingProvider, setIsEditingProvider] = useState(false);
@@ -328,6 +330,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
           <div className="w-full md:w-48 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-2 md:p-4 flex flex-row md:flex-col gap-2 shrink-0 dark:bg-slate-900 dark:border-slate-700 overflow-x-auto">
             <button onClick={() => setActiveTab('providers')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'providers' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>API 提供商</button>
             <button onClick={() => setActiveTab('models')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'models' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>模型配置</button>
+            <button onClick={() => setActiveTab('display')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'display' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>显示设置</button>
             <button onClick={() => setActiveTab('feeds')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'feeds' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>订阅源管理</button>
           </div>
 
@@ -645,6 +648,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* --- DISPLAY TAB --- */}
+            {activeTab === 'display' && (
+              <div className="space-y-6 max-w-3xl mx-auto">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">显示设置</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">配置图片加载和显示相关选项。</p>
+
+                {/* Image Proxy Mode */}
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
+                  <h4 className="font-semibold text-slate-800 dark:text-white mb-2">图片加载模式</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">选择图片的加载方式。代理模式可以帮助访问被限制的图片源，但会增加服务器流量。</p>
+                  <div className="space-y-3">
+                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${imageProxyMode === 'all' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'}`}>
+                      <input
+                        type="radio"
+                        name="imageProxyMode"
+                        value="all"
+                        checked={imageProxyMode === 'all'}
+                        onChange={() => onImageProxyModeChange?.('all')}
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-white">全部代理</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">所有图片通过服务器代理加载。适合无法直接访问 Twitter 等平台的用户。</div>
+                      </div>
+                    </label>
+                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${imageProxyMode === 'twitter-only' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'}`}>
+                      <input
+                        type="radio"
+                        name="imageProxyMode"
+                        value="twitter-only"
+                        checked={imageProxyMode === 'twitter-only'}
+                        onChange={() => onImageProxyModeChange?.('twitter-only')}
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-white">只代理 Twitter 图片</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">仅代理 Twitter 图片，其他图片直接加载。节省服务器流量。</div>
+                      </div>
+                    </label>
+                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${imageProxyMode === 'none' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'}`}>
+                      <input
+                        type="radio"
+                        name="imageProxyMode"
+                        value="none"
+                        checked={imageProxyMode === 'none'}
+                        onChange={() => onImageProxyModeChange?.('none')}
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="font-semibold text-slate-800 dark:text-white">不代理图片</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">所有图片直接加载。适合可以直接访问所有图片源的用户。</div>
+                      </div>
+                    </label>
                   </div>
                 </div>
               </div>

@@ -79,3 +79,10 @@ export interface AISettings {
     analysis: AIModelConfig | null;    // Optional
   };
 }
+
+// --- Image Proxy Settings ---
+export type ImageProxyMode = 'all' | 'none' | 'twitter-only';
+
+export interface UserSettings {
+  imageProxyMode: ImageProxyMode;
+}
