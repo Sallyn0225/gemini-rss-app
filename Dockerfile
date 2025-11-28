@@ -7,10 +7,11 @@ WORKDIR /app
 
 # 1. 优先复制依赖描述文件，利用 Docker 缓存层加速 npm install
 # 注意：您的项目需要一个 package.json 文件来定义依赖和构建脚本
-COPY package*.json ./
+COPY package.json ./
 
-# 2. 安装依赖
-RUN npm install
+# 2. 安装依赖（使用国内镜像）
+RUN npm config set registry https://registry.npmmirror.com \
+  && npm install
 
 # 3. 复制所有项目源代码 (包括 App.tsx, server.js 等)
 COPY . .

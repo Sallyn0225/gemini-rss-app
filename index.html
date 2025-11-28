@@ -19,6 +19,78 @@
         }
       }
     </script>
+    <style>
+      /* 简单的 Markdown 排版样式，用于替代 Tailwind Typography 插件 */
+      .prose {
+        max-width: none;
+        line-height: 1.75;
+      }
+
+      .prose h2 {
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        font-size: 1.25rem;
+        font-weight: 700;
+      }
+
+      .prose h3 {
+        margin-top: 1.25rem;
+        margin-bottom: 0.5rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+      }
+
+      .prose p {
+        margin-top: 0.75rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .prose ul,
+      .prose ol {
+        margin-top: 0.75rem;
+        margin-bottom: 0.75rem;
+        padding-left: 1.5rem;
+      }
+
+      .prose ul {
+        list-style-type: disc;
+      }
+
+      .prose ol {
+        list-style-type: decimal;
+      }
+
+      .prose li + li {
+        margin-top: 0.25rem;
+      }
+
+      .prose a {
+        color: #2563eb;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      .prose a:hover {
+        color: #1d4ed8;
+      }
+
+      .prose blockquote {
+        margin: 1rem 0;
+        padding: 0.5rem 1rem;
+        border-left: 4px solid #3b82f6;
+        background-color: rgba(59, 130, 246, 0.05);
+        border-radius: 0.25rem;
+        font-style: italic;
+      }
+
+      .dark .prose blockquote {
+        background-color: rgba(59, 130, 246, 0.2);
+      }
+
+      .dark .prose {
+        color: #e5e7eb;
+      }
+    </style>
   <script type="importmap">
 {
   "imports": {
