@@ -9,11 +9,13 @@ const PORT = 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'feeds.json');
 const STATIC_PATH = path.join(__dirname, 'dist'); // Serve from the 'dist' folder
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin123'; // Default secret if not set
+// 管理接口密钥：必须从环境变量读取，未设置则管理接口不可用
+const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
+// 代理配置：支持通过环境变量自定义，默认指向本地 Clash
 const PROXY_CONFIG = {
-  host: '127.0.0.1',
-  port: 7890
+  host: process.env.PROXY_HOST || '127.0.0.1',
+  port: Number(process.env.PROXY_PORT) || 7890
 };
 
 // --- Caching Configuration ---
@@ -24,13 +26,10 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 let FEEDS_CONFIG = [];
 
 // --- Default Feeds (Fallback/Initial) ---
+// 示例配置：请根据自己使用的 RSS 源替换
+// 实际订阅列表存储在 data/feeds.json，此处仅为首次启动时的初始化数据
 const DEFAULT_FEEDS = [
-  { id: 'bang_dream_info', url: 'http://server.sallyn.site:1200/twitter/user/bang_dream_info?readable=1', category: 'BanG Dream Project', isSub: false, customTitle: '' },
-  { id: 'bang_dream_mygo', url: 'http://server.sallyn.site:1200/twitter/user/bang_dream_mygo?readable=1', category: 'BanG Dream Project', isSub: true, customTitle: '' },
-  { id: 'bdp_avemujica', url: 'http://server.sallyn.site:1200/twitter/user/BDP_AveMujica?readable=1', category: 'BanG Dream Project', isSub: true, customTitle: '' },
-  { id: 'imas_official', url: 'http://server.sallyn.site:1200/twitter/user/imas_official?readable=1', category: 'iDOLM@STER Project', isSub: false, customTitle: '' },
-  { id: 'shinyc_official', url: 'http://server.sallyn.site:1200/twitter/user/shinyc_official?readable=1', category: 'iDOLM@STER Project', isSub: true, customTitle: '' },
-  { id: 'gkmas_official', url: 'http://server.sallyn.site:1200/twitter/user/gkmas_official?readable=1', category: 'iDOLM@STER Project', isSub: true, customTitle: '' }
+  // { id: 'example_feed', url: 'https://rsshub.app/twitter/user/example', category: 'Example Category', isSub: false, customTitle: '' }
 ];
 
 // --- Helper: Load Feeds into memory ---
@@ -109,6 +108,11 @@ const server = http.createServer((req, res) => {
 
   // === API: Get FULL Feed List (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/list/all' && req.method === 'GET') {
+    if (!ADMIN_SECRET) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
+      return;
+    }
     const secret = req.headers['x-admin-secret'];
     if (secret !== ADMIN_SECRET) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -122,7 +126,11 @@ const server = http.createServer((req, res) => {
 
   // === API: Add/Update Feed (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/add' && req.method === 'POST') {
-    // ... (rest of the function is unchanged)
+    if (!ADMIN_SECRET) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
+      return;
+    }
     const secret = req.headers['x-admin-secret'];
     if (secret !== ADMIN_SECRET) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -148,7 +156,11 @@ const server = http.createServer((req, res) => {
 
   // === API: Delete Feed (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/delete' && req.method === 'POST') {
-    // ... (rest of the function is unchanged)
+    if (!ADMIN_SECRET) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
+      return;
+    }
     const secret = req.headers['x-admin-secret'];
     if (secret !== ADMIN_SECRET) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -179,6 +191,11 @@ const server = http.createServer((req, res) => {
 
   // === API: Reorder Feeds (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/reorder' && req.method === 'POST') {
+    if (!ADMIN_SECRET) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
+      return;
+    }
     const secret = req.headers['x-admin-secret'];
     if (secret !== ADMIN_SECRET) {
       res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -367,6 +384,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`[OK] Server running at http://localhost:${PORT}/`);
   console.log(`[OK] Data will be stored in: ${DATA_FILE}`);
   console.log(`[OK] Proxy target: ${PROXY_CONFIG.host}:${PROXY_CONFIG.port}`);
-  console.log(`[OK] Admin Secret: ${ADMIN_SECRET.substring(0, 3)}***`);
+  console.log(`[OK] Admin Secret: ${ADMIN_SECRET ? ADMIN_SECRET.substring(0, 3) + '***' : '(未配置，管理接口不可用)'}`);
   console.log(`[OK] Feed Caching enabled with ${CACHE_TTL_MS / 60000} minute TTL.`);
 });
