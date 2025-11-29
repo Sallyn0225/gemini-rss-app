@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Article, ArticleCategory } from '../types';
+import { easeStandard, easeDecelerate } from './animations';
 
 interface ArticleCardProps {
   article: Article;
@@ -32,16 +34,65 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
   
   const isRetweet = /^RT\s/i.test(article.title) || /^Re\s/i.test(article.title);
 
+  // 波纹效果状态
+  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; size: number }>>([]);
+  
+  const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const size = Math.max(rect.width, rect.height) * 2;
+    
+    const newRipple = { id: Date.now(), x, y, size };
+    setRipples(prev => [...prev, newRipple]);
+    
+    setTimeout(() => {
+      setRipples(prev => prev.filter(r => r.id !== newRipple.id));
+    }, 600);
+
+    onClick();
+  }, [onClick]);
+
   return (
-    <div 
-      onClick={onClick}
+    <motion.div 
+      onClick={handleClick}
       className={`
-        flex flex-col bg-white rounded-2xl cursor-pointer transition-all duration-300 border overflow-hidden group dark:bg-slate-800
+        flex flex-col bg-white rounded-2xl cursor-pointer border overflow-hidden group dark:bg-slate-800 relative
         ${isSelected 
           ? 'ring-2 ring-blue-500 border-transparent shadow-xl' 
-          : 'border-slate-100 hover:shadow-xl hover:-translate-y-1 hover:border-slate-200 dark:border-slate-700 dark:hover:border-slate-600'}
+          : 'border-slate-100 dark:border-slate-700'}
       `}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+      transition={{ duration: 0.35, ease: easeDecelerate }}
+      whileHover={{ 
+        y: -6,
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
+        transition: { duration: 0.25, ease: easeStandard }
+      }}
+      whileTap={{ 
+        scale: 0.98,
+        transition: { duration: 0.1, ease: easeStandard }
+      }}
     >
+      {/* 波纹效果 */}
+      {ripples.map(ripple => (
+        <motion.span
+          key={ripple.id}
+          className="absolute rounded-full pointer-events-none z-50"
+          style={{
+            left: ripple.x - ripple.size / 2,
+            top: ripple.y - ripple.size / 2,
+            width: ripple.size,
+            height: ripple.size,
+            backgroundColor: 'rgba(59, 130, 246, 0.3)',
+          }}
+          initial={{ scale: 0, opacity: 0.6 }}
+          animate={{ scale: 1, opacity: 0 }}
+          transition={{ duration: 0.6, ease: easeDecelerate }}
+        />
+      ))}
       {/* Thumbnail - conditional height based on image availability */}
       <div className={`${hasValidThumbnail ? 'h-48' : 'h-28'} w-full overflow-hidden bg-slate-100 relative dark:bg-slate-900 transition-all duration-300`}>
         {hasValidThumbnail ? (
@@ -108,6 +159,6 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

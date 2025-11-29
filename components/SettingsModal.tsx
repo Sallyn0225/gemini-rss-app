@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AISettings, AIProvider, AIModelConfig, AIProviderType, ImageProxyMode } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, reorderSystemFeeds, FullSystemFeedConfig } from '../services/rssService';
 import { fetchProviderModels } from '../services/geminiService';
+import { easeStandard, easeDecelerate, easeAccelerate, modalOverlay, modalContent } from './animations';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -312,27 +314,65 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-1.5 tracking-wide dark:text-slate-400";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col dark:bg-slate-800 dark:shadow-black/50">
+    <AnimatePresence>
+      <motion.div 
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        variants={modalOverlay}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        onClick={onClose}
+      >
+        <motion.div 
+          className="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col dark:bg-slate-800 dark:shadow-black/50"
+          variants={modalContent}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          onClick={(e) => e.stopPropagation()}
+        >
 
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 dark:bg-slate-900 dark:border-slate-700 shrink-0">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">设置</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 dark:hover:bg-slate-700 dark:text-slate-400">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        {/* Content Container */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-
-          {/* Navigation Tabs (Top on mobile, Sidebar on desktop) */}
-          <div className="w-full md:w-48 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-2 md:p-4 flex flex-row md:flex-col gap-2 shrink-0 dark:bg-slate-900 dark:border-slate-700 overflow-x-auto">
-            <button onClick={() => setActiveTab('providers')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'providers' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>API 提供商</button>
-            <button onClick={() => setActiveTab('models')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'models' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>模型配置</button>
-            <button onClick={() => setActiveTab('display')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'display' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>显示设置</button>
-            <button onClick={() => setActiveTab('feeds')} className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm transition-colors flex-1 md:flex-none whitespace-nowrap ${activeTab === 'feeds' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}>订阅源管理</button>
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 dark:bg-slate-900 dark:border-slate-700 shrink-0">
+            <motion.h2 
+              className="text-xl font-bold text-slate-800 dark:text-white"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1, duration: 0.3, ease: easeDecelerate }}
+            >
+              设置
+            </motion.h2>
+            <motion.button 
+              onClick={onClose} 
+              className="p-2 hover:bg-slate-200 rounded-full text-slate-500 dark:hover:bg-slate-700 dark:text-slate-400"
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ duration: 0.2, ease: easeStandard }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </motion.button>
           </div>
+
+          {/* Content Container */}
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+
+            {/* Navigation Tabs (Top on mobile, Sidebar on desktop) */}
+            <div className="w-full md:w-48 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-2 md:p-4 flex flex-row md:flex-col gap-2 shrink-0 dark:bg-slate-900 dark:border-slate-700 overflow-x-auto">
+              {(['providers', 'models', 'display', 'feeds'] as const).map((tab, index) => (
+                <motion.button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab)} 
+                  className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm flex-1 md:flex-none whitespace-nowrap ${activeTab === tab ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + index * 0.05, duration: 0.3, ease: easeDecelerate }}
+                  whileHover={{ x: 4, backgroundColor: activeTab === tab ? undefined : 'rgba(241, 245, 249, 1)' }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {tab === 'providers' ? 'API 提供商' : tab === 'models' ? '模型配置' : tab === 'display' ? '显示设置' : '订阅源管理'}
+                </motion.button>
+              ))}
+            </div>
 
           {/* Main Panel */}
           <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-slate-50/30 dark:bg-slate-950/30">
@@ -769,15 +809,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
               </div>
             )}
 
+            </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end shrink-0 dark:bg-slate-900 dark:border-slate-700">
-          <button onClick={onClose} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors dark:text-slate-300 dark:hover:bg-slate-700">取消</button>
-          <button onClick={handleSaveAll} className="ml-3 px-8 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md">保存设置</button>
-        </div>
-      </div>
-    </div>
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end shrink-0 dark:bg-slate-900 dark:border-slate-700">
+            <motion.button 
+              onClick={onClose} 
+              className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors dark:text-slate-300 dark:hover:bg-slate-700"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              取消
+            </motion.button>
+            <motion.button 
+              onClick={handleSaveAll} 
+              className="ml-3 px-8 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md"
+              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.4)' }}
+              whileTap={{ scale: 0.98 }}
+            >
+              保存设置
+            </motion.button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };

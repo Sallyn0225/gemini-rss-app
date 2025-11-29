@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
 import { Feed, Article, Language, ArticleCategory, AISettings, ImageProxyMode } from './types';
@@ -8,6 +9,7 @@ import { StatsChart } from './components/StatsChart';
 import { ArticleCard } from './components/ArticleCard';
 import { CalendarWidget } from './components/CalendarWidget';
 import { SettingsModal } from './components/SettingsModal';
+import { easeStandard, easeDecelerate } from './components/animations';
 
 // ... (rest of the code remains the same)
 type SidebarViewMode = 'list' | 'grid';
@@ -52,39 +54,139 @@ interface FeedItemProps {
 
 const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect }) => {
   const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(feed.title)}&background=3b82f6&color=fff&size=128`), [feed.title]);
+  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; size: number }>>([]);
+
+  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const size = Math.max(rect.width, rect.height) * 2;
+    
+    const newRipple = { id: Date.now(), x, y, size };
+    setRipples(prev => [...prev, newRipple]);
+    
+    setTimeout(() => {
+      setRipples(prev => prev.filter(r => r.id !== newRipple.id));
+    }, 600);
+
+    onSelect(feed);
+  }, [onSelect, feed]);
 
   if (mode === 'grid') {
     return (
-      <div className="relative group w-full">
-        <button
-          onClick={() => onSelect(feed)}
-          className={`relative aspect-square rounded-xl overflow-hidden border transition-all duration-300 w-full block ${isSelected ? 'ring-2 ring-blue-500 border-transparent shadow-md' : 'border-slate-200 hover:shadow-md hover:border-slate-300 dark:border-slate-700'}`}
+      <motion.div 
+        className="relative group w-full"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, ease: easeDecelerate }}
+      >
+        <motion.button
+          onClick={handleClick}
+          className={`relative aspect-square rounded-xl overflow-hidden border w-full block ${isSelected ? 'ring-2 ring-blue-500 border-transparent shadow-md' : 'border-slate-200 dark:border-slate-700'}`}
           title={feed.title}
+          whileHover={{ 
+            scale: 1.05,
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+            transition: { duration: 0.2, ease: easeStandard }
+          }}
+          whileTap={{ 
+            scale: 0.95,
+            transition: { duration: 0.1, ease: easeStandard }
+          }}
         >
-          <img src={feed.image || fallbackAvatar} alt={feed.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }} />
+          {/* 波纹效果 */}
+          {ripples.map(ripple => (
+            <motion.span
+              key={ripple.id}
+              className="absolute rounded-full pointer-events-none z-30"
+              style={{
+                left: ripple.x - ripple.size / 2,
+                top: ripple.y - ripple.size / 2,
+                width: ripple.size,
+                height: ripple.size,
+                backgroundColor: 'rgba(255, 255, 255, 0.4)',
+              }}
+              initial={{ scale: 0, opacity: 0.6 }}
+              animate={{ scale: 1, opacity: 0 }}
+              transition={{ duration: 0.6, ease: easeDecelerate }}
+            />
+          ))}
+          <motion.img 
+            src={feed.image || fallbackAvatar} 
+            alt={feed.title} 
+            className="w-full h-full object-cover" 
+            onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
+            whileHover={{ scale: 1.1 }}
+            transition={{ duration: 0.5, ease: easeStandard }}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex flex-col justify-end p-3">
             <p className="text-white text-xs font-bold line-clamp-2 leading-tight shadow-black drop-shadow-md text-left">{feed.title}</p>
           </div>
-          {isSelected && <div className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-sm"></div>}
-        </button>
-      </div>
+          {isSelected && (
+            <motion.div 
+              className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-sm"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+            />
+          )}
+        </motion.button>
+      </motion.div>
     );
   }
 
   return (
-    <div className={`relative group w-full ${feed.isSub ? 'pl-6' : ''}`}>
+    <motion.div 
+      className={`relative group w-full ${feed.isSub ? 'pl-6' : ''}`}
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, ease: easeDecelerate }}
+    >
       {feed.isSub && <div className="absolute left-3 top-0 bottom-1/2 w-3 border-l-2 border-b-2 border-slate-200 dark:border-slate-700 rounded-bl-lg -z-10"></div>}
-      <button
-        onClick={() => onSelect(feed)}
-        className={`flex items-center gap-3 w-full p-2.5 rounded-xl transition-all duration-200 text-left pr-8 ${isSelected ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'}`}
+      <motion.button
+        onClick={handleClick}
+        className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-left pr-8 relative overflow-hidden ${isSelected ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800' : 'text-slate-600 dark:text-slate-400'}`}
+        whileHover={{ 
+          backgroundColor: isSelected ? undefined : 'rgba(241, 245, 249, 1)',
+          x: 4,
+          transition: { duration: 0.2, ease: easeStandard }
+        }}
+        whileTap={{ 
+          scale: 0.98,
+          transition: { duration: 0.1, ease: easeStandard }
+        }}
       >
-        <img src={feed.image || fallbackAvatar} alt="" className="w-9 h-9 rounded-lg object-cover bg-slate-200 shrink-0 border border-slate-100 dark:border-slate-700" onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }} />
+        {/* 波纹效果 */}
+        {ripples.map(ripple => (
+          <motion.span
+            key={ripple.id}
+            className="absolute rounded-full pointer-events-none z-10"
+            style={{
+              left: ripple.x - ripple.size / 2,
+              top: ripple.y - ripple.size / 2,
+              width: ripple.size,
+              height: ripple.size,
+              backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.3)' : 'rgba(148, 163, 184, 0.3)',
+            }}
+            initial={{ scale: 0, opacity: 0.6 }}
+            animate={{ scale: 1, opacity: 0 }}
+            transition={{ duration: 0.6, ease: easeDecelerate }}
+          />
+        ))}
+        <motion.img 
+          src={feed.image || fallbackAvatar} 
+          alt="" 
+          className="w-9 h-9 rounded-lg object-cover bg-slate-200 shrink-0 border border-slate-100 dark:border-slate-700" 
+          onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
+          whileHover={{ scale: 1.1, rotate: 3 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+        />
         <div className="flex-1 overflow-hidden">
           <p className={`font-semibold text-sm truncate ${isSelected ? 'text-blue-800 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>{feed.title}</p>
           <p className="text-xs text-slate-400 truncate">{feed.items.length} 条更新</p>
         </div>
-      </button>
-    </div>
+      </motion.button>
+    </motion.div>
   );
 };
 
@@ -96,42 +198,101 @@ interface FilterBarProps {
 const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, onReset, onAnalyze, isAnalyzing, analysisSuccess }) => {
   const filters = [ArticleCategory.OFFICIAL, ArticleCategory.MEDIA, ArticleCategory.EVENT, ArticleCategory.COMMUNITY, ArticleCategory.RETWEET,];
   return (
-    <div className="flex items-center gap-2 py-3 px-4 md:px-8 border-b border-slate-200 overflow-x-auto custom-scrollbar bg-white sticky top-[81px] z-10 shrink-0 dark:bg-slate-900 dark:border-slate-800">
-      <button onClick={onAnalyze} disabled={isAnalyzing} className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm ${isAnalyzing ? 'bg-yellow-50 text-yellow-700 border-yellow-200 cursor-wait dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800' : analysisSuccess ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-indigo-600 text-white border-transparent hover:bg-indigo-700'}`}>
+    <motion.div 
+      className="flex items-center gap-2 py-3 px-4 md:px-8 border-b border-slate-200 overflow-x-auto custom-scrollbar bg-white sticky top-[81px] z-10 shrink-0 dark:bg-slate-900 dark:border-slate-800"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: easeDecelerate }}
+    >
+      <motion.button 
+        onClick={onAnalyze} 
+        disabled={isAnalyzing} 
+        className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm ${isAnalyzing ? 'bg-yellow-50 text-yellow-700 border-yellow-200 cursor-wait dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800' : analysisSuccess ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-indigo-600 text-white border-transparent'}`}
+        whileHover={isAnalyzing ? {} : { scale: 1.05 }}
+        whileTap={isAnalyzing ? {} : { scale: 0.95 }}
+        transition={{ duration: 0.15, ease: easeStandard }}
+      >
         {isAnalyzing ? (
           <>
-            <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-yellow-600 dark:text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <motion.svg 
+              className="-ml-1 mr-1 h-3 w-3 text-yellow-600 dark:text-yellow-400" 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            >
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+            </motion.svg>
             <span>分析中...</span>
           </>
         ) : analysisSuccess ? (
           <>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
+            <motion.svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 24 24" 
+              fill="currentColor" 
+              className="w-3 h-3"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+            >
               <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-            </svg>
+            </motion.svg>
             <span>完成</span>
           </>
         ) : (
           <>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
+            <motion.svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 24 24" 
+              fill="currentColor" 
+              className="w-3 h-3"
+              animate={{ rotate: [0, 15, -15, 0] }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+            >
               <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM9 15a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 019 15z" clipRule="evenodd" />
-            </svg>
+            </motion.svg>
             <span>AI 分析</span>
           </>
         )}
-      </button>
+      </motion.button>
       <div className="w-px h-6 bg-slate-200 mx-1 shrink-0 dark:bg-slate-700"></div>
-      <button onClick={onReset} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFilters.length === 0 ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-700' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700'}`}>全部</button>
-      {filters.map(filter => (<button key={filter} onClick={() => onToggleFilter(filter)} disabled={isAnalyzing && !activeFilters.includes(filter)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border whitespace-nowrap ${activeFilters.includes(filter) ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-200 dark:bg-slate-800 dark:border-slate-700'} ${isAnalyzing ? 'opacity-50' : ''}`}>{filter}</button>))}
-    </div>
+      <motion.button 
+        onClick={onReset} 
+        className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${activeFilters.length === 0 ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-700' : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ duration: 0.15, ease: easeStandard }}
+        layout
+      >
+        全部
+      </motion.button>
+      {filters.map((filter, index) => (
+        <motion.button 
+          key={filter} 
+          onClick={() => onToggleFilter(filter)} 
+          disabled={isAnalyzing && !activeFilters.includes(filter)} 
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${activeFilters.includes(filter) ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800' : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:border-slate-700'} ${isAnalyzing ? 'opacity-50' : ''}`}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.05, ease: easeDecelerate }}
+          whileHover={isAnalyzing ? {} : { scale: 1.05 }}
+          whileTap={isAnalyzing ? {} : { scale: 0.95 }}
+          layout
+        >
+          {filter}
+        </motion.button>
+      ))}
+    </motion.div>
   );
 };
 
 const App: React.FC = () => {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  // ... (rest of the code remains the same)
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [aiSettings, setAiSettings] = useState<AISettings>(() => { try { const stored = localStorage.getItem('rss_ai_settings'); return stored ? JSON.parse(stored) : { providers: [], tasks: { general: null, translation: null, summary: null, analysis: null } }; } catch { return { providers: [], tasks: { general: null, translation: null, summary: null, analysis: null } }; } });
   const [showSettings, setShowSettings] = useState(false);
