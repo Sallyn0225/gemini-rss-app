@@ -29,6 +29,16 @@ let FEEDS_CONFIG = [];
 // --- In-memory store for article history ---
 let FEED_HISTORY = {};
 
+// --- Security: Localhost-only check for admin APIs ---
+// 管理接口安全限制：只允许本机访问（通过 SSH 隧道使用）
+const isLocalRequest = (req) => {
+  const ip = req.socket.remoteAddress || '';
+  // 支持 IPv4 和 IPv6 的本机地址
+  // IPv4: 127.0.0.1
+  // IPv6: ::1 或 ::ffff:127.0.0.1 (IPv4-mapped)
+  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+};
+
 // --- Default Feeds (Fallback/Initial) ---
 // 示例配置：请根据自己使用的 RSS 源替换
 // 实际订阅列表存储在 data/feeds.json，此处仅为首次启动时的初始化数据
@@ -193,8 +203,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Get FULL Feed List (Protected) ===
+  // === API: Get FULL Feed List (Protected + Localhost Only) ===
   if (parsedUrl.pathname === '/api/feeds/list/all' && req.method === 'GET') {
+    // 安全限制：只允许本机访问
+    if (!isLocalRequest(req)) {
+      console.log(`[Security] Blocked external access to /api/feeds/list/all from ${req.socket.remoteAddress}`);
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Admin API is only accessible from localhost' }));
+      return;
+    }
     if (!ADMIN_SECRET) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
@@ -211,8 +228,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Add/Update Feed (Protected) ===
+  // === API: Add/Update Feed (Protected + Localhost Only) ===
   if (parsedUrl.pathname === '/api/feeds/add' && req.method === 'POST') {
+    // 安全限制：只允许本机访问
+    if (!isLocalRequest(req)) {
+      console.log(`[Security] Blocked external access to /api/feeds/add from ${req.socket.remoteAddress}`);
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Admin API is only accessible from localhost' }));
+      return;
+    }
     if (!ADMIN_SECRET) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
@@ -241,8 +265,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Delete Feed (Protected) ===
+  // === API: Delete Feed (Protected + Localhost Only) ===
   if (parsedUrl.pathname === '/api/feeds/delete' && req.method === 'POST') {
+    // 安全限制：只允许本机访问
+    if (!isLocalRequest(req)) {
+      console.log(`[Security] Blocked external access to /api/feeds/delete from ${req.socket.remoteAddress}`);
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Admin API is only accessible from localhost' }));
+      return;
+    }
     if (!ADMIN_SECRET) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
@@ -276,8 +307,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Reorder Feeds (Protected) ===
+  // === API: Reorder Feeds (Protected + Localhost Only) ===
   if (parsedUrl.pathname === '/api/feeds/reorder' && req.method === 'POST') {
+    // 安全限制：只允许本机访问
+    if (!isLocalRequest(req)) {
+      console.log(`[Security] Blocked external access to /api/feeds/reorder from ${req.socket.remoteAddress}`);
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Forbidden: Admin API is only accessible from localhost' }));
+      return;
+    }
     if (!ADMIN_SECRET) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
@@ -528,6 +566,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`[OK] Server running at http://localhost:${PORT}/`);
   console.log(`[OK] Data will be stored in: ${DATA_FILE}`);
   console.log(`[OK] Proxy target: ${PROXY_CONFIG.host}:${PROXY_CONFIG.port}`);
-  console.log(`[OK] Admin Secret: ${ADMIN_SECRET ? ADMIN_SECRET.substring(0, 3) + '***' : '(未配置，管理接口不可用)'}`);
+  console.log(`[OK] Admin Secret: ${ADMIN_SECRET ? '(已配置)' : '(未配置，管理接口不可用)'}`);
+  console.log(`[Security] Admin APIs restricted to localhost only (use SSH tunnel for remote access)`);
   console.log(`[OK] Feed Caching enabled with ${CACHE_TTL_MS / 60000} minute TTL.`);
 });
