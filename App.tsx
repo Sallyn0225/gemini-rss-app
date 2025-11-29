@@ -247,12 +247,19 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, on
             <motion.svg 
               xmlns="http://www.w3.org/2000/svg" 
               viewBox="0 0 24 24" 
-              fill="currentColor" 
+              fill="none" 
               className="w-3 h-3"
               animate={{ rotate: [0, 15, -15, 0] }}
               transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
             >
-              <path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM9 15a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5A.75.75 0 019 15z" clipRule="evenodd" />
+              <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 19L13 11" />
+                <path d="M7 21L15 13" />
+                <path d="M13 9.5L14.2 8.3L15.4 9.5L14.2 10.7Z" />
+                <path d="M18 4L18 6" />
+                <path d="M18 9L18 11" />
+                <path d="M17 8L19 8" />
+              </g>
             </motion.svg>
             <span>AI 分析</span>
           </>
