@@ -372,6 +372,15 @@ const App: React.FC = () => {
   const [loadingFeedId, setLoadingFeedId] = useState<string | null>(null);
   // --- 新增：当前选中的订阅源配置 ---
   const [selectedFeedMeta, setSelectedFeedMeta] = useState<FeedMeta | null>(null);
+  // --- 新增：折叠的分类路径集合 ---
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('collapsed_categories');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
 
   // 保留原有 feeds 用于仪表盘统计（由缓存派生）
   const feeds = useMemo(() => Object.values(feedContentCache), [feedContentCache]);
@@ -386,6 +395,8 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [sidebarMode, setSidebarMode] = useState<SidebarViewMode>('list');
+  // --- Grid模式下当前打开的文件夹路径 ---
+  const [openFolderPath, setOpenFolderPath] = useState<string | null>(null);
   const [selectedFeed, setSelectedFeed] = useState<Feed | null>(null);
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -446,6 +457,97 @@ const App: React.FC = () => {
 
   useEffect(() => { if (darkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); } }, [darkMode]);
   useEffect(() => { let lastIsDesktop = window.innerWidth >= 1024; const handleResize = () => { const isDesktop = window.innerWidth >= 1024; if (isDesktop !== lastIsDesktop) { setIsSidebarOpen(isDesktop); setIsRightSidebarOpen(isDesktop); lastIsDesktop = isDesktop; } }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
+
+  // --- 持久化折叠状态 ---
+  useEffect(() => {
+    localStorage.setItem('collapsed_categories', JSON.stringify([...collapsedCategories]));
+  }, [collapsedCategories]);
+
+  // --- 切换分类折叠状态 ---
+  const toggleCategoryCollapse = useCallback((categoryPath: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryPath)) {
+        next.delete(categoryPath);
+      } else {
+        next.add(categoryPath);
+      }
+      return next;
+    });
+  }, []);
+
+  // --- 构建分层分类结构 ---
+  interface CategoryNode {
+    name: string;
+    path: string;
+    feeds: FeedMeta[];
+    children: Map<string, CategoryNode>;
+    depth: number;
+  }
+
+  const groupedFeeds = useMemo(() => {
+    const root: Map<string, CategoryNode> = new Map();
+    
+    feedConfigs.forEach(meta => {
+      const categoryPath = meta.category || '';
+      const parts = categoryPath.split('/').filter(Boolean);
+      
+      if (parts.length === 0) {
+        // 无分类的源放入特殊节点
+        if (!root.has('__uncategorized__')) {
+          root.set('__uncategorized__', {
+            name: '',
+            path: '',
+            feeds: [],
+            children: new Map(),
+            depth: 0
+          });
+        }
+        root.get('__uncategorized__')!.feeds.push(meta);
+        return;
+      }
+      
+      let currentMap = root;
+      let currentPath = '';
+      
+      parts.forEach((part, index) => {
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        
+        if (!currentMap.has(part)) {
+          currentMap.set(part, {
+            name: part,
+            path: currentPath,
+            feeds: [],
+            children: new Map(),
+            depth: index
+          });
+        }
+        
+        const node = currentMap.get(part)!;
+        
+        // 如果是最后一级或者是子订阅源，添加到当前节点
+        if (index === parts.length - 1) {
+          node.feeds.push(meta);
+        }
+        
+        currentMap = node.children;
+      });
+    });
+    
+    return root;
+  }, [feedConfigs]);
+
+  // --- 检查分类是否应该显示（祖先未折叠）---
+  const isCategoryVisible = useCallback((path: string): boolean => {
+    const parts = path.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      const ancestorPath = parts.slice(0, i).join('/');
+      if (collapsedCategories.has(ancestorPath)) {
+        return false;
+      }
+    }
+    return true;
+  }, [collapsedCategories]);
 
   // --- 优化后的 initFeeds：只加载配置，不加载内容 ---
   const initFeeds = useCallback(async () => {
@@ -982,29 +1084,260 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
-          <div className={`${sidebarMode === 'grid' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-2'}`}>
-            {feedConfigs.map((meta, index) => {
-              const prevMeta = feedConfigs[index - 1];
-              const showCategory = sidebarMode === 'list' && (!prevMeta || meta.category !== prevMeta.category);
-              const content = feedContentCache[meta.id] || null;
-              return (
-                <React.Fragment key={meta.id}>
-                  {showCategory && meta.category && (
-                    <div className="mt-4 mb-2 px-2">
-                      <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">{meta.category}</h3>
+          <div className={`${sidebarMode === 'grid' ? 'flex flex-col gap-3' : 'flex flex-col gap-2'}`}>
+            {sidebarMode === 'grid' ? (
+              // Grid 模式：iOS文件夹风格
+              (() => {
+                // 辅助函数：获取指定路径的节点
+                const getNodeByPath = (path: string): { name: string; path: string; feeds: FeedMeta[]; children: Map<string, any>; depth: number } | null => {
+                  const parts = path.split('/').filter(Boolean);
+                  let current: Map<string, any> = groupedFeeds;
+                  let node = null;
+                  for (const part of parts) {
+                    node = current.get(part);
+                    if (!node) return null;
+                    current = node.children;
+                  }
+                  return node;
+                };
+
+                // 辅助函数：获取前4个订阅源缩略图用于文件夹预览
+                const getFolderPreviews = (node: { feeds: FeedMeta[]; children: Map<string, any> }): string[] => {
+                  const previews: string[] = [];
+                  for (const meta of node.feeds) {
+                    if (previews.length >= 4) break;
+                    const content = feedContentCache[meta.id];
+                    previews.push(content?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(meta.customTitle || meta.id)}&background=3b82f6&color=fff&size=64`);
+                  }
+                  if (previews.length < 4) {
+                    for (const child of node.children.values()) {
+                      const childPreviews = getFolderPreviews(child);
+                      for (const p of childPreviews) {
+                        if (previews.length >= 4) break;
+                        previews.push(p);
+                      }
+                      if (previews.length >= 4) break;
+                    }
+                  }
+                  return previews;
+                };
+
+                // 辅助函数：计算订阅源总数
+                const countAllFeeds = (node: { feeds: FeedMeta[]; children: Map<string, any> }): number => {
+                  let count = node.feeds.length;
+                  node.children.forEach(child => { count += countAllFeeds(child); });
+                  return count;
+                };
+
+                // 渲染子文件夹图标（用于进入下级分类）
+                const renderSubfolder = (node: { name: string; path: string; feeds: FeedMeta[]; children: Map<string, any>; depth: number }) => {
+                  const totalCount = countAllFeeds(node);
+                  return (
+                    <motion.button
+                      key={node.path}
+                      onClick={() => setOpenFolderPath(node.path)}
+                      className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex flex-col items-center justify-center gap-1 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-6 h-6">
+                          <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z" />
+                        </svg>
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate w-full text-center px-1">{node.name}</span>
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500">{totalCount}</span>
+                    </motion.button>
+                  );
+                };
+
+                // 渲染一级文件夹（带2x2预览缩略图）
+                const renderFolder = (node: { name: string; path: string; feeds: FeedMeta[]; children: Map<string, any>; depth: number }) => {
+                  const previews = getFolderPreviews(node);
+                  const totalCount = countAllFeeds(node);
+                  return (
+                    <motion.div key={node.path} className="w-full" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                      <button
+                        onClick={() => setOpenFolderPath(node.path)}
+                        className="w-full p-3 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all hover:shadow-lg"
+                      >
+                        <div className="grid grid-cols-2 gap-1.5 mb-2">
+                          {[0, 1, 2, 3].map(i => (
+                            <div key={i} className="aspect-square rounded-lg overflow-hidden bg-slate-300 dark:bg-slate-600">
+                              {previews[i] ? <img src={proxyImageUrl(previews[i])} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full" />}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{node.name}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{totalCount}</span>
+                        </div>
+                      </button>
+                    </motion.div>
+                  );
+                };
+
+                // 当前在某个文件夹内
+                if (openFolderPath) {
+                  const currentNode = getNodeByPath(openFolderPath);
+                  if (!currentNode) {
+                    setOpenFolderPath(null);
+                    return null;
+                  }
+                  const childrenArray = Array.from(currentNode.children.values());
+                  return (
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="w-full">
+                      {/* 返回按钮 */}
+                      <button
+                        onClick={() => {
+                          const parts = openFolderPath.split('/').filter(Boolean);
+                          setOpenFolderPath(parts.length <= 1 ? null : parts.slice(0, -1).join('/'));
+                        }}
+                        className="flex items-center gap-2 px-2 py-2 mb-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-blue-600 dark:text-blue-400 w-full"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                        </svg>
+                        <span className="text-sm font-semibold truncate">{currentNode.name}</span>
+                      </button>
+                      {/* 文件夹内容：直属订阅源 + 子文件夹 */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {currentNode.feeds.map(meta => {
+                          const content = feedContentCache[meta.id] || null;
+                          return <FeedItem key={meta.id} feedMeta={meta} feedContent={content} mode="grid" isSelected={selectedFeedMeta?.id === meta.id} isLoading={loadingFeedId === meta.id} onSelect={handleFeedSelect} />;
+                        })}
+                        {childrenArray.map(child => renderSubfolder(child))}
+                      </div>
+                    </motion.div>
+                  );
+                }
+
+                // 根级别视图
+                const rootNodes = Array.from(groupedFeeds.entries());
+                const uncategorized = rootNodes.find(([key]) => key === '__uncategorized__');
+                const categories = rootNodes.filter(([key]) => key !== '__uncategorized__');
+
+                return (
+                  <>
+                    {/* 无分类的源直接显示为缩略图 */}
+                    {uncategorized && uncategorized[1].feeds.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        {uncategorized[1].feeds.map(meta => {
+                          const content = feedContentCache[meta.id] || null;
+                          return <FeedItem key={meta.id} feedMeta={meta} feedContent={content} mode="grid" isSelected={selectedFeedMeta?.id === meta.id} isLoading={loadingFeedId === meta.id} onSelect={handleFeedSelect} />;
+                        })}
+                      </div>
+                    )}
+                    {/* 一级分类显示为文件夹 */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {categories.map(([, node]) => renderFolder(node))}
                     </div>
-                  )}
-                  <FeedItem
-                    feedMeta={meta}
-                    feedContent={content}
-                    mode={sidebarMode}
-                    isSelected={selectedFeedMeta?.id === meta.id}
-                    isLoading={loadingFeedId === meta.id}
-                    onSelect={handleFeedSelect}
-                  />
-                </React.Fragment>
-              );
-            })}
+                  </>
+                );
+              })()
+            ) : (
+              // List 模式：层级分组显示
+              (() => {
+                const renderCategoryNode = (node: { name: string; path: string; feeds: FeedMeta[]; children: Map<string, { name: string; path: string; feeds: FeedMeta[]; children: Map<string, any>; depth: number }>; depth: number }, isFirst: boolean = false): React.ReactNode => {
+                  const isCollapsed = collapsedCategories.has(node.path);
+                  const hasChildren = node.children.size > 0 || node.feeds.length > 0;
+                  const childrenArray = Array.from(node.children.values());
+                  
+                  // 计算该分类下的总订阅源数量（递归）
+                  const countFeeds = (n: typeof node): number => {
+                    let count = n.feeds.length;
+                    n.children.forEach(child => { count += countFeeds(child); });
+                    return count;
+                  };
+                  const totalFeeds = countFeeds(node);
+                  
+                  return (
+                    <div key={node.path} className="w-full">
+                      {/* 分类标题 */}
+                      {node.name && (
+                        <button
+                          onClick={() => toggleCategoryCollapse(node.path)}
+                          className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group ${isFirst ? '' : 'mt-2'}`}
+                          style={{ paddingLeft: `${(node.depth) * 12 + 8}px` }}
+                        >
+                          <motion.svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="w-3.5 h-3.5 text-slate-400 shrink-0"
+                            animate={{ rotate: isCollapsed ? -90 : 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clipRule="evenodd" />
+                          </motion.svg>
+                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate flex-1 text-left">
+                            {node.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                            {totalFeeds}
+                          </span>
+                        </button>
+                      )}
+                      
+                      {/* 子内容（带动画） */}
+                      <AnimatePresence initial={false}>
+                        {(!node.name || !isCollapsed) && hasChildren && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: easeStandard }}
+                            className="overflow-hidden"
+                          >
+                            {/* 该分类直属的订阅源 */}
+                            {node.feeds.map(meta => {
+                              const content = feedContentCache[meta.id] || null;
+                              return (
+                                <div key={meta.id} style={{ paddingLeft: `${(node.depth + (node.name ? 1 : 0)) * 12}px` }}>
+                                  <FeedItem
+                                    feedMeta={meta}
+                                    feedContent={content}
+                                    mode="list"
+                                    isSelected={selectedFeedMeta?.id === meta.id}
+                                    isLoading={loadingFeedId === meta.id}
+                                    onSelect={handleFeedSelect}
+                                  />
+                                </div>
+                              );
+                            })}
+                            
+                            {/* 递归渲染子分类 */}
+                            {childrenArray.map((child, idx) => renderCategoryNode(child, idx === 0 && node.feeds.length === 0))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                };
+                
+                const rootNodes = Array.from(groupedFeeds.entries());
+                return rootNodes.map(([key, node], idx) => {
+                  if (key === '__uncategorized__') {
+                    // 无分类的源直接渲染
+                    return node.feeds.map(meta => {
+                      const content = feedContentCache[meta.id] || null;
+                      return (
+                        <FeedItem
+                          key={meta.id}
+                          feedMeta={meta}
+                          feedContent={content}
+                          mode="list"
+                          isSelected={selectedFeedMeta?.id === meta.id}
+                          isLoading={loadingFeedId === meta.id}
+                          onSelect={handleFeedSelect}
+                        />
+                      );
+                    });
+                  }
+                  return renderCategoryNode(node, idx === 0);
+                });
+              })()
+            )}
             {loading && <div className="flex justify-center p-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div></div>}
           </div>
         </div>

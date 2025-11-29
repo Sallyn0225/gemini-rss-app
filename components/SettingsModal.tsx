@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { AISettings, AIProvider, AIModelConfig, AIProviderType, ImageProxyMode } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, reorderSystemFeeds, FullSystemFeedConfig } from '../services/rssService';
 import { fetchProviderModels } from '../services/geminiService';
@@ -53,6 +53,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const [fullFeedList, setFullFeedList] = useState<FullSystemFeedConfig[]>([]);
   const [isEditingFeed, setIsEditingFeed] = useState(false);
   const [feedForm, setFeedForm] = useState({ id: '', url: '', category: '', isSub: false, customTitle: '' });
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [feedStatus, setFeedStatus] = useState<{ msg: string, type: 'success' | 'error' | null }>({ msg: '', type: null });
   const [isSubmittingFeed, setIsSubmittingFeed] = useState(false);
 
@@ -75,6 +78,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       }
     }
   }, [isOpen, settings]);
+
+  // Extract existing categories from feed list
+  const existingCategories = useMemo(() => {
+    const categories = new Set<string>();
+    fullFeedList.forEach(feed => {
+      if (feed.category) {
+        // Add the full path and all parent paths
+        const parts = feed.category.split('/');
+        let path = '';
+        parts.forEach(part => {
+          path = path ? `${path}/${part}` : part;
+          categories.add(path);
+        });
+      }
+    });
+    return Array.from(categories).sort();
+  }, [fullFeedList]);
+
+  // Close category dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setShowCategoryDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -286,26 +317,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
 
 
-  const handleReorderFeed = async (direction: 'up' | 'down', index: number) => {
+  // Drag-and-drop reorder handler
+  const handleDragReorder = async (newOrder: FullSystemFeedConfig[]) => {
     if (!verifiedSecret) return;
-    const newFeeds = [...fullFeedList];
-    if (direction === 'up' && index > 0) {
-      [newFeeds[index], newFeeds[index - 1]] = [newFeeds[index - 1], newFeeds[index]];
-    } else if (direction === 'down' && index < newFeeds.length - 1) {
-      [newFeeds[index], newFeeds[index + 1]] = [newFeeds[index + 1], newFeeds[index]];
-    } else {
-      return;
-    }
-
+    
     // Optimistic update
-    setFullFeedList(newFeeds);
+    setFullFeedList(newOrder);
 
     try {
-      await reorderSystemFeeds(newFeeds.map(f => f.id), verifiedSecret);
+      await reorderSystemFeeds(newOrder.map(f => f.id), verifiedSecret);
     } catch (e: any) {
       setFeedStatus({ msg: '排序失败: ' + e.message, type: 'error' });
       // Revert on failure
       await handleLoadFeeds(verifiedSecret);
+    }
+  };
+
+  // Category selection handler
+  const handleCategorySelect = (category: string) => {
+    setFeedForm({ ...feedForm, category });
+    setShowCategoryDropdown(false);
+    setNewCategoryInput('');
+  };
+
+  const handleAddNewCategory = () => {
+    if (newCategoryInput.trim()) {
+      setFeedForm({ ...feedForm, category: newCategoryInput.trim() });
+      setShowCategoryDropdown(false);
+      setNewCategoryInput('');
     }
   };
 
@@ -768,33 +807,142 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                   </div>
                 ) : (
                   <>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700 space-y-2">
-                      <h4 className="font-bold px-2 text-slate-800 dark:text-white">当前订阅源列表</h4>
-                      {fullFeedList.map((feed, index) => (
-                        <div key={feed.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                          <div className="flex flex-col gap-2">
-                            <button onClick={() => handleReorderFeed('up', index)} disabled={index === 0} className="p-1 disabled:opacity-20 disabled:cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-400"><path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.28 9.68a.75.75 0 01-1.06-1.06l5.25-5.25a.75.75 0 011.06 0l5.25 5.25a.75.75 0 11-1.06 1.06L10.75 5.612V16.25A.75.75 0 0110 17z" clipRule="evenodd" /></svg></button>
-                            <button onClick={() => handleReorderFeed('down', index)} disabled={index === fullFeedList.length - 1} className="p-1 disabled:opacity-20 disabled:cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-400"><path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.97-4.07a.75.75 0 111.06 1.06l-5.25 5.25a.75.75 0 01-1.06 0l-5.25-5.25a.75.75 0 111.06-1.06l3.97 4.07V3.75A.75.75 0 0110 3z" clipRule="evenodd" /></svg></button>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm truncate text-slate-800 dark:text-slate-200" title={feed.customTitle || feed.id}>{feed.customTitle || feed.id}</p>
-                            <p className="text-xs text-slate-400 font-mono truncate">{feed.url}</p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => startEditFeed(feed)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:hover:bg-blue-900/30" title="编辑"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg></button>
-                            <button onClick={() => handleDeleteFeed(feed.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/30" title="删除"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
+                      <div className="flex items-center justify-between px-2 mb-3">
+                        <h4 className="font-bold text-slate-800 dark:text-white">当前订阅源列表</h4>
+                        <span className="text-xs text-slate-400">拖拽排序</span>
+                      </div>
+                      <Reorder.Group axis="y" values={fullFeedList} onReorder={handleDragReorder} className="space-y-1">
+                        {fullFeedList.map((feed) => (
+                          <Reorder.Item 
+                            key={feed.id} 
+                            value={feed}
+                            className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 cursor-grab active:cursor-grabbing hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            {/* Drag Handle */}
+                            <div className="text-slate-400 shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                                <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5A.75.75 0 012.75 9h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 9.75zm0 5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm truncate text-slate-800 dark:text-slate-200" title={feed.customTitle || feed.id}>{feed.customTitle || feed.id}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {feed.category && (
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded dark:bg-blue-900/40 dark:text-blue-300 truncate max-w-[150px]" title={feed.category}>
+                                    {feed.category}
+                                  </span>
+                                )}
+                                <p className="text-xs text-slate-400 font-mono truncate">{feed.url}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => startEditFeed(feed)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:hover:bg-blue-900/30" title="编辑"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg></button>
+                              <button onClick={() => handleDeleteFeed(feed.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/30" title="删除"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
+                            </div>
+                          </Reorder.Item>
+                        ))}
+                      </Reorder.Group>
+                      {fullFeedList.length === 0 && (
+                        <p className="text-center text-slate-400 py-8 text-sm">暂无订阅源</p>
+                      )}
                     </div>
                     <div ref={feedFormRef} className="bg-white p-6 rounded-xl border border-slate-200 shadow-md animate-slide-in dark:bg-slate-800 dark:border-slate-700">
                       <h4 className="font-bold text-slate-800 mb-6 border-b border-slate-100 pb-3 dark:text-white dark:border-slate-700">{isEditingFeed ? '编辑订阅源' : '添加订阅源'}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
                         <div><label className={labelClass}>ID (唯一标识)</label><input type="text" className={inputClass} placeholder="例如: bang_dream_mygo" value={feedForm.id} onChange={e => setFeedForm({ ...feedForm, id: e.target.value })} disabled={isEditingFeed} /></div>
-                        <div><label className={labelClass}>分类</label><input type="text" className={inputClass} placeholder="例如: BanG Dream Project" value={feedForm.category} onChange={e => setFeedForm({ ...feedForm, category: e.target.value })} /></div>
+                        <div ref={categoryDropdownRef} className="relative">
+                          <label className={labelClass}>分类路径</label>
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              className={inputClass} 
+                              placeholder="选择或输入分类..." 
+                              value={feedForm.category} 
+                              onChange={e => setFeedForm({ ...feedForm, category: e.target.value })}
+                              onFocus={() => setShowCategoryDropdown(true)}
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`}>
+                                <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                          
+                          {/* Category Dropdown */}
+                          {showCategoryDropdown && (
+                            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg dark:bg-slate-700 dark:border-slate-600 max-h-60 overflow-hidden">
+                              {/* New Category Input */}
+                              <div className="p-2 border-b border-slate-100 dark:border-slate-600">
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-md dark:bg-slate-600 dark:border-slate-500 dark:text-white"
+                                    placeholder="新建分类..."
+                                    value={newCategoryInput}
+                                    onChange={e => setNewCategoryInput(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleAddNewCategory()}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={handleAddNewCategory}
+                                    disabled={!newCategoryInput.trim()}
+                                    className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    添加
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              {/* Existing Categories */}
+                              <div className="max-h-40 overflow-y-auto">
+                                {existingCategories.length > 0 ? (
+                                  existingCategories.map(cat => (
+                                    <button
+                                      key={cat}
+                                      type="button"
+                                      onClick={() => handleCategorySelect(cat)}
+                                      className={`w-full px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center gap-2 ${feedForm.category === cat ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'}`}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-400 shrink-0">
+                                        <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+                                      </svg>
+                                      <span className="truncate">{cat}</span>
+                                      {feedForm.category === cat && (
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-blue-600 ml-auto shrink-0">
+                                          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  ))
+                                ) : (
+                                  <p className="px-3 py-4 text-center text-sm text-slate-400">暂无已有分类</p>
+                                )}
+                              </div>
+                              
+                              {/* Clear Button */}
+                              {feedForm.category && (
+                                <div className="p-2 border-t border-slate-100 dark:border-slate-600">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCategorySelect('')}
+                                    className="w-full px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md dark:hover:bg-red-900/20"
+                                  >
+                                    清除分类
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <p className="text-[11px] text-slate-400 mt-1.5 dark:text-slate-500">使用 <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">/</code> 分隔多级分类</p>
+                        </div>
                         <div className="md:col-span-2"><label className={labelClass}>订阅源 URL</label><input type="text" className={`${inputClass} font-mono`} placeholder="http://.../feed.xml" value={feedForm.url} onChange={e => setFeedForm({ ...feedForm, url: e.target.value })} /></div>
                         <div><label className={labelClass}>自定义标题 (可选)</label><input type="text" className={inputClass} placeholder="留空则使用源标题" value={feedForm.customTitle} onChange={e => setFeedForm({ ...feedForm, customTitle: e.target.value })} /></div>
-                        <div><label className={labelClass}>选项</label><label className="flex items-center gap-2 text-sm p-2"><input type="checkbox" className="w-4 h-4" checked={feedForm.isSub} onChange={e => setFeedForm({ ...feedForm, isSub: e.target.checked })} />作为子订阅源显示</label></div>
+                        <div><label className={labelClass}>选项</label><label className="flex items-center gap-2 text-sm p-2"><input type="checkbox" className="w-4 h-4" checked={feedForm.isSub} onChange={e => setFeedForm({ ...feedForm, isSub: e.target.checked })} />作为子订阅源显示 (缩进样式)</label></div>
                       </div>
                       <div className="flex justify-end items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
                         {feedStatus.msg && <p className={`text-xs mr-auto ${feedStatus.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{feedStatus.msg}</p>}
