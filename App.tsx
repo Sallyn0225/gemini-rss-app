@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode } from './services/rssService';
+import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode, fetchHistory } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
 import { Feed, Article, Language, ArticleCategory, AISettings, ImageProxyMode, FeedMeta } from './types';
 import { StatsChart } from './components/StatsChart';
@@ -657,7 +657,7 @@ const App: React.FC = () => {
     setDailySummary(summaryCache[key] || null);
   }, [selectedDate, selectedFeed, baseArticles, summaryCache]);
 
-  // --- 优化后的 handleFeedSelect：点击时才加载内容 ---
+  // --- 优化后的 handleFeedSelect：点击时才加载内容，并合并历史记录 ---
   const handleFeedSelect = useCallback(async (meta: FeedMeta) => {
     setSelectedFeedMeta(meta);
     setActiveArticle(null);
@@ -680,12 +680,37 @@ const App: React.FC = () => {
     setLoadingFeedId(meta.id);
     setSelectedFeed(null); // 先清空，显示 loading 状态
     try {
-      const fetchedFeed = await fetchRSS(meta.id);
+      // 同时获取当前 RSS 和历史记录
+      const [fetchedFeed, historyItems] = await Promise.all([
+        fetchRSS(meta.id),
+        fetchHistory(meta.id).catch(() => [] as Article[]) // 历史获取失败不影响主流程
+      ]);
+
+      // 合并当前 items 和历史 items（去重）
+      const itemMap = new Map<string, Article>();
+      // 先放历史（旧的）
+      for (const item of historyItems) {
+        const key = item.guid || item.link;
+        if (key) itemMap.set(key, item);
+      }
+      // 再放当前（新的覆盖旧的）
+      for (const item of fetchedFeed.items) {
+        const key = item.guid || item.link;
+        if (key) itemMap.set(key, item);
+      }
+      // 按时间排序（最新在前）
+      const mergedItems = Array.from(itemMap.values()).sort((a, b) => {
+        const dateA = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+        const dateB = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+        return dateB - dateA;
+      });
+
       const finalFeed: Feed = {
         ...fetchedFeed,
         title: meta.customTitle || fetchedFeed.title,
         category: meta.category,
         isSub: meta.isSub,
+        items: mergedItems, // 使用合并后的 items
       };
       // 更新内存缓存
       setFeedContentCache(prev => ({ ...prev, [meta.id]: finalFeed }));
@@ -707,7 +732,7 @@ const App: React.FC = () => {
     if (!selectedFeed || isAnalyzing) return;
 
     if (!isAiConfigured) {
-      alert("AI 功能未配置。请点击左下角的“设置”按钮，添加 API 提供商并配置「总模型」后重试。");
+      alert('AI 功能未配置。请点击左下角的「设置」按钮，添加 API 提供商并配置「总模型」后重试。');
       return;
     }
 

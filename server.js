@@ -8,6 +8,7 @@ const url = require('url');
 const PORT = 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'feeds.json');
+const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 const STATIC_PATH = path.join(__dirname, 'dist'); // Serve from the 'dist' folder
 // 管理接口密钥：必须从环境变量读取，未设置则管理接口不可用
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
@@ -24,6 +25,9 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 // --- In-memory store for feeds config ---
 let FEEDS_CONFIG = [];
+
+// --- In-memory store for article history ---
+let FEED_HISTORY = {};
 
 // --- Default Feeds (Fallback/Initial) ---
 // 示例配置：请根据自己使用的 RSS 源替换
@@ -77,6 +81,89 @@ const saveFeed = (newFeed) => {
     FEEDS_CONFIG.push(newFeed);
   }
   fs.writeFileSync(DATA_FILE, JSON.stringify(FEEDS_CONFIG, null, 2));
+};
+
+// --- Helper: Load History into memory ---
+const loadHistory = () => {
+  if (!fs.existsSync(HISTORY_FILE)) {
+    console.log(`[Init] History file not found. Creating empty at: ${HISTORY_FILE}`);
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify({}, null, 2));
+    FEED_HISTORY = {};
+    return;
+  }
+  try {
+    const data = fs.readFileSync(HISTORY_FILE, 'utf8');
+    if (!data.trim()) {
+      FEED_HISTORY = {};
+      return;
+    }
+    FEED_HISTORY = JSON.parse(data);
+    const feedCount = Object.keys(FEED_HISTORY).length;
+    const totalItems = Object.values(FEED_HISTORY).reduce((sum, f) => sum + (f.items?.length || 0), 0);
+    console.log(`[Init] Loaded history: ${feedCount} feeds, ${totalItems} total items`);
+  } catch (e) {
+    console.error("Error reading history.json:", e);
+    FEED_HISTORY = {};
+  }
+};
+
+// --- Helper: Save History to disk ---
+const saveHistory = () => {
+  try {
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(FEED_HISTORY, null, 2));
+  } catch (e) {
+    console.error("Error saving history.json:", e);
+  }
+};
+
+// --- Helper: Merge items into history (dedup by guid/link) ---
+// 历史记录保留策略：只保留最近 2 个月的消息
+const HISTORY_RETENTION_DAYS = 60; // 2 个月
+
+const mergeHistoryItems = (feedId, newItems) => {
+  const existing = FEED_HISTORY[feedId]?.items || [];
+  
+  // Build a map keyed by guid (fallback to link)
+  const itemMap = new Map();
+  for (const item of existing) {
+    const key = item.guid || item.link;
+    if (key) itemMap.set(key, item);
+  }
+  
+  // Merge new items (newer data overwrites)
+  let addedCount = 0;
+  for (const item of newItems) {
+    const key = item.guid || item.link;
+    if (key) {
+      if (!itemMap.has(key)) addedCount++;
+      itemMap.set(key, item);
+    }
+  }
+  
+  // Convert back to array and sort by pubDate (newest first)
+  let merged = Array.from(itemMap.values());
+  merged.sort((a, b) => {
+    const dateA = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+    const dateB = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+    return dateB - dateA; // Descending
+  });
+  
+  // 过滤：只保留最近 2 个月的消息
+  const cutoffTime = Date.now() - HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const beforeFilter = merged.length;
+  merged = merged.filter(item => {
+    const pubTime = item.pubDate ? new Date(item.pubDate).getTime() : 0;
+    // 如果没有发布时间，保守起见保留（避免误删）
+    return pubTime === 0 || pubTime >= cutoffTime;
+  });
+  const expiredCount = beforeFilter - merged.length;
+  
+  FEED_HISTORY[feedId] = {
+    items: merged,
+    lastUpdated: Date.now()
+  };
+  
+  return { total: merged.length, added: addedCount, expired: expiredCount };
 };
 
 // --- Helper: Delete Feed ---
@@ -237,6 +324,62 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // === API: History Upsert (Save article history) ===
+  if (parsedUrl.pathname === '/api/history/upsert' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { feedId, items } = JSON.parse(body);
+        if (!feedId || !Array.isArray(items)) {
+          throw new Error('Missing feedId or items array');
+        }
+        const result = mergeHistoryItems(feedId, items);
+        saveHistory();
+        const expiredMsg = result.expired > 0 ? `, -${result.expired} expired` : '';
+        console.log(`[History] Feed "${feedId}": +${result.added} new${expiredMsg}, ${result.total} total`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, added: result.added, total: result.total, expired: result.expired }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // === API: History Get (Retrieve article history) ===
+  if (parsedUrl.pathname === '/api/history/get' && req.method === 'GET') {
+    const feedId = parsedUrl.query.id;
+    const limit = parseInt(parsedUrl.query.limit) || 0;
+
+    if (!feedId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing id parameter' }));
+      return;
+    }
+
+    const history = FEED_HISTORY[feedId];
+    if (!history) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ feedId, items: [], lastUpdated: null }));
+      return;
+    }
+
+    let items = history.items || [];
+    if (limit > 0) {
+      items = items.slice(0, limit);
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      feedId,
+      items,
+      lastUpdated: history.lastUpdated
+    }));
+    return;
+  }
+
   // === API: RSS Proxy with Caching ===
   if (parsedUrl.pathname.startsWith('/api/feed')) {
     const feedId = parsedUrl.query.id;
@@ -376,8 +519,9 @@ const server = http.createServer((req, res) => {
   });
 });
 
-// Load initial feed configuration at startup
+// Load initial feed configuration and history at startup
 loadFeeds();
+loadHistory();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('--- Running Updated Server Code (v2) ---');

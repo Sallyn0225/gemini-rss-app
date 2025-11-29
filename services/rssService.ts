@@ -143,6 +143,37 @@ export const reorderSystemFeeds = async (ids: string[], secret: string): Promise
   }
 };
 
+// --- History API Functions ---
+
+// Upload current items to server history (fire-and-forget, won't block UI)
+const upsertHistory = (feedId: string, items: Article[]): void => {
+  fetch('/api/history/upsert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feedId, items }),
+  }).then(res => {
+    if (res.ok) return res.json();
+    throw new Error('Upsert failed');
+  }).then(data => {
+    if (data.added > 0) {
+      console.log(`[History] Saved ${data.added} new items for "${feedId}", total: ${data.total}`);
+    }
+  }).catch(e => {
+    console.warn(`[History] Failed to upsert for "${feedId}":`, e);
+  });
+};
+
+// Fetch history from server
+export const fetchHistory = async (feedId: string, limit?: number): Promise<Article[]> => {
+  const params = new URLSearchParams({ id: feedId });
+  if (limit) params.set('limit', String(limit));
+
+  const res = await fetch(`/api/history/get?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to load history');
+  const data = await res.json();
+  return data.items as Article[];
+};
+
 // Helper to extract image from HTML content safely and robustly
 const extractImageFromHtml = (html: string): string => {
   if (!html) return '';
@@ -263,7 +294,12 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
         } catch { throw new Error(`Backend fetch failed: ${response.status} - ${errorText}`); }
       }
       const xmlText = await response.text();
-      return parseXML(xmlText, urlOrId);
+      const feed = parseXML(xmlText, urlOrId);
+      
+      // Upload items to history (fire-and-forget)
+      upsertHistory(urlOrId, feed.items);
+      
+      return feed;
     } catch (error) {
       console.error(`Internal Proxy failed for ID: ${urlOrId}`, error);
       throw error;
