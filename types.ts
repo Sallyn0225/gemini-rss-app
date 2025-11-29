@@ -36,6 +36,14 @@ export interface Feed {
   isSub?: boolean;
 }
 
+// 订阅源配置元信息（不含文章内容，用于首屏快速渲染左侧列表）
+export interface FeedMeta {
+  id: string;
+  category: string;
+  isSub: boolean;
+  customTitle?: string;
+}
+
 export enum Language {
   ENGLISH = 'English',
   CHINESE = 'Chinese (Simplified)',

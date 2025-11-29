@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
-import { Feed, Article, Language, ArticleCategory, AISettings, ImageProxyMode } from './types';
+import { Feed, Article, Language, ArticleCategory, AISettings, ImageProxyMode, FeedMeta } from './types';
 import { StatsChart } from './components/StatsChart';
 import { ArticleCard } from './components/ArticleCard';
 import { CalendarWidget } from './components/CalendarWidget';
@@ -46,14 +46,17 @@ const proxyHtmlImages = (html: string | null | undefined): string => {
 
 // --- Extracted FeedItem Component ---
 interface FeedItemProps {
-  feed: Feed;
+  feedMeta: FeedMeta;
+  feedContent?: Feed | null; // 可选，有内容时显示文章数，无内容时显示骨架
   mode: SidebarViewMode;
   isSelected: boolean;
-  onSelect: (feed: Feed) => void;
+  isLoading?: boolean; // 当前是否正在加载该源
+  onSelect: (feedMeta: FeedMeta) => void;
 }
 
-const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect }) => {
-  const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(feed.title)}&background=3b82f6&color=fff&size=128`), [feed.title]);
+const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSelected, isLoading, onSelect }) => {
+  const displayTitle = feedMeta.customTitle || feedContent?.title || feedMeta.id;
+  const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(displayTitle)}&background=3b82f6&color=fff&size=128`), [displayTitle]);
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; size: number }>>([]);
 
   const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -69,8 +72,8 @@ const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect })
       setRipples(prev => prev.filter(r => r.id !== newRipple.id));
     }, 600);
 
-    onSelect(feed);
-  }, [onSelect, feed]);
+    onSelect(feedMeta);
+  }, [onSelect, feedMeta]);
 
   if (mode === 'grid') {
     return (
@@ -83,7 +86,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect })
         <motion.button
           onClick={handleClick}
           className={`relative aspect-square rounded-xl overflow-hidden border w-full block ${isSelected ? 'ring-2 ring-blue-500 border-transparent shadow-md' : 'border-slate-200 dark:border-slate-700'}`}
-          title={feed.title}
+          title={displayTitle}
           whileHover={{ 
             scale: 1.05,
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
@@ -112,15 +115,15 @@ const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect })
             />
           ))}
           <motion.img 
-            src={feed.image || fallbackAvatar} 
-            alt={feed.title} 
+            src={feedContent?.image || fallbackAvatar} 
+            alt={displayTitle} 
             className="w-full h-full object-cover" 
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
             whileHover={{ scale: 1.1 }}
             transition={{ duration: 0.5, ease: easeStandard }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex flex-col justify-end p-3">
-            <p className="text-white text-xs font-bold line-clamp-2 leading-tight shadow-black drop-shadow-md text-left">{feed.title}</p>
+            <p className="text-white text-xs font-bold line-clamp-2 leading-tight shadow-black drop-shadow-md text-left">{displayTitle}</p>
           </div>
           {isSelected && (
             <motion.div 
@@ -130,6 +133,12 @@ const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect })
               transition={{ type: 'spring', stiffness: 500, damping: 25 }}
             />
           )}
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            </div>
+          )}
         </motion.button>
       </motion.div>
     );
@@ -137,12 +146,12 @@ const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect })
 
   return (
     <motion.div 
-      className={`relative group w-full ${feed.isSub ? 'pl-6' : ''}`}
+      className={`relative group w-full ${feedMeta.isSub ? 'pl-6' : ''}`}
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, ease: easeDecelerate }}
     >
-      {feed.isSub && <div className="absolute left-3 top-0 bottom-1/2 w-3 border-l-2 border-b-2 border-slate-200 dark:border-slate-700 rounded-bl-lg -z-10"></div>}
+      {feedMeta.isSub && <div className="absolute left-3 top-0 bottom-1/2 w-3 border-l-2 border-b-2 border-slate-200 dark:border-slate-700 rounded-bl-lg -z-10"></div>}
       <motion.button
         onClick={handleClick}
         className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-left pr-8 relative overflow-hidden ${isSelected ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800' : 'text-slate-600 dark:text-slate-400'}`}
@@ -173,18 +182,34 @@ const FeedItem: React.FC<FeedItemProps> = ({ feed, mode, isSelected, onSelect })
             transition={{ duration: 0.6, ease: easeDecelerate }}
           />
         ))}
-        <motion.img 
-          src={feed.image || fallbackAvatar} 
-          alt="" 
-          className="w-9 h-9 rounded-lg object-cover bg-slate-200 shrink-0 border border-slate-100 dark:border-slate-700" 
-          onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
-          whileHover={{ scale: 1.1, rotate: 3 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-        />
+        {/* 头像：有内容时显示真实图片，无内容时显示骨架 */}
+        {feedContent ? (
+          <motion.img 
+            src={feedContent.image || fallbackAvatar} 
+            alt="" 
+            className="w-9 h-9 rounded-lg object-cover bg-slate-200 shrink-0 border border-slate-100 dark:border-slate-700" 
+            onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
+            whileHover={{ scale: 1.1, rotate: 3 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          />
+        ) : (
+          <div className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0 border border-slate-100 dark:border-slate-600 animate-pulse" />
+        )}
         <div className="flex-1 overflow-hidden">
-          <p className={`font-semibold text-sm truncate ${isSelected ? 'text-blue-800 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>{feed.title}</p>
-          <p className="text-xs text-slate-400 truncate">{feed.items.length} 条更新</p>
+          <p className={`font-semibold text-sm truncate ${isSelected ? 'text-blue-800 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>{displayTitle}</p>
+          {/* 文章数：有内容时显示真实数量，无内容时显示骨架 */}
+          {feedContent ? (
+            <p className="text-xs text-slate-400 truncate">{feedContent.items.length} 条更新</p>
+          ) : (
+            <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mt-1" />
+          )}
         </div>
+        {/* Loading spinner when this feed is being loaded */}
+        {isLoading && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+          </div>
+        )}
       </motion.button>
     </motion.div>
   );
@@ -297,9 +322,61 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, on
 };
 
 const App: React.FC = () => {
-  const [feeds, setFeeds] = useState<Feed[]>([]);
+  // --- 本地缓存工具函数 ---
+  const FEED_CACHE_KEY = 'rss_feed_content_cache';
+  const FEED_CACHE_TTL = 10 * 60 * 1000; // 10 分钟缓存有效期
+
+  interface CachedFeed {
+    feed: Feed;
+    timestamp: number;
+  }
+
+  const loadFeedFromLocalCache = (feedId: string): Feed | null => {
+    try {
+      const cacheStr = localStorage.getItem(FEED_CACHE_KEY);
+      if (!cacheStr) return null;
+      const cache: Record<string, CachedFeed> = JSON.parse(cacheStr);
+      const cached = cache[feedId];
+      if (cached && Date.now() - cached.timestamp < FEED_CACHE_TTL) {
+        return cached.feed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const saveFeedToLocalCache = (feedId: string, feed: Feed) => {
+    try {
+      const cacheStr = localStorage.getItem(FEED_CACHE_KEY);
+      const cache: Record<string, CachedFeed> = cacheStr ? JSON.parse(cacheStr) : {};
+      cache[feedId] = { feed, timestamp: Date.now() };
+      // 清理过期缓存
+      const now = Date.now();
+      Object.keys(cache).forEach(key => {
+        if (now - cache[key].timestamp > FEED_CACHE_TTL) {
+          delete cache[key];
+        }
+      });
+      localStorage.setItem(FEED_CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {
+      console.warn('Failed to save feed to local cache', e);
+    }
+  };
+
+  // --- 新增：订阅源配置列表（只含元信息，首屏快速加载）---
+  const [feedConfigs, setFeedConfigs] = useState<FeedMeta[]>([]);
+  // --- 新增：已加载的订阅源内容缓存（按 id 索引）---
+  const [feedContentCache, setFeedContentCache] = useState<Record<string, Feed>>({});
+  // --- 新增：当前正在加载的订阅源 ID ---
+  const [loadingFeedId, setLoadingFeedId] = useState<string | null>(null);
+  // --- 新增：当前选中的订阅源配置 ---
+  const [selectedFeedMeta, setSelectedFeedMeta] = useState<FeedMeta | null>(null);
+
+  // 保留原有 feeds 用于仪表盘统计（由缓存派生）
+  const feeds = useMemo(() => Object.values(feedContentCache), [feedContentCache]);
+
   const [loading, setLoading] = useState<boolean>(false);
-  // ... (rest of the code remains the same)
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [aiSettings, setAiSettings] = useState<AISettings>(() => { try { const stored = localStorage.getItem('rss_ai_settings'); return stored ? JSON.parse(stored) : { providers: [], tasks: { general: null, translation: null, summary: null, analysis: null } }; } catch { return { providers: [], tasks: { general: null, translation: null, summary: null, analysis: null } }; } });
   const [showSettings, setShowSettings] = useState(false);
@@ -370,45 +447,30 @@ const App: React.FC = () => {
   useEffect(() => { if (darkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); } else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); } }, [darkMode]);
   useEffect(() => { let lastIsDesktop = window.innerWidth >= 1024; const handleResize = () => { const isDesktop = window.innerWidth >= 1024; if (isDesktop !== lastIsDesktop) { setIsSidebarOpen(isDesktop); setIsRightSidebarOpen(isDesktop); lastIsDesktop = isDesktop; } }; window.addEventListener('resize', handleResize); return () => window.removeEventListener('resize', handleResize); }, []);
 
+  // --- 优化后的 initFeeds：只加载配置，不加载内容 ---
   const initFeeds = useCallback(async () => {
     setLoading(true); setErrorMsg(null);
     try {
-      // 1. Fetch Configuration from Server
-      const feedConfigs = await fetchSystemFeeds();
-
-      if (feedConfigs.length === 0) {
-        setFeeds([]);
+      // 只获取配置列表（不含文章内容），首屏秒开
+      const configs = await fetchSystemFeeds();
+      if (configs.length === 0) {
+        setFeedConfigs([]);
         setLoading(false);
         return;
       }
+      setFeedConfigs(configs);
 
-      // 2. Fetch Content
-      const results = await Promise.allSettled(
-        feedConfigs.map(config => fetchRSS(config.id))
-      );
-
-      const loadedFeeds: Feed[] = [];
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          const config = feedConfigs[index];
-          const fetchedFeed = result.value;
-
-          const finalFeed: Feed = {
-            ...fetchedFeed,
-            title: config.customTitle || fetchedFeed.title,
-            category: config.category,
-            isSub: config.isSub,
-          };
-          loadedFeeds.push(finalFeed);
-        } else {
-          // Log the error for debugging
-          console.error(`Failed to fetch feed with ID ${feedConfigs[index].id}:`, result.reason);
+      // 尝试从本地缓存恢复已加载的内容（stale-while-revalidate）
+      const cachedContent: Record<string, Feed> = {};
+      configs.forEach(config => {
+        const cached = loadFeedFromLocalCache(config.id);
+        if (cached) {
+          cachedContent[config.id] = cached;
         }
       });
-
-      if (loadedFeeds.length === 0) setErrorMsg("无法加载订阅源。请检查网络连接或后台配置。");
-
-      setFeeds(loadedFeeds);
+      if (Object.keys(cachedContent).length > 0) {
+        setFeedContentCache(cachedContent);
+      }
     } catch (e) {
       console.error(e);
       setErrorMsg("初始化订阅源时出错。");
@@ -493,7 +555,50 @@ const App: React.FC = () => {
     setDailySummary(summaryCache[key] || null);
   }, [selectedDate, selectedFeed, baseArticles, summaryCache]);
 
-  const handleFeedSelect = (feed: Feed) => { setSelectedFeed(feed); setActiveArticle(null); setTranslatedContent(null); setLastTranslatedLang(null); setShowTranslation(false); setSelectedDate(null); setActiveFilters([]); if (window.innerWidth < 1024) setIsSidebarOpen(false); if (window.innerWidth >= 1024) setIsRightSidebarOpen(true); };
+  // --- 优化后的 handleFeedSelect：点击时才加载内容 ---
+  const handleFeedSelect = useCallback(async (meta: FeedMeta) => {
+    setSelectedFeedMeta(meta);
+    setActiveArticle(null);
+    setTranslatedContent(null);
+    setLastTranslatedLang(null);
+    setShowTranslation(false);
+    setSelectedDate(null);
+    setActiveFilters([]);
+    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+    if (window.innerWidth >= 1024) setIsRightSidebarOpen(true);
+
+    // 如果缓存中已有该源内容，直接使用
+    const cached = feedContentCache[meta.id];
+    if (cached) {
+      setSelectedFeed(cached);
+      return;
+    }
+
+    // 否则开始加载
+    setLoadingFeedId(meta.id);
+    setSelectedFeed(null); // 先清空，显示 loading 状态
+    try {
+      const fetchedFeed = await fetchRSS(meta.id);
+      const finalFeed: Feed = {
+        ...fetchedFeed,
+        title: meta.customTitle || fetchedFeed.title,
+        category: meta.category,
+        isSub: meta.isSub,
+      };
+      // 更新内存缓存
+      setFeedContentCache(prev => ({ ...prev, [meta.id]: finalFeed }));
+      // 保存到本地缓存
+      saveFeedToLocalCache(meta.id, finalFeed);
+      // 设置当前选中
+      setSelectedFeed(finalFeed);
+    } catch (e) {
+      console.error(`Failed to load feed ${meta.id}:`, e);
+      setErrorMsg(`加载订阅源 "${meta.customTitle || meta.id}" 失败`);
+    } finally {
+      setLoadingFeedId(null);
+    }
+  }, [feedContentCache]);
+
   const handleDateSelect = (date: Date | null) => { setSelectedDate(date); setActiveArticle(null); setActiveFilters([]); };
 
   const handleRunAnalysis = async () => {
@@ -709,45 +814,34 @@ const App: React.FC = () => {
 
   // Refresh current selected feed (for pull-to-refresh)
   const refreshSelectedFeed = useCallback(async () => {
-    if (!selectedFeed || isRefreshing) return;
+    if (!selectedFeed || !selectedFeedMeta || isRefreshing) return;
 
     setIsRefreshing(true);
     setErrorMsg(null);
     try {
-      const updated = await fetchRSS(selectedFeed.url);
+      const updated = await fetchRSS(selectedFeedMeta.id);
 
       // Preserve original config fields (title override, category, isSub)
-      setFeeds(prev =>
-        prev.map(f =>
-          f.url === selectedFeed.url
-            ? {
-                ...updated,
-                title: f.title,
-                category: f.category,
-                isSub: f.isSub,
-              }
-            : f
-        )
-      );
+      const finalFeed: Feed = {
+        ...updated,
+        title: selectedFeedMeta.customTitle || updated.title,
+        category: selectedFeedMeta.category,
+        isSub: selectedFeedMeta.isSub,
+      };
 
+      // 更新内存缓存
+      setFeedContentCache(prev => ({ ...prev, [selectedFeedMeta.id]: finalFeed }));
+      // 保存到本地缓存
+      saveFeedToLocalCache(selectedFeedMeta.id, finalFeed);
       // Update selectedFeed reference
-      setSelectedFeed(prev =>
-        prev && prev.url === selectedFeed.url
-          ? {
-              ...updated,
-              title: prev.title,
-              category: prev.category,
-              isSub: prev.isSub,
-            }
-          : prev
-      );
+      setSelectedFeed(finalFeed);
     } catch (e) {
       console.error(e);
       setErrorMsg("刷新订阅源时出错。");
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedFeed, isRefreshing]);
+  }, [selectedFeed, selectedFeedMeta, isRefreshing]);
 
   // Pull-to-refresh touch handlers (mobile only, article list view)
   useEffect(() => {
@@ -889,9 +983,27 @@ const App: React.FC = () => {
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
           <div className={`${sidebarMode === 'grid' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-2'}`}>
-            {feeds.map((feed, index) => {
-              const prevFeed = feeds[index - 1]; const showCategory = sidebarMode === 'list' && (!prevFeed || feed.category !== prevFeed.category);
-              return (<React.Fragment key={feed.url}>{showCategory && feed.category && (<div className="mt-4 mb-2 px-2"><h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">{feed.category}</h3></div>)}<FeedItem feed={feed} mode={sidebarMode} isSelected={selectedFeed?.url === feed.url} onSelect={handleFeedSelect} /></React.Fragment>);
+            {feedConfigs.map((meta, index) => {
+              const prevMeta = feedConfigs[index - 1];
+              const showCategory = sidebarMode === 'list' && (!prevMeta || meta.category !== prevMeta.category);
+              const content = feedContentCache[meta.id] || null;
+              return (
+                <React.Fragment key={meta.id}>
+                  {showCategory && meta.category && (
+                    <div className="mt-4 mb-2 px-2">
+                      <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">{meta.category}</h3>
+                    </div>
+                  )}
+                  <FeedItem
+                    feedMeta={meta}
+                    feedContent={content}
+                    mode={sidebarMode}
+                    isSelected={selectedFeedMeta?.id === meta.id}
+                    isLoading={loadingFeedId === meta.id}
+                    onSelect={handleFeedSelect}
+                  />
+                </React.Fragment>
+              );
             })}
             {loading && <div className="flex justify-center p-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div></div>}
           </div>
