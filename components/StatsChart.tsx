@@ -4,11 +4,12 @@ import { Feed } from '../types';
 
 interface StatsChartProps {
   feeds: Feed[];
+  isDarkMode: boolean;
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-export const StatsChart: React.FC<StatsChartProps> = ({ feeds }) => {
+export const StatsChart: React.FC<StatsChartProps> = ({ feeds, isDarkMode }) => {
   const data = feeds.map((feed) => ({
     name: feed.title.length > 15 ? feed.title.substring(0, 15) + '...' : feed.title,
     count: feed.items.length,
@@ -25,7 +26,7 @@ export const StatsChart: React.FC<StatsChartProps> = ({ feeds }) => {
           <BarChart data={data}>
             <XAxis 
               dataKey="name" 
-              tick={{ fontSize: 12, fill: '#64748b' }} 
+              tick={{ fontSize: 12, fill: isDarkMode ? '#e2e8f0' : '#64748b' }} 
               axisLine={false}
               tickLine={false}
             />
@@ -33,8 +34,15 @@ export const StatsChart: React.FC<StatsChartProps> = ({ feeds }) => {
               hide 
             />
             <Tooltip 
-              cursor={{ fill: '#f1f5f9' }}
-              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              cursor={{ fill: isDarkMode ? 'rgba(15,23,42,0.4)' : '#f1f5f9' }}
+              contentStyle={{ 
+                borderRadius: '8px', 
+                border: 'none', 
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+              }}
+              labelStyle={{ color: isDarkMode ? '#f1f5f9' : '#0f172a', fontWeight: 600 }}
+              itemStyle={{ color: isDarkMode ? '#e2e8f0' : '#334155' }}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]}>
               {data.map((entry, index) => (

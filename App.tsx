@@ -969,7 +969,7 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <StatsChart feeds={feeds} />
+              <StatsChart feeds={feeds} isDarkMode={darkMode} />
             </div>
           </div>
         )}
