@@ -24,6 +24,278 @@ const DEFAULT_SETTINGS: AISettings = {
   }
 };
 
+// Tree node structure for nested groups
+interface GroupNode {
+  name: string;
+  fullPath: string;
+  feeds: FullSystemFeedConfig[];
+  children: { [key: string]: GroupNode };
+}
+
+// Drag handle icon component
+const DragHandleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+    <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5A.75.75 0 012.75 9h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 9.75zm0 5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+  </svg>
+);
+
+// Draggable nested feed item inside groups
+const DraggableNestedFeedItem: React.FC<{
+  feed: FullSystemFeedConfig;
+  onEdit: (feed: FullSystemFeedConfig) => void;
+  onDelete: (id: string) => void;
+}> = ({ feed, onEdit, onDelete }) => {
+  const dragControls = useDragControls();
+  
+  return (
+    <Reorder.Item 
+      value={feed}
+      dragListener={false}
+      dragControls={dragControls}
+      className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+    >
+      {/* Drag Handle */}
+      <div 
+        className="text-slate-400 shrink-0 cursor-grab active:cursor-grabbing touch-none"
+        onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
+      >
+        <DragHandleIcon />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm truncate text-slate-800 dark:text-slate-200" title={feed.customTitle || feed.id}>
+          {feed.customTitle || feed.id}
+        </p>
+        <p className="text-xs text-slate-400 font-mono truncate">{feed.url}</p>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={() => onEdit(feed)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:hover:bg-blue-900/30" title="编辑">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>
+        </button>
+        <button onClick={() => onDelete(feed.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/30" title="删除">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg>
+        </button>
+      </div>
+    </Reorder.Item>
+  );
+};
+
+// Recursive component for rendering nested groups with drag support
+const NestedGroupItem: React.FC<{
+  node: GroupNode;
+  depth: number;
+  collapsedGroups: Set<string>;
+  toggleGroupCollapse: (path: string) => void;
+  onEdit: (feed: FullSystemFeedConfig) => void;
+  onDelete: (id: string) => void;
+  childOrder: string[];
+  feedOrder: FullSystemFeedConfig[];
+  onChildOrderChange: (parentPath: string, newOrder: string[]) => void;
+  onFeedOrderChange: (parentPath: string, newFeeds: FullSystemFeedConfig[]) => void;
+  dragControls?: ReturnType<typeof useDragControls>;
+}> = ({ node, depth, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, childOrder, feedOrder, onChildOrderChange, onFeedOrderChange, dragControls }) => {
+  const isCollapsed = collapsedGroups.has(node.fullPath);
+  const childKeys = Object.keys(node.children);
+  // Sort children by childOrder
+  const sortedChildKeys = [...childKeys].sort((a, b) => {
+    const aIndex = childOrder.indexOf(a);
+    const bIndex = childOrder.indexOf(b);
+    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+    return aIndex - bIndex;
+  });
+  const hasChildren = sortedChildKeys.length > 0;
+  const hasFeeds = feedOrder.length > 0;
+  const totalCount = feedOrder.length + sortedChildKeys.reduce((sum, key) => {
+    const countInChild = (n: GroupNode): number => n.feeds.length + Object.values(n.children).reduce((s, c) => s + countInChild(c), 0);
+    return sum + countInChild(node.children[key]);
+  }, 0);
+
+  return (
+    <div className={`border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden ${depth > 0 ? 'ml-4' : ''}`}>
+      {/* Group Header */}
+      <div
+        className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors ${
+          depth === 0 
+            ? 'bg-slate-100 dark:bg-slate-700/80 hover:bg-slate-200 dark:hover:bg-slate-700' 
+            : 'bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'
+        }`}
+      >
+        <div className="flex items-center gap-2 flex-1">
+          {/* Drag Handle for Group */}
+          {dragControls && (
+            <div 
+              className="text-slate-400 cursor-grab active:cursor-grabbing touch-none"
+              onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
+            >
+              <DragHandleIcon />
+            </div>
+          )}
+          <button
+            onClick={() => toggleGroupCollapse(node.fullPath)}
+            className="flex items-center gap-2 flex-1"
+          >
+            <motion.svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 20 20" 
+              fill="currentColor" 
+              className="w-4 h-4 text-slate-500"
+              animate={{ rotate: isCollapsed ? 0 : 90 }}
+              transition={{ duration: 0.2 }}
+            >
+              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+            </motion.svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 ${depth === 0 ? 'text-blue-500' : 'text-blue-400'}`}>
+              <path d="M3.75 3A1.75 1.75 0 002 4.75v3.26a3.235 3.235 0 011.75-.51h12.5c.644 0 1.245.188 1.75.51V6.75A1.75 1.75 0 0016.25 5h-4.836a.25.25 0 01-.177-.073L9.823 3.513A1.75 1.75 0 008.586 3H3.75zM3.75 9A1.75 1.75 0 002 10.75v4.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0018 15.25v-4.5A1.75 1.75 0 0016.25 9H3.75z" />
+            </svg>
+            <span className={`font-semibold text-sm ${depth === 0 ? 'text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-300'}`}>
+              {node.name}
+            </span>
+          </button>
+        </div>
+        <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">
+          {totalCount}
+        </span>
+      </div>
+      
+      {/* Group Content with Animation */}
+      <AnimatePresence initial={false}>
+        {!isCollapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="p-2 space-y-2">
+              {/* Render child groups with reorder support */}
+              {hasChildren && (
+                <Reorder.Group 
+                  axis="y" 
+                  values={sortedChildKeys} 
+                  onReorder={(newOrder) => onChildOrderChange(node.fullPath, newOrder)}
+                  className="space-y-2"
+                >
+                  {sortedChildKeys.map(childKey => {
+                    const childNode = node.children[childKey];
+                    return (
+                      <DraggableChildGroup
+                        key={childNode.fullPath}
+                        childKey={childKey}
+                        childNode={childNode}
+                        depth={depth}
+                        collapsedGroups={collapsedGroups}
+                        toggleGroupCollapse={toggleGroupCollapse}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        onChildOrderChange={onChildOrderChange}
+                        onFeedOrderChange={onFeedOrderChange}
+                      />
+                    );
+                  })}
+                </Reorder.Group>
+              )}
+              
+              {/* Render feeds with reorder support */}
+              {hasFeeds && (
+                <Reorder.Group 
+                  axis="y" 
+                  values={feedOrder} 
+                  onReorder={(newFeeds) => onFeedOrderChange(node.fullPath, newFeeds)}
+                  className="space-y-1"
+                >
+                  {feedOrder.map((feed) => (
+                    <DraggableNestedFeedItem 
+                      key={feed.id} 
+                      feed={feed}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
+                  ))}
+                </Reorder.Group>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Wrapper component for draggable child groups
+const DraggableChildGroup: React.FC<{
+  childKey: string;
+  childNode: GroupNode;
+  depth: number;
+  collapsedGroups: Set<string>;
+  toggleGroupCollapse: (path: string) => void;
+  onEdit: (feed: FullSystemFeedConfig) => void;
+  onDelete: (id: string) => void;
+  onChildOrderChange: (parentPath: string, newOrder: string[]) => void;
+  onFeedOrderChange: (parentPath: string, newFeeds: FullSystemFeedConfig[]) => void;
+}> = ({ childKey, childNode, depth, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, onChildOrderChange, onFeedOrderChange }) => {
+  const dragControls = useDragControls();
+  
+  return (
+    <Reorder.Item 
+      value={childKey}
+      dragListener={false}
+      dragControls={dragControls}
+    >
+      <NestedGroupItem
+        node={childNode}
+        depth={depth + 1}
+        collapsedGroups={collapsedGroups}
+        toggleGroupCollapse={toggleGroupCollapse}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        childOrder={Object.keys(childNode.children)}
+        feedOrder={childNode.feeds}
+        onChildOrderChange={onChildOrderChange}
+        onFeedOrderChange={onFeedOrderChange}
+        dragControls={dragControls}
+      />
+    </Reorder.Item>
+  );
+};
+
+// Wrapper component for draggable top-level groups
+const DraggableTopLevelGroup: React.FC<{
+  groupName: string;
+  node: GroupNode;
+  collapsedGroups: Set<string>;
+  toggleGroupCollapse: (path: string) => void;
+  onEdit: (feed: FullSystemFeedConfig) => void;
+  onDelete: (id: string) => void;
+  onChildOrderChange: (parentPath: string, newOrder: string[]) => void;
+  onFeedOrderChange: (parentPath: string, newFeeds: FullSystemFeedConfig[]) => void;
+}> = ({ groupName, node, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, onChildOrderChange, onFeedOrderChange }) => {
+  const dragControls = useDragControls();
+  
+  return (
+    <Reorder.Item 
+      value={groupName}
+      dragListener={false}
+      dragControls={dragControls}
+    >
+      <NestedGroupItem
+        node={node}
+        depth={0}
+        collapsedGroups={collapsedGroups}
+        toggleGroupCollapse={toggleGroupCollapse}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        childOrder={Object.keys(node.children)}
+        feedOrder={node.feeds}
+        onChildOrderChange={onChildOrderChange}
+        onFeedOrderChange={onFeedOrderChange}
+        dragControls={dragControls}
+      />
+    </Reorder.Item>
+  );
+};
+
 // Draggable feed item component with handle-only drag
 const DraggableFeedItem: React.FC<{
   feed: FullSystemFeedConfig;
@@ -42,7 +314,7 @@ const DraggableFeedItem: React.FC<{
       {/* Drag Handle */}
       <div 
         className="text-slate-400 shrink-0 cursor-grab active:cursor-grabbing touch-none"
-        onPointerDown={(e) => dragControls.start(e)}
+        onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
           <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5A.75.75 0 012.75 9h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 9.75zm0 5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
@@ -98,6 +370,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const [feedForm, setFeedForm] = useState({ id: '', url: '', category: '', isSub: false, customTitle: '' });
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [groupOrder, setGroupOrder] = useState<string[]>([]);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [feedStatus, setFeedStatus] = useState<{ msg: string, type: 'success' | 'error' | null }>({ msg: '', type: null });
   const [isSubmittingFeed, setIsSubmittingFeed] = useState(false);
@@ -138,6 +412,161 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     });
     return Array.from(categories).sort();
   }, [fullFeedList]);
+
+  // Build tree structure for nested groups
+  const groupTree = useMemo(() => {
+    const root: { [key: string]: GroupNode } = {};
+    const ungrouped: FullSystemFeedConfig[] = [];
+    
+    fullFeedList.forEach(feed => {
+      if (feed.category) {
+        const parts = feed.category.split('/');
+        let currentLevel = root;
+        let currentPath = '';
+        
+        // Build nested structure
+        parts.forEach((part, index) => {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          
+          if (!currentLevel[part]) {
+            currentLevel[part] = {
+              name: part,
+              fullPath: currentPath,
+              feeds: [],
+              children: {}
+            };
+          }
+          
+          // If this is the last part, add the feed here
+          if (index === parts.length - 1) {
+            currentLevel[part].feeds.push(feed);
+          }
+          
+          currentLevel = currentLevel[part].children;
+        });
+      } else {
+        ungrouped.push(feed);
+      }
+    });
+    
+    return { root, ungrouped };
+  }, [fullFeedList]);
+
+  // Get sorted top-level group names based on groupOrder
+  const sortedGroupNames = useMemo(() => {
+    const allGroups = Object.keys(groupTree.root);
+    // Include groups in order, then any new groups not in the order yet
+    const ordered = groupOrder.filter(g => allGroups.includes(g));
+    const newGroups = allGroups.filter(g => !groupOrder.includes(g)).sort();
+    return [...ordered, ...newGroups];
+  }, [groupTree.root, groupOrder]);
+
+  // Update groupOrder when new groups appear
+  useEffect(() => {
+    const allGroups = Object.keys(groupTree.root);
+    if (allGroups.length > 0 && groupOrder.length === 0) {
+      setGroupOrder(allGroups.sort());
+    } else {
+      // Add any new groups that aren't in groupOrder
+      const newGroups = allGroups.filter(g => !groupOrder.includes(g));
+      if (newGroups.length > 0) {
+        setGroupOrder(prev => [...prev, ...newGroups.sort()]);
+      }
+    }
+  }, [groupTree.root]);
+
+  // Toggle group collapse state
+  const toggleGroupCollapse = (groupName: string) => {
+    setCollapsedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupName)) {
+        newSet.delete(groupName);
+      } else {
+        newSet.add(groupName);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle feed reorder within a group
+  const handleFeedOrderChange = (parentPath: string, newFeeds: FullSystemFeedConfig[]) => {
+    // Get all feeds that belong to this exact category path
+    const feedsInGroup = fullFeedList.filter(f => f.category === parentPath);
+    const feedsNotInGroup = fullFeedList.filter(f => f.category !== parentPath);
+    
+    // Find position of first feed in this group
+    const firstIndex = fullFeedList.findIndex(f => f.category === parentPath);
+    
+    // Rebuild list with new order
+    const newList = [...feedsNotInGroup];
+    newList.splice(firstIndex >= 0 ? firstIndex : newList.length, 0, ...newFeeds);
+    
+    handleDragReorder(newList);
+  };
+
+  // Handle child group reorder - reorder feeds by their category prefix
+  const handleChildOrderChange = (parentPath: string, newOrder: string[]) => {
+    // Get all feeds sorted by the new child order
+    const feedsInParent = fullFeedList.filter(f => 
+      f.category && f.category.startsWith(parentPath + '/')
+    );
+    const feedsNotInParent = fullFeedList.filter(f => 
+      !f.category || !f.category.startsWith(parentPath + '/')
+    );
+    
+    // Sort feedsInParent by newOrder
+    const sortedFeeds = [...feedsInParent].sort((a, b) => {
+      // Extract the immediate child name from category
+      const aChildName = a.category!.slice(parentPath.length + 1).split('/')[0];
+      const bChildName = b.category!.slice(parentPath.length + 1).split('/')[0];
+      const aIndex = newOrder.indexOf(aChildName);
+      const bIndex = newOrder.indexOf(bChildName);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+    
+    // Find position of first feed in parent group
+    const firstIndex = fullFeedList.findIndex(f => 
+      f.category && f.category.startsWith(parentPath + '/')
+    );
+    
+    // Rebuild list
+    const newList = [...feedsNotInParent];
+    newList.splice(firstIndex >= 0 ? firstIndex : newList.length, 0, ...sortedFeeds);
+    
+    handleDragReorder(newList);
+  };
+
+  // Handle ungrouped feeds reorder
+  const handleUngroupedOrderChange = (newFeeds: FullSystemFeedConfig[]) => {
+    const groupedFeeds = fullFeedList.filter(f => f.category);
+    handleDragReorder([...groupedFeeds, ...newFeeds]);
+  };
+
+  // Handle top-level group reorder
+  const handleTopLevelGroupReorder = (newOrder: string[]) => {
+    setGroupOrder(newOrder);
+    
+    // Also reorder fullFeedList by the new group order
+    const ungroupedFeeds = fullFeedList.filter(f => !f.category);
+    const groupedFeeds = fullFeedList.filter(f => f.category);
+    
+    // Sort grouped feeds by new group order
+    const sortedGroupedFeeds = [...groupedFeeds].sort((a, b) => {
+      const aTopCategory = a.category!.split('/')[0];
+      const bTopCategory = b.category!.split('/')[0];
+      const aIndex = newOrder.indexOf(aTopCategory);
+      const bIndex = newOrder.indexOf(bTopCategory);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+    
+    handleDragReorder([...sortedGroupedFeeds, ...ungroupedFeeds]);
+  };
 
   // Close category dropdown when clicking outside
   useEffect(() => {
@@ -853,20 +1282,100 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                     <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
                       <div className="flex items-center justify-between px-2 mb-3">
                         <h4 className="font-bold text-slate-800 dark:text-white">当前订阅源列表</h4>
-                        <span className="text-xs text-slate-400">拖拽排序</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-slate-400">{fullFeedList.length} 个订阅源</span>
+                          <span className="text-xs text-slate-400">拖拽排序</span>
+                        </div>
                       </div>
-                      <Reorder.Group axis="y" values={fullFeedList} onReorder={handleDragReorder} className="space-y-1">
-                        {fullFeedList.map((feed) => (
-                          <DraggableFeedItem 
-                            key={feed.id} 
-                            feed={feed}
-                            onEdit={startEditFeed}
-                            onDelete={handleDeleteFeed}
-                          />
-                        ))}
-                      </Reorder.Group>
-                      {fullFeedList.length === 0 && (
+                      
+                      {fullFeedList.length === 0 ? (
                         <p className="text-center text-slate-400 py-8 text-sm">暂无订阅源</p>
+                      ) : (
+                        <Reorder.Group 
+                          axis="y" 
+                          values={sortedGroupNames} 
+                          onReorder={handleTopLevelGroupReorder}
+                          className="space-y-3"
+                        >
+                          {/* Grouped Feeds using NestedGroupItem */}
+                          {sortedGroupNames.map((groupName) => {
+                            const node = groupTree.root[groupName];
+                            if (!node) return null;
+                            return (
+                              <DraggableTopLevelGroup
+                                key={groupName}
+                                groupName={groupName}
+                                node={node}
+                                collapsedGroups={collapsedGroups}
+                                toggleGroupCollapse={toggleGroupCollapse}
+                                onEdit={startEditFeed}
+                                onDelete={handleDeleteFeed}
+                                onChildOrderChange={handleChildOrderChange}
+                                onFeedOrderChange={handleFeedOrderChange}
+                              />
+                            );
+                          })}
+                          
+                          {/* Ungrouped Feeds */}
+                          {groupTree.ungrouped.length > 0 && (
+                            <div className="border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
+                              {/* Ungrouped Header */}
+                              <button
+                                onClick={() => toggleGroupCollapse('__ungrouped__')}
+                                className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <motion.svg 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    viewBox="0 0 20 20" 
+                                    fill="currentColor" 
+                                    className="w-4 h-4 text-slate-500"
+                                    animate={{ rotate: collapsedGroups.has('__ungrouped__') ? 0 : 90 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                                  </motion.svg>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-400">
+                                    <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+                                  </svg>
+                                  <span className="font-semibold text-sm text-slate-500 dark:text-slate-400">未分组</span>
+                                </div>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">
+                                  {groupTree.ungrouped.length}
+                                </span>
+                              </button>
+                              
+                              {/* Ungrouped Content with Animation */}
+                              <AnimatePresence initial={false}>
+                                {!collapsedGroups.has('__ungrouped__') && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                    className="overflow-hidden"
+                                  >
+                                    <Reorder.Group 
+                                      axis="y" 
+                                      values={groupTree.ungrouped} 
+                                      onReorder={handleUngroupedOrderChange}
+                                      className="p-2 space-y-1"
+                                    >
+                                      {groupTree.ungrouped.map((feed) => (
+                                        <DraggableNestedFeedItem
+                                          key={feed.id}
+                                          feed={feed}
+                                          onEdit={startEditFeed}
+                                          onDelete={handleDeleteFeed}
+                                        />
+                                      ))}
+                                    </Reorder.Group>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
+                        </Reorder.Group>
                       )}
                     </div>
                     <div ref={feedFormRef} className="bg-white p-6 rounded-xl border border-slate-200 shadow-md animate-slide-in dark:bg-slate-800 dark:border-slate-700">
