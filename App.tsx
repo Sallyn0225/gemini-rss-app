@@ -824,7 +824,12 @@ const App: React.FC = () => {
       <div className={`fixed inset-y-0 left-0 z-40 w-80 flex flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 ease-in-out dark:bg-slate-900 dark:border-slate-800 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${!isSidebarOpen && 'lg:hidden'} shrink-0`}>
         <div className="p-6 border-b border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800">
           <div className="flex items-center justify-between mb-2">
-            <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2 group"><div className="bg-blue-600 text-white p-1.5 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M3.75 4.5a.75.75 0 01.75-.75h.75c8.284 0 15 6.716 15 15v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.75C18 11.75 14.25 8 9.625 8H3.75a.75.75 0 01-.75-.75V4.5zM3.75 18.75a.75.75 0 01.75-.75h.75c1.036 0 1.875.84 1.875 1.875v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.75zm3.75-9a.75.75 0 01.75-.75h.75c4.97 0 9 4.03 9 9v.75a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75V18.75c0-3.314-2.686-6-6-6H4.5a.75.75 0 01-.75-.75v-.75z" clipRule="evenodd" /></svg></div><h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">NSYC订阅站</h1></div>
+            <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2 group">
+              <div className="bg-blue-600 text-white p-1.5 rounded-lg flex items-center justify-center text-lg">
+                🌸
+              </div>
+              <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">NSYC订阅站</h1>
+            </div>
             <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg dark:hover:bg-slate-800" title="收起侧边栏"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 lg:hidden"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 hidden lg:block"><path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg></button>
           </div>
           <p className="text-xs text-slate-400">Make Josei Seiyu Great Again</p>
@@ -833,14 +838,44 @@ const App: React.FC = () => {
         <div className="flex items-center justify-between px-6 py-4">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">订阅源</span>
           <div className="flex bg-slate-100 rounded-lg p-1 gap-1 dark:bg-slate-800">
-            <button onClick={() => setSidebarMode('list')} className={`p-1.5 rounded-md transition-all ${sidebarMode === 'list' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700' : 'text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            <button
+              onClick={() => setSidebarMode('list')}
+              className={`p-1.5 rounded-md transition-all ${sidebarMode === 'list' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700' : 'text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4"
+              >
+                <circle cx="5" cy="7" r="1.25" />
+                <circle cx="5" cy="12" r="1.25" />
+                <circle cx="5" cy="17" r="1.25" />
+                <rect x="8" y="5.5" width="11" height="3" rx="1.5" />
+                <rect x="8" y="10.5" width="11" height="3" rx="1.5" />
+                <rect x="8" y="15.5" width="11" height="3" rx="1.5" />
               </svg>
             </button>
-            <button onClick={() => setSidebarMode('grid')} className={`p-1.5 rounded-md transition-all ${sidebarMode === 'grid' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700' : 'text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25zm0 0a2.25 2.25 0 01-2.25-2.25H4.5a2.25 2.25 0 01-2.25-2.25V4.5a2.25 2.25 0 012.25-2.25h2.25A2.25 2.25 0 0110.5 4v2.25a2.25 2.25 0 012.25 2.25V6z" />
+            <button
+              onClick={() => setSidebarMode('grid')}
+              className={`p-1.5 rounded-md transition-all ${sidebarMode === 'grid' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700' : 'text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="w-4 h-4"
+              >
+                <rect x="4" y="4" width="7" height="7" rx="2" />
+                <rect x="13" y="4" width="7" height="7" rx="2" />
+                <rect x="4" y="13" width="7" height="7" rx="2" />
+                <rect x="13" y="13" width="7" height="7" rx="2" />
               </svg>
             </button>
           </div>
@@ -856,8 +891,18 @@ const App: React.FC = () => {
         </div>
         <div className="p-4 border-t border-slate-100 bg-slate-50 mt-auto flex gap-3 dark:bg-slate-900 dark:border-slate-800">
           <button onClick={() => setShowSettings(true)} className="flex-1 flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl font-semibold dark:text-slate-400 dark:hover:bg-slate-800">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 0a20.832 20.832 0 011.439-4.283c.267-.579.976-.78 1.527-.461l.657.38c.523.301.71.96.463 1.511a18.058 18.058 0 01-.985 2.783m2.49 5.06a18.057 18.057 0 01-.99-2.662m0 0a18.055 18.055 0 01.99-2.662m-1.98 5.324a18.046 18.046 0 01-3.56-5.323m0 0a18.046 18.046 0 013.56-5.323" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5"
+            >
+              <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.89 3.31.877 2.42 2.42a1.724 1.724 0 001.067 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.067 2.572c.89 1.543-.877 3.31-2.42 2.42a1.724 1.724 0 00-2.572 1.067c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.067c-1.543.89-3.31-.877-2.42-2.42a1.724 1.724 0 00-1.067-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.067-2.572c-.89-1.543.877-3.31 2.42-2.42a1.724 1.724 0 002.573-1.066z" />
+              <circle cx="12" cy="12" r="3" />
             </svg>
             <span className="text-sm">设置</span>
           </button>
