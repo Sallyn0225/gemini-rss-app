@@ -42,6 +42,7 @@ export interface FeedMeta {
   category: string;
   isSub: boolean;
   customTitle?: string;
+  canProxyImages?: boolean;
 }
 
 export enum Language {

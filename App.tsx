@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode, fetchHistory } from './services/rssService';
+import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode, fetchHistory, setCurrentFeedCanProxyImages } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
 import { Feed, Article, Language, ArticleCategory, AISettings, ImageProxyMode, FeedMeta } from './types';
 import { StatsChart } from './components/StatsChart';
@@ -388,6 +388,8 @@ const App: React.FC = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [proxyInfoMsg, setProxyInfoMsg] = useState<string | null>(null);
+  const warnedFeedsRef = useRef<Set<string>>(new Set());
   const [aiSettings, setAiSettings] = useState<AISettings>(() => { try { const stored = localStorage.getItem('rss_ai_settings'); return stored ? JSON.parse(stored) : { providers: [], tasks: { general: null, translation: null, summary: null, analysis: null } }; } catch { return { providers: [], tasks: { general: null, translation: null, summary: null, analysis: null } }; } });
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -667,6 +669,17 @@ const App: React.FC = () => {
     setShowTranslation(false);
     setSelectedDate(null);
     setActiveFilters([]);
+
+    // Feed-level image proxy capability: inform rssService and optionally show one-time tip
+    const canProxy = meta.canProxyImages !== false;
+    setCurrentFeedCanProxyImages(canProxy);
+    if (!canProxy && imageProxyMode !== 'none' && !warnedFeedsRef.current.has(meta.id)) {
+      warnedFeedsRef.current.add(meta.id);
+      setProxyInfoMsg('该订阅源未加入服务器图片代理白名单，图片将直接加载。');
+    } else if (canProxy) {
+      setProxyInfoMsg(null);
+    }
+
     if (window.innerWidth < 1024) setIsSidebarOpen(false);
     if (window.innerWidth >= 1024) setIsRightSidebarOpen(true);
 
@@ -1068,6 +1081,9 @@ const App: React.FC = () => {
           </div>
           <p className="text-xs text-slate-400">Make Josei Seiyu Great Again</p>
           {errorMsg && <p className="text-xs text-red-500 mt-2 px-1">{errorMsg}</p>}
+          {proxyInfoMsg && !errorMsg && (
+            <p className="text-xs text-amber-500 mt-2 px-1">{proxyInfoMsg}</p>
+          )}
         </div>
         <div className="flex items-center justify-between px-6 py-4">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">订阅源</span>

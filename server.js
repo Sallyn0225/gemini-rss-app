@@ -3,6 +3,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const dns = require('dns');
+const net = require('net');
 
 // --- Configuration ---
 const PORT = 3000;
@@ -28,6 +30,84 @@ let FEEDS_CONFIG = [];
 
 // --- In-memory store for article history ---
 let FEED_HISTORY = {};
+
+// --- Helper: Safe URL parsing ---
+const safeParseUrl = (raw) => {
+  if (!raw || typeof raw !== 'string') return null;
+  // Basic hardening: reject obvious non-http(s) schemes early
+  if (!/^https?:\/\//i.test(raw.trim())) return null;
+  try {
+    const parsed = new URL(raw.trim());
+    // Disallow username/password in URLs used for proxying
+    if (parsed.username || parsed.password) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+// --- Helper: Check if IP is private / loopback / link-local ---
+const isPrivateIp = (ip) => {
+  if (!ip || typeof ip !== 'string') return true;
+
+  // IPv6 loopback or unique local
+  if (ip === '::1') return true;
+  if (ip.startsWith('fc') || ip.startsWith('fd')) return true; // fc00::/7
+
+  if (!net.isIP(ip)) return true;
+
+  const parts = ip.split('.').map(p => parseInt(p, 10));
+  if (parts.length !== 4 || parts.some(n => Number.isNaN(n) || n < 0 || n > 255)) return true;
+
+  const [a, b] = parts;
+
+  // 10.0.0.0/8
+  if (a === 10) return true;
+  // 172.16.0.0/12
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  // 192.168.0.0/16
+  if (a === 192 && b === 168) return true;
+  // 127.0.0.0/8 (loopback)
+  if (a === 127) return true;
+  // 169.254.0.0/16 (link-local)
+  if (a === 169 && b === 254) return true;
+
+  return false;
+};
+
+// --- Helper: Resolve hostname and reject private/loopback targets ---
+const resolveAndValidateHost = (hostname) => {
+  return dns.promises.lookup(hostname, { all: false }).then((result) => {
+    const ip = typeof result === 'string' ? result : result.address;
+    if (isPrivateIp(ip)) {
+      const err = new Error('Target host resolves to a private or loopback address');
+      err.code = 'PRIVATE_HOST';
+      throw err;
+    }
+    return ip;
+  });
+};
+
+// --- Helper: Infer allowed image hosts based on RSSHub-style routes ---
+const inferAllowedImageHosts = (feedUrl) => {
+  const parsed = safeParseUrl(feedUrl);
+  if (!parsed) return [];
+
+  const pathname = parsed.pathname || '';
+  const hosts = new Set();
+
+  // Always allow the feed host itself for images from the same origin
+  if (parsed.hostname) hosts.add(parsed.hostname.toLowerCase());
+
+  // Twitter-style routes (rsshub /twitter/...) 日后如果要加其他订阅源，在这里维护
+  if (pathname.startsWith('/twitter/')) {
+    hosts.add('twimg.com');
+    hosts.add('pbs.twimg.com');
+    hosts.add('abs.twimg.com');
+  }
+
+  return Array.from(hosts);
+};
 
 // --- Security: Localhost-only check for admin APIs ---
 // 管理接口安全限制：只允许本机访问（通过 SSH 隧道使用）
@@ -197,7 +277,9 @@ const server = http.createServer((req, res) => {
       id: f.id,
       category: f.category,
       isSub: f.isSub || false,
-      customTitle: f.customTitle || ''
+      customTitle: f.customTitle || '',
+      // Derived flag: whether this feed is eligible for server-side image proxy
+      canProxyImages: inferAllowedImageHosts(f.url || '').length > 0
     }));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(safeFeeds));
@@ -395,7 +477,30 @@ const server = http.createServer((req, res) => {
   if (parsedUrl.pathname.startsWith('/api/feed')) {
     const feedId = parsedUrl.query.id;
 
-    const cached = feedCache.get(feedId);
+    if (!feedId || typeof feedId !== 'string') {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing id parameter' }));
+      return;
+    }
+
+    const feedConfig = FEEDS_CONFIG.find(f => f.id === feedId);
+    if (!feedConfig || !feedConfig.url) {
+      console.error(`[Server Error] ID Not Found or URL missing: ${feedId}`);
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `Feed ID '${feedId}' not found on server` }));
+      return;
+    }
+
+    const parsedTarget = safeParseUrl(feedConfig.url);
+    if (!parsedTarget || !parsedTarget.hostname) {
+      console.error(`[Server Error] Invalid target URL for ID: ${feedId}`);
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid upstream URL for this feed' }));
+      return;
+    }
+
+    const cacheKey = feedId;
+    const cached = feedCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
       console.log(`[Cache HIT] ID: ${feedId}`);
       res.writeHead(200, { 'Content-Type': cached.contentType, 'Access-Control-Allow-Origin': '*' });
@@ -404,67 +509,77 @@ const server = http.createServer((req, res) => {
     }
     console.log(`[Cache MISS] ID: ${feedId}`);
 
-    const feedConfig = FEEDS_CONFIG.find(f => f.id === feedId);
-    const targetUrl = feedConfig ? feedConfig.url : (feedId.startsWith('http') ? feedId : null);
+    resolveAndValidateHost(parsedTarget.hostname).then(() => {
+      const proxyOptions = {
+        hostname: PROXY_CONFIG.host,
+        port: PROXY_CONFIG.port,
+        path: parsedTarget.toString(),
+        method: 'GET',
+        headers: {
+          'Host': parsedTarget.host,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
+        },
+        timeout: 15000
+      };
 
-    if (!targetUrl) {
-      console.error(`[Server Error] ID Not Found: ${feedId}`);
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: `Feed ID '${feedId}' not found on server` }));
-      return;
-    }
+      const proxyReq = http.request(proxyOptions, (proxyRes) => {
+        console.log(`[Proxy Success] ID: ${feedId} | Upstream Status: ${proxyRes.statusCode}`);
+        if (proxyRes.statusCode >= 400) {
+          let body = '';
+          proxyRes.on('data', chunk => body += chunk);
+          proxyRes.on('end', () => {
+            res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: `Upstream error for ID '${feedId}'`, status: proxyRes.statusCode, body: body.substring(0, 200) }));
+          });
+          return;
+        }
 
-    const targetUrlObj = url.parse(targetUrl);
-    const proxyOptions = {
-      hostname: PROXY_CONFIG.host, port: PROXY_CONFIG.port, path: targetUrl, method: 'GET',
-      headers: { 'Host': targetUrlObj.host, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36' },
-      timeout: 15000
-    };
-
-    const proxyReq = http.request(proxyOptions, (proxyRes) => {
-      console.log(`[Proxy Success] ID: ${feedId} | Upstream Status: ${proxyRes.statusCode}`);
-      if (proxyRes.statusCode >= 400) {
-        let body = '';
-        proxyRes.on('data', chunk => body += chunk);
+        const chunks = [];
+        proxyRes.on('data', chunk => chunks.push(chunk));
         proxyRes.on('end', () => {
-          res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: `Upstream error for ID '${feedId}'`, status: proxyRes.statusCode, body: body.substring(0, 200) }));
+          const content = Buffer.concat(chunks);
+          const contentType = proxyRes.headers['content-type'] || 'application/xml';
+
+          feedCache.set(cacheKey, {
+            content: content,
+            contentType: contentType,
+            timestamp: Date.now()
+          });
+
+          res.writeHead(proxyRes.statusCode, { 'Content-Type': contentType, 'Access-Control-Allow-Origin': '*' });
+          res.end(content);
         });
-        return;
-      }
-
-      const chunks = [];
-      proxyRes.on('data', chunk => chunks.push(chunk));
-      proxyRes.on('end', () => {
-        const content = Buffer.concat(chunks);
-        const contentType = proxyRes.headers['content-type'] || 'application/xml';
-
-        feedCache.set(feedId, {
-          content: content,
-          contentType: contentType,
-          timestamp: Date.now()
-        });
-
-        res.writeHead(proxyRes.statusCode, { 'Content-Type': contentType, 'Access-Control-Allow-Origin': '*' });
-        res.end(content);
       });
+
+      proxyReq.on('error', (e) => {
+        console.error(`[Proxy Error] ID: ${feedId} | ${e.message}`);
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Proxy fetch failed', details: e.message }));
+        }
+      });
+      proxyReq.on('timeout', () => {
+        proxyReq.destroy();
+        if (!res.headersSent) {
+          res.writeHead(504, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Proxy timeout' }));
+        }
+      });
+      proxyReq.end();
+    }).catch((err) => {
+      console.error(`[Proxy Validation Error] ID: ${feedId} | ${err.message}`);
+      if (!res.headersSent) {
+        const status = err.code === 'PRIVATE_HOST' ? 403 : 502;
+        res.writeHead(status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
     });
 
-    proxyReq.on('error', (e) => {
-      console.error(`[Proxy Error] ID: ${feedId} | ${e.message}`);
-      if (!res.headersSent) { res.writeHead(502, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Proxy fetch failed', details: e.message })); }
-    });
-    proxyReq.on('timeout', () => {
-      proxyReq.destroy();
-      if (!res.headersSent) { res.writeHead(504, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Proxy timeout' })); }
-    });
-    proxyReq.end();
     return;
   }
 
   // === API: Image Proxy ===
   if (parsedUrl.pathname.startsWith('/api/image')) {
-    // ... (rest of the function is unchanged)
     const imageUrl = parsedUrl.query.url;
     if (!imageUrl || typeof imageUrl !== 'string') {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -472,31 +587,75 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    const targetUrlObj = url.parse(imageUrl);
-    const proxyOptions = {
-      hostname: PROXY_CONFIG.host, port: PROXY_CONFIG.port, path: imageUrl, method: 'GET',
-      headers: { 'Host': targetUrlObj.host, 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36', 'Referer': targetUrlObj.protocol + '//' + targetUrlObj.host },
-      timeout: 20000
-    };
+    const parsedImage = safeParseUrl(imageUrl);
+    if (!parsedImage || !parsedImage.hostname) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid image URL' }));
+      return;
+    }
 
-    const proxyReq = http.request(proxyOptions, (proxyRes) => {
-      if (proxyRes.statusCode >= 400) {
-        console.error(`[Image Proxy] Upstream error for ${imageUrl}: ${proxyRes.statusCode}`);
-        res.writeHead(proxyRes.statusCode); res.end(); return;
+    const imageHost = parsedImage.hostname.toLowerCase();
+
+    // Build a set of all allowed image hosts based on configured feeds
+    const allowedHosts = new Set();
+    for (const feed of FEEDS_CONFIG) {
+      const hosts = inferAllowedImageHosts(feed.url || '');
+      hosts.forEach(h => allowedHosts.add(h));
+    }
+
+    if (!allowedHosts.has(imageHost)) {
+      console.error(`[Image Proxy] Blocked image host: ${imageHost}`);
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Image host is not allowed by server configuration' }));
+      return;
+    }
+
+    resolveAndValidateHost(parsedImage.hostname).then(() => {
+      const proxyOptions = {
+        hostname: PROXY_CONFIG.host,
+        port: PROXY_CONFIG.port,
+        path: parsedImage.toString(),
+        method: 'GET',
+        headers: {
+          'Host': parsedImage.host,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+          'Referer': parsedImage.protocol + '//' + parsedImage.host
+        },
+        timeout: 20000
+      };
+
+      const proxyReq = http.request(proxyOptions, (proxyRes) => {
+        if (proxyRes.statusCode >= 400) {
+          console.error(`[Image Proxy] Upstream error for ${imageUrl}: ${proxyRes.statusCode}`);
+          res.writeHead(proxyRes.statusCode);
+          res.end();
+          return;
+        }
+        res.writeHead(proxyRes.statusCode, {
+          'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg',
+          'Cache-Control': 'public, max-age=86400'
+        });
+        proxyRes.pipe(res);
+      });
+
+      proxyReq.on('error', (e) => {
+        console.error(`[Image Proxy] Error fetching ${imageUrl}: ${e.message}`);
+        if (!res.headersSent) { res.writeHead(502); res.end(); }
+      });
+      proxyReq.on('timeout', () => {
+        proxyReq.destroy();
+        if (!res.headersSent) { res.writeHead(504); res.end(); }
+      });
+      proxyReq.end();
+    }).catch((err) => {
+      console.error(`[Image Proxy Validation Error] URL: ${imageUrl} | ${err.message}`);
+      if (!res.headersSent) {
+        const status = err.code === 'PRIVATE_HOST' ? 403 : 502;
+        res.writeHead(status);
+        res.end();
       }
-      res.writeHead(proxyRes.statusCode, { 'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg', 'Cache-Control': 'public, max-age=86400' });
-      proxyRes.pipe(res);
     });
 
-    proxyReq.on('error', (e) => {
-      console.error(`[Image Proxy] Error fetching ${imageUrl}: ${e.message}`);
-      if (!res.headersSent) { res.writeHead(502); res.end(); }
-    });
-    proxyReq.on('timeout', () => {
-      proxyReq.destroy();
-      if (!res.headersSent) { res.writeHead(504); res.end(); }
-    });
-    proxyReq.end();
     return;
   }
 

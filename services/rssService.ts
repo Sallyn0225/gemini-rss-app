@@ -11,6 +11,7 @@ const THING_PROXY = 'https://thingproxy.freeboard.io/fetch/';
 
 // --- Image Proxy Mode Management ---
 let currentImageProxyMode: ImageProxyMode = 'all';
+let currentFeedCanProxyImages: boolean = true;
 
 export const setImageProxyMode = (mode: ImageProxyMode): void => {
   currentImageProxyMode = mode;
@@ -18,6 +19,10 @@ export const setImageProxyMode = (mode: ImageProxyMode): void => {
 
 export const getImageProxyMode = (): ImageProxyMode => {
   return currentImageProxyMode;
+};
+
+export const setCurrentFeedCanProxyImages = (canProxy: boolean): void => {
+  currentFeedCanProxyImages = canProxy;
 };
 
 // Check if URL is a Twitter image
@@ -29,6 +34,11 @@ const isTwitterImage = (url: string): boolean => {
 export const proxyImageUrl = (url: string, forceProxy: boolean = false): string => {
   if (!url || !url.startsWith('http')) {
     return url; // Return empty or relative URLs as is
+  }
+
+  // If current feed is not allowed to use server-side image proxy, always fall back to direct URL
+  if (!currentFeedCanProxyImages) {
+    return url;
   }
 
   // If force proxy is requested (e.g., for thumbnails in list view), always proxy
@@ -54,6 +64,7 @@ export interface SystemFeedConfig {
   category: string;
   isSub: boolean;
   customTitle?: string;
+  canProxyImages?: boolean;
   // URL is hidden by server
 }
 
