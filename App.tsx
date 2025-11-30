@@ -650,6 +650,38 @@ const App: React.FC = () => {
     return filteredArticles.slice(startIndex, startIndex + ARTICLES_PER_PAGE);
   }, [filteredArticles, currentPage, ARTICLES_PER_PAGE]);
 
+  const visiblePageTokens = useMemo<(number | string)[]>(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const delta = 1; // show one page before and after current
+    const range: number[] = [];
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        range.push(i);
+      }
+    }
+
+    const pages: (number | string)[] = [];
+    let previous: number | null = null;
+
+    range.forEach(page => {
+      if (previous !== null) {
+        if (page - previous === 2) {
+          pages.push(previous + 1);
+        } else if (page - previous > 2) {
+          pages.push(`ellipsis-${page}`);
+        }
+      }
+      pages.push(page);
+      previous = page;
+    });
+
+    return pages;
+  }, [currentPage, totalPages]);
+
   // Reset to page 1 when feed or filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -1539,36 +1571,67 @@ const App: React.FC = () => {
               </div>
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 py-6 mt-4">
-                  <button
-                    onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
-                  >
-                    上一页
-                  </button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <button
-                        key={page}
-                        onClick={() => { setCurrentPage(page); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${currentPage === page ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700'}`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                <div className="py-6 mt-4 space-y-3">
+                  <div className="hidden md:flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
+                    >
+                      上一页
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {visiblePageTokens.map(token => {
+                        if (typeof token === 'string') {
+                          return (
+                            <span key={token} className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-sm font-semibold text-slate-400 dark:text-slate-500">
+                              ···
+                            </span>
+                          );
+                        }
+                        return (
+                          <button
+                            key={`page-${token}`}
+                            onClick={() => { setCurrentPage(token); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${currentPage === token ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700'}`}
+                          >
+                            {token}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
+                    >
+                      下一页
+                    </button>
                   </div>
-                  <button
-                    onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
-                  >
-                    下一页
-                  </button>
+
+                  <div className="flex md:hidden items-center justify-between gap-3">
+                    <button
+                      onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === 1}
+                      className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
+                    >
+                      上一页
+                    </button>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      第 {currentPage} / {totalPages} 页
+                    </div>
+                    <button
+                      onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === totalPages}
+                      className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
+                    >
+                      下一页
+                    </button>
+                  </div>
                 </div>
               )}
               <p className="text-center text-xs text-slate-400 pb-4">
-                共 {paginatedArticles.length} 篇文章，当前第 {currentPage} / {totalPages || 1} 页
+                共 {filteredArticles.length} 篇文章，当前第 {currentPage} / {totalPages || 1} 页
               </p>
             </div>
             <button
