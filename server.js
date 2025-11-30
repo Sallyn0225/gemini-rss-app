@@ -5,12 +5,13 @@ const path = require('path');
 const url = require('url');
 const dns = require('dns');
 const net = require('net');
+const Database = require('better-sqlite3');
 
 // --- Configuration ---
 const PORT = 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'feeds.json');
-const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
+const HISTORY_DB_FILE = path.join(DATA_DIR, 'history.db');
 const STATIC_PATH = path.join(__dirname, 'dist'); // Serve from the 'dist' folder
 // 管理接口密钥：必须从环境变量读取，未设置则管理接口不可用
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
@@ -28,8 +29,93 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 // --- In-memory store for feeds config ---
 let FEEDS_CONFIG = [];
 
-// --- In-memory store for article history ---
-let FEED_HISTORY = {};
+// --- SQLite Database ---
+let db;
+
+// --- Helper: Initialize Database ---
+const initDatabase = () => {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+
+  db = new Database(HISTORY_DB_FILE);
+
+  // Create history table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      feedId TEXT NOT NULL,
+      guid TEXT,
+      link TEXT,
+      title TEXT,
+      pubDate TEXT,
+      content TEXT,
+      description TEXT,
+      thumbnail TEXT,
+      author TEXT,
+      enclosure TEXT,
+      feedTitle TEXT,
+      lastUpdated INTEGER,
+      UNIQUE(feedId, guid),
+      UNIQUE(feedId, link)
+    );
+  `);
+
+  // Create index for better performance
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_feed_pubdate ON history (feedId, pubDate DESC);
+  `);
+
+  console.log(`[DB] Initialized SQLite database at: ${HISTORY_DB_FILE}`);
+};
+
+// --- Helper: Migrate existing JSON history to database ---
+const migrateHistoryToDatabase = () => {
+  const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
+  if (!fs.existsSync(HISTORY_FILE)) return;
+
+  try {
+    const data = fs.readFileSync(HISTORY_FILE, 'utf8');
+    if (!data.trim()) return;
+    const historyData = JSON.parse(data);
+
+    const insertStmt = db.prepare(`
+      INSERT OR IGNORE INTO history (feedId, guid, link, title, pubDate, content, description, thumbnail, author, enclosure, feedTitle, lastUpdated)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    let totalMigrated = 0;
+    for (const [feedId, feedData] of Object.entries(historyData)) {
+      if (!feedData.items) continue;
+      for (const item of feedData.items) {
+        insertStmt.run(
+          feedId,
+          item.guid || null,
+          item.link || null,
+          item.title || null,
+          item.pubDate || null,
+          item.content || null,
+          item.description || null,
+          item.thumbnail || null,
+          item.author || null,
+          item.enclosure ? JSON.stringify(item.enclosure) : null,
+          item.feedTitle || null,
+          feedData.lastUpdated || Date.now()
+        );
+        totalMigrated++;
+      }
+    }
+
+    if (totalMigrated > 0) {
+      console.log(`[Migration] Migrated ${totalMigrated} history items from JSON to database`);
+      const backupFile = path.join(DATA_DIR, 'history.json.bak');
+      fs.renameSync(HISTORY_FILE, backupFile);
+      console.log(`[Migration] Original history.json backed up to ${backupFile}`);
+    }
+  } catch (e) {
+    console.error('Migration error:', e);
+  }
+};
 
 // --- Helper: Safe URL parsing ---
 const safeParseUrl = (raw) => {
@@ -175,35 +261,13 @@ const saveFeed = (newFeed) => {
 
 // --- Helper: Load History into memory ---
 const loadHistory = () => {
-  if (!fs.existsSync(HISTORY_FILE)) {
-    console.log(`[Init] History file not found. Creating empty at: ${HISTORY_FILE}`);
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify({}, null, 2));
-    FEED_HISTORY = {};
-    return;
-  }
-  try {
-    const data = fs.readFileSync(HISTORY_FILE, 'utf8');
-    if (!data.trim()) {
-      FEED_HISTORY = {};
-      return;
-    }
-    FEED_HISTORY = JSON.parse(data);
-    const feedCount = Object.keys(FEED_HISTORY).length;
-    const totalItems = Object.values(FEED_HISTORY).reduce((sum, f) => sum + (f.items?.length || 0), 0);
-    console.log(`[Init] Loaded history: ${feedCount} feeds, ${totalItems} total items`);
-  } catch (e) {
-    console.error("Error reading history.json:", e);
-    FEED_HISTORY = {};
-  }
+  // No longer needed, using database
+  console.log(`[Init] History now uses SQLite database`);
 };
 
 // --- Helper: Save History to disk ---
 const saveHistory = () => {
-  try {
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify(FEED_HISTORY, null, 2));
-  } catch (e) {
-    console.error("Error saving history.json:", e);
-  }
+  // No longer needed, using database
 };
 
 // --- Helper: Merge items into history (dedup by guid/link) ---
@@ -211,49 +275,58 @@ const saveHistory = () => {
 const HISTORY_RETENTION_DAYS = 60; // 2 个月
 
 const mergeHistoryItems = (feedId, newItems) => {
-  const existing = FEED_HISTORY[feedId]?.items || [];
-  
-  // Build a map keyed by guid (fallback to link)
-  const itemMap = new Map();
-  for (const item of existing) {
-    const key = item.guid || item.link;
-    if (key) itemMap.set(key, item);
-  }
-  
-  // Merge new items (newer data overwrites)
+  const cutoffTime = Date.now() - HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+  // First, delete expired items
+  const deleteExpired = db.prepare('DELETE FROM history WHERE feedId = ? AND pubDate < ?');
+  const expiredCount = deleteExpired.run(feedId, new Date(cutoffTime).toISOString()).changes;
+
+  // Prepare statements
+  const insertStmt = db.prepare(`
+    INSERT OR REPLACE INTO history (feedId, guid, link, title, pubDate, content, description, thumbnail, author, enclosure, feedTitle, lastUpdated)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const checkExists = db.prepare('SELECT id FROM history WHERE feedId = ? AND (guid = ? OR link = ?) LIMIT 1');
+
   let addedCount = 0;
+  let total = 0;
+
+  // Get current total for this feed
+  const totalStmt = db.prepare('SELECT COUNT(*) as count FROM history WHERE feedId = ?');
+  total = totalStmt.get(feedId).count;
+
   for (const item of newItems) {
     const key = item.guid || item.link;
-    if (key) {
-      if (!itemMap.has(key)) addedCount++;
-      itemMap.set(key, item);
+    if (!key) continue;
+
+    // Check if exists
+    const exists = checkExists.get(feedId, item.guid || null, item.link || null);
+    if (!exists) {
+      addedCount++;
     }
+
+    // Insert or replace
+    insertStmt.run(
+      feedId,
+      item.guid || null,
+      item.link || null,
+      item.title || null,
+      item.pubDate || null,
+      item.content || null,
+      item.description || null,
+      item.thumbnail || null,
+      item.author || null,
+      item.enclosure ? JSON.stringify(item.enclosure) : null,
+      item.feedTitle || null,
+      Date.now()
+    );
   }
-  
-  // Convert back to array and sort by pubDate (newest first)
-  let merged = Array.from(itemMap.values());
-  merged.sort((a, b) => {
-    const dateA = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-    const dateB = b.pubDate ? new Date(b.pubDate).getTime() : 0;
-    return dateB - dateA; // Descending
-  });
-  
-  // 过滤：只保留最近 2 个月的消息
-  const cutoffTime = Date.now() - HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
-  const beforeFilter = merged.length;
-  merged = merged.filter(item => {
-    const pubTime = item.pubDate ? new Date(item.pubDate).getTime() : 0;
-    // 如果没有发布时间，保守起见保留（避免误删）
-    return pubTime === 0 || pubTime >= cutoffTime;
-  });
-  const expiredCount = beforeFilter - merged.length;
-  
-  FEED_HISTORY[feedId] = {
-    items: merged,
-    lastUpdated: Date.now()
-  };
-  
-  return { total: merged.length, added: addedCount, expired: expiredCount };
+
+  // Update total after insert
+  total = totalStmt.get(feedId).count;
+
+  return { total, added: addedCount, expired: expiredCount };
 };
 
 // --- Helper: Delete Feed ---
@@ -428,7 +501,6 @@ const server = http.createServer((req, res) => {
           throw new Error('Missing feedId or items array');
         }
         const result = mergeHistoryItems(feedId, items);
-        saveHistory();
         const expiredMsg = result.expired > 0 ? `, -${result.expired} expired` : '';
         console.log(`[History] Feed "${feedId}": +${result.added} new${expiredMsg}, ${result.total} total`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -445,6 +517,7 @@ const server = http.createServer((req, res) => {
   if (parsedUrl.pathname === '/api/history/get' && req.method === 'GET') {
     const feedId = parsedUrl.query.id;
     const limit = parseInt(parsedUrl.query.limit) || 0;
+    const offset = parseInt(parsedUrl.query.offset) || 0;
 
     if (!feedId) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -452,24 +525,60 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    const history = FEED_HISTORY[feedId];
-    if (!history) {
+    try {
+      // Get total count
+      const totalStmt = db.prepare('SELECT COUNT(*) as count FROM history WHERE feedId = ?');
+      const total = totalStmt.get(feedId).count;
+
+      if (total === 0) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ feedId, items: [], lastUpdated: null, total: 0 }));
+        return;
+      }
+
+      // Get items with pagination
+      let query = 'SELECT * FROM history WHERE feedId = ? ORDER BY pubDate DESC';
+      const params = [feedId];
+
+      if (limit > 0) {
+        query += ' LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+      } else if (offset > 0) {
+        query += ' OFFSET ?';
+        params.push(offset);
+      }
+
+      const stmt = db.prepare(query);
+      const rows = stmt.all(...params);
+
+      // Convert rows back to Article format
+      const items = rows.map(row => ({
+        title: row.title,
+        pubDate: row.pubDate,
+        link: row.link,
+        guid: row.guid,
+        author: row.author,
+        description: row.description,
+        content: row.content,
+        thumbnail: row.thumbnail,
+        enclosure: row.enclosure ? JSON.parse(row.enclosure) : null,
+        feedTitle: row.feedTitle
+      }));
+
+      const lastUpdated = rows.length > 0 ? rows[0].lastUpdated : null;
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ feedId, items: [], lastUpdated: null }));
-      return;
+      res.end(JSON.stringify({
+        feedId,
+        items,
+        lastUpdated,
+        total
+      }));
+    } catch (e) {
+      console.error('Database query error:', e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Database error' }));
     }
-
-    let items = history.items || [];
-    if (limit > 0) {
-      items = items.slice(0, limit);
-    }
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      feedId,
-      items,
-      lastUpdated: history.lastUpdated
-    }));
     return;
   }
 
@@ -695,14 +804,17 @@ const server = http.createServer((req, res) => {
 
 // Load initial feed configuration and history at startup
 loadFeeds();
+initDatabase();
+migrateHistoryToDatabase();
 loadHistory();
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('--- Running Updated Server Code (v2) ---');
-  console.log(`[OK] Server running at http://localhost:${PORT}/`);
-  console.log(`[OK] Data will be stored in: ${DATA_FILE}`);
-  console.log(`[OK] Proxy target: ${PROXY_CONFIG.host}:${PROXY_CONFIG.port}`);
-  console.log(`[OK] Admin Secret: ${ADMIN_SECRET ? '(已配置)' : '(未配置，管理接口不可用)'}`);
-  console.log(`[Security] Admin APIs restricted to localhost only (use SSH tunnel for remote access)`);
-  console.log(`[OK] Feed Caching enabled with ${CACHE_TTL_MS / 60000} minute TTL.`);
+  console.log('[OK] Server running at http://localhost:' + PORT + '/');
+  console.log('[OK] Data will be stored in: ' + DATA_FILE);
+  console.log('[OK] History database: ' + HISTORY_DB_FILE);
+  console.log('[OK] Proxy target: ' + PROXY_CONFIG.host + ':' + PROXY_CONFIG.port);
+  console.log('[OK] Admin Secret: ' + (ADMIN_SECRET ? '(已配置)' : '(未配置，管理接口不可用)'));
+  console.log('[Security] Admin APIs restricted to localhost only (use SSH tunnel for remote access)');
+  console.log('[OK] Feed Caching enabled with ' + (CACHE_TTL_MS / 60000) + ' minute TTL.');
 });

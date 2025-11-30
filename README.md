@@ -45,7 +45,7 @@
 
 ### 1. 环境准备
 
-- Node.js（建议 18+）
+- Node.js（建议 20+，推荐使用当前 LTS 版本）
 
 ### 2. 安装依赖
 
@@ -83,6 +83,7 @@ npm run dev
 - 代理 RSS 源（可通过本地 Clash 等代理访问）
 - 代理图片地址，减轻跨域与直连问题
 - 提供订阅源配置接口 `/api/feeds/*`
+- 提供历史消息存储 API（基于 SQLite 的 `/api/history/upsert` 和 `/api/history/get`，支持分页与去重）
 - 提供前端静态资源服务（构建后的 `dist/`）
 
 ### 1. 构建并启动
@@ -94,7 +95,20 @@ docker-compose up -d --build
 默认行为：
 
 - 使用 `network_mode: host`，容器内的 `127.0.0.1:7890` 会指向宿主机（便于使用 Clash 等代理）
-- 将 `./data` 挂载到容器中的 `/app/data`，用于持久化 `feeds.json`
+- 将 `./data` 挂载到容器中的 `/app/data`，用于持久化：
+  - `feeds.json`（订阅源配置）
+  - `history.db`（SQLite 历史消息数据库）
+  - 以及可能存在的 `history.json.bak` 备份文件
+
+> 历史消息会存储在 SQLite 数据库 `data/history.db` 中，默认仅保留最近 60 天的记录。
+
+#### 历史消息存储与迁移
+
+- 旧版本使用 `data/history.json` 存储历史消息，新版本改为 `data/history.db`（SQLite）。
+- 首次启动使用 SQLite 版本的后端时，如果存在 `data/history.json`：
+  - 会自动读取旧文件中的历史数据并写入 `data/history.db`；
+  - 将原文件重命名为 `history.json.bak` 作为备份。
+- 历史记录默认保留最近 60 天，超过部分会在后台合并历史时自动清理。
 
 ### 2. 管理密钥 `ADMIN_SECRET`
 
@@ -185,7 +199,7 @@ environment:
 
 - 后端：
   - 轻量 Node.js HTTP 服务器（无 Express）
-  - 负责 RSS 代理、图片代理和订阅源配置
+  - 负责 RSS 代理、图片代理、订阅源配置，以及基于 SQLite 的历史消息存储与分页查询
 
 你可以根据需要自由修改订阅源结构、UI 和 AI 调用逻辑。
 

@@ -2,15 +2,16 @@
 # Stage 1: 构建阶段 (Builder)
 # 用于编译 React 前端和准备服务端文件
 # ==========================================
-FROM node:18-alpine as builder
+FROM node:20-alpine as builder
 WORKDIR /app
 
 # 1. 优先复制依赖描述文件，利用 Docker 缓存层加速 npm install
 # 注意：您的项目需要一个 package.json 文件来定义依赖和构建脚本
 COPY package.json ./
 
-# 2. 安装依赖（使用国内镜像）
-RUN npm config set registry https://registry.npmmirror.com \
+# 2. 安装构建依赖（python3、编译工具）并安装项目依赖（使用国内镜像）
+RUN apk add --no-cache python3 make g++ \
+  && npm config set registry https://registry.npmmirror.com \
   && npm install
 
 # 3. 复制所有项目源代码 (包括 App.tsx, server.js 等)
@@ -24,14 +25,16 @@ RUN npm run build
 # Stage 2: 生产运行阶段 (Production)
 # 仅包含运行时所需的最小文件，体积极小
 # ==========================================
-FROM node:18-alpine
+FROM node:20-alpine
 WORKDIR /app
 
 # 1. 从构建阶段复制打包好的前端静态资源 (dist)
 COPY --from=builder /app/dist ./dist
 
-# 2. 从构建阶段复制服务端代码
+# 2. 从构建阶段复制服务端代码和依赖
 COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
 # [已修正] 下面这行代码已被移除，因为它试图复制一个在构建阶段不存在的目录。
 # 持久化数据应完全由 docker-compose.yml 中的 volumes 来管理。

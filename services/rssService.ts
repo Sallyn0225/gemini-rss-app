@@ -175,14 +175,15 @@ const upsertHistory = (feedId: string, items: Article[]): void => {
 };
 
 // Fetch history from server
-export const fetchHistory = async (feedId: string, limit?: number): Promise<Article[]> => {
+export const fetchHistory = async (feedId: string, limit?: number, offset?: number): Promise<{items: Article[], total: number}> => {
   const params = new URLSearchParams({ id: feedId });
   if (limit) params.set('limit', String(limit));
+  if (offset) params.set('offset', String(offset));
 
   const res = await fetch(`/api/history/get?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to load history');
   const data = await res.json();
-  return data.items as Article[];
+  return { items: data.items as Article[], total: data.total };
 };
 
 // Helper to extract image from HTML content safely and robustly

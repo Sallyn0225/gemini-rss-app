@@ -697,15 +697,15 @@ const App: React.FC = () => {
     setSelectedFeed(null); // 先清空，显示 loading 状态
     try {
       // 同时获取当前 RSS 和历史记录
-      const [fetchedFeed, historyItems] = await Promise.all([
+      const [fetchedFeed, historyData] = await Promise.all([
         fetchRSS(meta.id),
-        fetchHistory(meta.id).catch(() => [] as Article[]) // 历史获取失败不影响主流程
+        fetchHistory(meta.id).catch(() => ({ items: [] as Article[], total: 0 })) // 历史获取失败不影响主流程
       ]);
 
       // 合并当前 items 和历史 items（去重）
       const itemMap = new Map<string, Article>();
       // 先放历史（旧的）
-      for (const item of historyItems) {
+      for (const item of historyData.items) {
         const key = item.guid || item.link;
         if (key) itemMap.set(key, item);
       }
