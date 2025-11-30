@@ -6,17 +6,19 @@ services:
     build: .
     image: gemini-rss-app
     container_name: gemini-rss
-    # 关键配置：使用 host 网络模式
-    # 这样容器内的 127.0.0.1 直接指向宿主机，从而能访问宿主机的 Clash (7890)
-    # 同时省去了 NAT 转换，性能最高
-    network_mode: "host"
+    # 改用bridge模式：更安全，通过指定IP访问宿主机代理
+    # 容器内宿主机IP为172.17.0.1（Docker网关）
     
     restart: always
+    ports:
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      # 管理接口密钥：请在实际部署时设置强密码
-      # 可以通过 .env 文件或直接在此处配置
-      # - ADMIN_SECRET=your-strong-admin-password
+      # Define your admin secret here
+      - ADMIN_SECRET=pwd123 # 请在使用前一定要修改一个强密码！！！
+      # 代理配置：指向宿主机IP和端口
+      - PROXY_HOST=172.17.0.1
+      - PROXY_PORT=7890
     volumes:
       # Mount a directory for persistent data, not a single file
       # This prevents Docker from creating a directory instead of a file

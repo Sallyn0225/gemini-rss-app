@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import DOMPurify from 'dompurify';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode, fetchHistory, setCurrentFeedCanProxyImages } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
@@ -37,10 +38,11 @@ const proxyHtmlImages = (html: string | null | undefined): string => {
       }
     });
 
-    return doc.body.innerHTML;
+    // Sanitize the HTML content to prevent XSS
+    return DOMPurify.sanitize(doc.body.innerHTML);
   } catch (e) {
     console.error("Failed to parse and proxy HTML content:", e);
-    return html; // Fallback on parsing error
+    return DOMPurify.sanitize(html || ''); // Fallback with sanitization
   }
 };
 
