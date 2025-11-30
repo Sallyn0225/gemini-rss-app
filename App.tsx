@@ -694,6 +694,77 @@ const App: React.FC = () => {
     setCurrentPage(1);
   }, [selectedFeed, selectedDate, activeFilters]);
 
+  const loadMoreHistory = useCallback(async () => {
+    if (!selectedFeed || !selectedFeedMeta) return;
+    const status = historyStatus[selectedFeedMeta.id];
+    if (!status) return;
+    if (status.loaded >= status.total) return;
+    if (isLoadingMoreHistory) return;
+
+    setIsLoadingMoreHistory(true);
+    try {
+      const offset = status.loaded;
+      const historyData = await fetchHistory(selectedFeedMeta.id, HISTORY_PAGE_SIZE, offset);
+      const mergedItems = mergeFeedItems(selectedFeed.items, historyData.items);
+      const finalFeed: Feed = {
+        ...selectedFeed,
+        items: mergedItems,
+      };
+      setFeedContentCache(prev => ({ ...prev, [selectedFeedMeta.id]: finalFeed }));
+      saveFeedToLocalCache(selectedFeedMeta.id, finalFeed);
+      setSelectedFeed(finalFeed);
+      setHistoryStatus(prev => ({
+        ...prev,
+        [selectedFeedMeta.id]: {
+          total: historyData.total || status.total,
+          loaded: status.loaded + historyData.items.length,
+        }
+      }));
+    } catch (e) {
+      console.error('Failed to load more history', e);
+    } finally {
+      setIsLoadingMoreHistory(false);
+    }
+  }, [selectedFeed, selectedFeedMeta, historyStatus, isLoadingMoreHistory, mergeFeedItems]);
+
+  // Scroll listener: show/hide scroll-to-top button & trigger lazy load history
+  useEffect(() => {
+    const listEl = articleListRef.current;
+    if (!listEl) return;
+
+    const handleScroll = () => {
+      const currentScrollTop = listEl.scrollTop;
+
+      // Show button if we scroll down past a certain point
+      if (currentScrollTop > lastScrollTopRef.current && currentScrollTop > 300) {
+        setShowScrollToTop(true);
+      }
+      // Hide button if we scroll up or are near the top
+      else if (currentScrollTop < lastScrollTopRef.current || currentScrollTop <= 300) {
+        setShowScrollToTop(false);
+      }
+
+      lastScrollTopRef.current = currentScrollTop <= 0 ? 0 : currentScrollTop;
+
+      // Trigger lazy load history when at last page and near bottom
+      const isAtLastPage = currentPage === totalPages;
+      const nearBottom = listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 200;
+      if (
+        selectedFeed &&
+        !activeArticle &&
+        isAtLastPage &&
+        nearBottom &&
+        canLoadMoreHistory &&
+        !isLoadingMoreHistory
+      ) {
+        loadMoreHistory();
+      }
+    };
+
+    listEl.addEventListener('scroll', handleScroll, { passive: true });
+    return () => listEl.removeEventListener('scroll', handleScroll);
+  }, [selectedFeed, activeArticle, currentPage, totalPages, canLoadMoreHistory, isLoadingMoreHistory, loadMoreHistory]);
+
   useEffect(() => {
     if (!selectedFeed || !selectedDate) { setDailySummary(null); return; }
     const count = baseArticles.length; if (count === 0) { setDailySummary(null); return; }
@@ -770,39 +841,6 @@ const App: React.FC = () => {
       setLoadingFeedId(null);
     }
   }, [feedContentCache, mergeFeedItems]);
-
-  const loadMoreHistory = useCallback(async () => {
-    if (!selectedFeed || !selectedFeedMeta) return;
-    const status = historyStatus[selectedFeedMeta.id];
-    if (!status) return;
-    if (status.loaded >= status.total) return;
-    if (isLoadingMoreHistory) return;
-
-    setIsLoadingMoreHistory(true);
-    try {
-      const offset = status.loaded;
-      const historyData = await fetchHistory(selectedFeedMeta.id, HISTORY_PAGE_SIZE, offset);
-      const mergedItems = mergeFeedItems(selectedFeed.items, historyData.items);
-      const finalFeed: Feed = {
-        ...selectedFeed,
-        items: mergedItems,
-      };
-      setFeedContentCache(prev => ({ ...prev, [selectedFeedMeta.id]: finalFeed }));
-      saveFeedToLocalCache(selectedFeedMeta.id, finalFeed);
-      setSelectedFeed(finalFeed);
-      setHistoryStatus(prev => ({
-        ...prev,
-        [selectedFeedMeta.id]: {
-          total: historyData.total || status.total,
-          loaded: status.loaded + historyData.items.length,
-        }
-      }));
-    } catch (e) {
-      console.error('Failed to load more history', e);
-    } finally {
-      setIsLoadingMoreHistory(false);
-    }
-  }, [selectedFeed, selectedFeedMeta, historyStatus, isLoadingMoreHistory, mergeFeedItems]);
 
   const handleDateSelect = (date: Date | null) => { setSelectedDate(date); setActiveArticle(null); setActiveFilters([]); };
 
