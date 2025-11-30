@@ -188,7 +188,8 @@ const deleteFeed = (feedId) => {
 };
 
 const server = http.createServer((req, res) => {
-  const parsedUrl = url.parse(req.url, true);
+  const urlObj = new URL(req.url, `http://localhost:${PORT}`);
+  const parsedUrl = { pathname: urlObj.pathname, query: Object.fromEntries(urlObj.searchParams) };
 
   // === API: Get Feed List (Public - Hides URL) ===
   if (parsedUrl.pathname === '/api/feeds/list' && req.method === 'GET') {
@@ -203,15 +204,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Get FULL Feed List (Protected + Localhost Only) ===
+  // === API: Get FULL Feed List (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/list/all' && req.method === 'GET') {
-    // 安全限制：只允许本机访问
-    if (!isLocalRequest(req)) {
-      console.log(`[Security] Blocked external access to /api/feeds/list/all from ${req.socket.remoteAddress}`);
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Forbidden: Admin API is only accessible from localhost' }));
-      return;
-    }
     if (!ADMIN_SECRET) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
@@ -228,15 +222,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Add/Update Feed (Protected + Localhost Only) ===
+  // === API: Add/Update Feed (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/add' && req.method === 'POST') {
-    // 安全限制：只允许本机访问
-    if (!isLocalRequest(req)) {
-      console.log(`[Security] Blocked external access to /api/feeds/add from ${req.socket.remoteAddress}`);
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Forbidden: Admin API is only accessible from localhost' }));
-      return;
-    }
     if (!ADMIN_SECRET) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
@@ -265,15 +252,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Delete Feed (Protected + Localhost Only) ===
+  // === API: Delete Feed (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/delete' && req.method === 'POST') {
-    // 安全限制：只允许本机访问
-    if (!isLocalRequest(req)) {
-      console.log(`[Security] Blocked external access to /api/feeds/delete from ${req.socket.remoteAddress}`);
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Forbidden: Admin API is only accessible from localhost' }));
-      return;
-    }
     if (!ADMIN_SECRET) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
@@ -307,15 +287,8 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // === API: Reorder Feeds (Protected + Localhost Only) ===
+  // === API: Reorder Feeds (Protected) ===
   if (parsedUrl.pathname === '/api/feeds/reorder' && req.method === 'POST') {
-    // 安全限制：只允许本机访问
-    if (!isLocalRequest(req)) {
-      console.log(`[Security] Blocked external access to /api/feeds/reorder from ${req.socket.remoteAddress}`);
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Forbidden: Admin API is only accessible from localhost' }));
-      return;
-    }
     if (!ADMIN_SECRET) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Admin secret is not configured on server.' }));
@@ -529,6 +502,10 @@ const server = http.createServer((req, res) => {
 
   // === Static Files ===
   let filePath = path.join(STATIC_PATH, parsedUrl.pathname === '/' ? 'index.html' : parsedUrl.pathname);
+  const resolvedPath = path.resolve(filePath);
+  if (!resolvedPath.startsWith(path.resolve(STATIC_PATH) + path.sep)) {
+    filePath = path.join(STATIC_PATH, 'index.html');
+  }
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     filePath = path.join(STATIC_PATH, 'index.html');
   }

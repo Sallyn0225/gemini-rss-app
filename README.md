@@ -37,7 +37,7 @@
 
 - **隐私与安全**：
   - API Key 仅保存在浏览器 `localStorage` 中，不会写入后台或代码仓库
-  - 后端管理接口通过 `ADMIN_SECRET` + 本机 IP 限制 保护（推荐通过 SSH 隧道在本地浏览器访问管理界面）
+  - 后端管理接口通过 `ADMIN_SECRET` 密钥保护，支持远程访问（推荐通过 SSH 隧道在本地浏览器访问管理界面）
 
 ---
 
@@ -117,7 +117,7 @@ environment:
     - `分类路径` 支持多级结构，使用 `/` 作为分隔符，例如：`iDOLM@STER Project/女声优`、`BanG Dream!/MyGO!!!!!`
     - 管理界面会根据分类路径自动生成「文件夹 / 子文件夹」树形结构，并支持展开 / 收起与拖拽排序
 
-> 从安全性考虑，管理接口 `/api/feeds/list/all`、`/api/feeds/add`、`/api/feeds/delete`、`/api/feeds/reorder` 默认只接受来自本机 (localhost) 的请求。推荐通过 SSH 隧道在本地浏览器中访问管理界面。
+> 管理接口 `/api/feeds/list/all`、`/api/feeds/add`、`/api/feeds/delete`、`/api/feeds/reorder` 通过 `ADMIN_SECRET` 密钥保护，支持远程访问。推荐通过 SSH 隧道在本地浏览器中访问管理界面以增强安全。
 
 #### 4. 通过 SSH 隧道访问管理界面（推荐）
 
@@ -162,7 +162,7 @@ environment:
 ## 安全注意事项
 
 - **管理接口访问控制**：
-  - 管理接口仅接受来自本机 (localhost) 的请求，推荐通过 SSH 隧道在本地访问后台；
+  - 管理接口通过 `ADMIN_SECRET` 密钥保护，支持远程访问；推荐通过 SSH 隧道在本地访问后台以增强安全；
   - 请为 `ADMIN_SECRET` 使用足够随机且复杂的强密码，并仅在服务器环境变量 / 私有配置文件中设置。
 
 - **RSS 内容安全**：
