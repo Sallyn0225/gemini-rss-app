@@ -328,6 +328,7 @@ const App: React.FC = () => {
   // --- 本地缓存工具函数 ---
   const FEED_CACHE_KEY = 'rss_feed_content_cache';
   const FEED_CACHE_TTL = 10 * 60 * 1000; // 10 分钟缓存有效期
+  const HISTORY_PAGE_SIZE = 200;
 
   interface CachedFeed {
     feed: Feed;
@@ -367,6 +368,27 @@ const App: React.FC = () => {
     }
   };
 
+  const mergeFeedItems = useCallback((existingItems: Article[] = [], incomingItems: Article[] = []) => {
+    const getKey = (item: Article, index: number, prefix: string) =>
+      item.guid || item.link || `${prefix}-${index}-${item.title}-${item.pubDate}`;
+
+    const itemMap = new Map<string, Article>();
+
+    existingItems.forEach((item, index) => {
+      itemMap.set(getKey(item, index, 'existing'), item);
+    });
+
+    incomingItems.forEach((item, index) => {
+      itemMap.set(getKey(item, index, 'incoming'), item);
+    });
+
+    return Array.from(itemMap.values()).sort((a, b) => {
+      const dateA = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+      const dateB = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, []);
+
   // --- 新增：订阅源配置列表（只含元信息，首屏快速加载）---
   const [feedConfigs, setFeedConfigs] = useState<FeedMeta[]>([]);
   // --- 新增：已加载的订阅源内容缓存（按 id 索引）---
@@ -375,6 +397,9 @@ const App: React.FC = () => {
   const [loadingFeedId, setLoadingFeedId] = useState<string | null>(null);
   // --- 新增：当前选中的订阅源配置 ---
   const [selectedFeedMeta, setSelectedFeedMeta] = useState<FeedMeta | null>(null);
+  // --- 新增：历史分页状态 ---
+  const [historyStatus, setHistoryStatus] = useState<Record<string, { total: number; loaded: number }>>({});
+
   // --- 新增：折叠的分类路径集合 ---
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(() => {
     try {
@@ -449,6 +474,8 @@ const App: React.FC = () => {
       return new Set();
     }
   });
+
+  const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState(false);
 
   const isAiConfigured = useMemo(() => {
     const { providers, tasks } = aiSettings;
@@ -603,33 +630,6 @@ const App: React.FC = () => {
     }
   }, [activeArticle, selectedFeed]);
 
-  useEffect(() => {
-    const listEl = articleListRef.current;
-    if (!listEl) return;
-
-    const handleScroll = () => {
-      const currentScrollTop = listEl.scrollTop;
-
-      // Show button if we scroll down past a certain point
-      if (currentScrollTop > lastScrollTopRef.current && currentScrollTop > 300) {
-        setShowScrollToTop(true);
-      }
-      // Hide button if we scroll up or are near the top
-      else if (currentScrollTop < lastScrollTopRef.current || currentScrollTop <= 300) {
-        setShowScrollToTop(false);
-      }
-
-      lastScrollTopRef.current = currentScrollTop <= 0 ? 0 : currentScrollTop;
-    };
-
-    listEl.addEventListener('scroll', handleScroll, { passive: true });
-
-    // Cleanup
-    return () => {
-      listEl.removeEventListener('scroll', handleScroll);
-    };
-  }, [selectedFeed, activeArticle]);
-
   const baseArticles = useMemo(() => {
     if (!selectedFeed) return [];
     if (selectedDate) return selectedFeed.items.filter(item => { const d = new Date(item.pubDate); return d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear(); });
@@ -649,6 +649,13 @@ const App: React.FC = () => {
     const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
     return filteredArticles.slice(startIndex, startIndex + ARTICLES_PER_PAGE);
   }, [filteredArticles, currentPage, ARTICLES_PER_PAGE]);
+
+  const selectedFeedHistoryStatus = selectedFeedMeta ? historyStatus[selectedFeedMeta.id] : undefined;
+  const canLoadMoreHistory = !!(
+    selectedFeedHistoryStatus &&
+    selectedFeedHistoryStatus.total > 0 &&
+    selectedFeedHistoryStatus.loaded < selectedFeedHistoryStatus.total
+  );
 
   const visiblePageTokens = useMemo<(number | string)[]>(() => {
     if (totalPages <= 7) {
@@ -698,6 +705,7 @@ const App: React.FC = () => {
   const handleFeedSelect = useCallback(async (meta: FeedMeta) => {
     setSelectedFeedMeta(meta);
     setActiveArticle(null);
+
     setTranslatedContent(null);
     setLastTranslatedLang(null);
     setShowTranslation(false);
@@ -721,37 +729,19 @@ const App: React.FC = () => {
     const cached = feedContentCache[meta.id];
     if (cached) {
       setSelectedFeed(cached);
-      return;
+    } else {
+      setSelectedFeed(null);
     }
 
-    // 否则开始加载
     setLoadingFeedId(meta.id);
-    setSelectedFeed(null); // 先清空，显示 loading 状态
     try {
       // 同时获取当前 RSS 和历史记录
       const [fetchedFeed, historyData] = await Promise.all([
         fetchRSS(meta.id),
-        fetchHistory(meta.id).catch(() => ({ items: [] as Article[], total: 0 })) // 历史获取失败不影响主流程
+        fetchHistory(meta.id, HISTORY_PAGE_SIZE, 0).catch(() => ({ items: [] as Article[], total: 0 })) // 历史获取失败不影响主流程
       ]);
 
-      // 合并当前 items 和历史 items（去重）
-      const itemMap = new Map<string, Article>();
-      // 先放历史（旧的）
-      for (const item of historyData.items) {
-        const key = item.guid || item.link;
-        if (key) itemMap.set(key, item);
-      }
-      // 再放当前（新的覆盖旧的）
-      for (const item of fetchedFeed.items) {
-        const key = item.guid || item.link;
-        if (key) itemMap.set(key, item);
-      }
-      // 按时间排序（最新在前）
-      const mergedItems = Array.from(itemMap.values()).sort((a, b) => {
-        const dateA = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-        const dateB = b.pubDate ? new Date(b.pubDate).getTime() : 0;
-        return dateB - dateA;
-      });
+      const mergedItems = mergeFeedItems(historyData.items, fetchedFeed.items);
 
       const finalFeed: Feed = {
         ...fetchedFeed,
@@ -766,13 +756,53 @@ const App: React.FC = () => {
       saveFeedToLocalCache(meta.id, finalFeed);
       // 设置当前选中
       setSelectedFeed(finalFeed);
+      setHistoryStatus(prev => ({
+        ...prev,
+        [meta.id]: {
+          total: historyData.total || mergedItems.length,
+          loaded: historyData.items.length
+        }
+      }));
     } catch (e) {
       console.error(`Failed to load feed ${meta.id}:`, e);
       setErrorMsg(`加载订阅源 "${meta.customTitle || meta.id}" 失败`);
     } finally {
       setLoadingFeedId(null);
     }
-  }, [feedContentCache]);
+  }, [feedContentCache, mergeFeedItems]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!selectedFeed || !selectedFeedMeta) return;
+    const status = historyStatus[selectedFeedMeta.id];
+    if (!status) return;
+    if (status.loaded >= status.total) return;
+    if (isLoadingMoreHistory) return;
+
+    setIsLoadingMoreHistory(true);
+    try {
+      const offset = status.loaded;
+      const historyData = await fetchHistory(selectedFeedMeta.id, HISTORY_PAGE_SIZE, offset);
+      const mergedItems = mergeFeedItems(selectedFeed.items, historyData.items);
+      const finalFeed: Feed = {
+        ...selectedFeed,
+        items: mergedItems,
+      };
+      setFeedContentCache(prev => ({ ...prev, [selectedFeedMeta.id]: finalFeed }));
+      saveFeedToLocalCache(selectedFeedMeta.id, finalFeed);
+      setSelectedFeed(finalFeed);
+      setHistoryStatus(prev => ({
+        ...prev,
+        [selectedFeedMeta.id]: {
+          total: historyData.total || status.total,
+          loaded: status.loaded + historyData.items.length,
+        }
+      }));
+    } catch (e) {
+      console.error('Failed to load more history', e);
+    } finally {
+      setIsLoadingMoreHistory(false);
+    }
+  }, [selectedFeed, selectedFeedMeta, historyStatus, isLoadingMoreHistory, mergeFeedItems]);
 
   const handleDateSelect = (date: Date | null) => { setSelectedDate(date); setActiveArticle(null); setActiveFilters([]); };
 
@@ -1000,6 +1030,7 @@ const App: React.FC = () => {
     setErrorMsg(null);
     try {
       const updated = await fetchRSS(selectedFeedMeta.id);
+      const mergedItems = mergeFeedItems(selectedFeed.items, updated.items);
 
       // Preserve original config fields (title override, category, isSub)
       const finalFeed: Feed = {
@@ -1007,6 +1038,7 @@ const App: React.FC = () => {
         title: selectedFeedMeta.customTitle || updated.title,
         category: selectedFeedMeta.category,
         isSub: selectedFeedMeta.isSub,
+        items: mergedItems,
       };
 
       // 更新内存缓存
@@ -1021,7 +1053,7 @@ const App: React.FC = () => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedFeed, selectedFeedMeta, isRefreshing]);
+  }, [selectedFeed, selectedFeedMeta, isRefreshing, mergeFeedItems]);
 
   // Pull-to-refresh touch handlers (mobile only, article list view)
   useEffect(() => {
@@ -1630,13 +1662,19 @@ const App: React.FC = () => {
                   </div>
                 </div>
               )}
-              <p className="text-center text-xs text-slate-400 pb-4">
-                共 {filteredArticles.length} 篇文章，当前第 {currentPage} / {totalPages || 1} 页
-              </p>
+              {(isLoadingMoreHistory || canLoadMoreHistory) && (
+                <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                  {isLoadingMoreHistory ? '正在加载更早的内容…' : '滑动到底部以加载更早的内容'}
+                </div>
+              )}
             </div>
+            <p className="text-center text-xs text-slate-400 pb-4">
+              共 {filteredArticles.length} 篇文章，当前第 {currentPage} / {totalPages || 1} 页
+            </p>
             <button
-              onClick={handleScrollToTop}
+              type="button"
               aria-label="返回顶部"
+              onClick={handleScrollToTop}
               className={`md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out hover:bg-blue-700 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${showScrollToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
