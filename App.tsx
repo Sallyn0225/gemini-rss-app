@@ -218,9 +218,9 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
 // --- Filter Bar Component ---
 interface FilterBarProps {
   activeFilters: string[]; onToggleFilter: (filter: string) => void; onReset: () => void;
-  onAnalyze: () => void; isAnalyzing: boolean; analysisSuccess: boolean;
+  onAnalyze: () => void; isAnalyzing: boolean; analysisSuccess: boolean; selectedDate: Date | null;
 }
-const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, onReset, onAnalyze, isAnalyzing, analysisSuccess }) => {
+const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, onReset, onAnalyze, isAnalyzing, analysisSuccess, selectedDate }) => {
   const filters = [ArticleCategory.OFFICIAL, ArticleCategory.MEDIA, ArticleCategory.EVENT, ArticleCategory.COMMUNITY, ArticleCategory.RETWEET,];
   return (
     <motion.div 
@@ -231,11 +231,12 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, on
     >
       <motion.button 
         onClick={onAnalyze} 
-        disabled={isAnalyzing} 
-        className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm ${isAnalyzing ? 'bg-yellow-50 text-yellow-700 border-yellow-200 cursor-wait dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800' : analysisSuccess ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-indigo-600 text-white border-transparent'}`}
-        whileHover={isAnalyzing ? {} : { scale: 1.05 }}
-        whileTap={isAnalyzing ? {} : { scale: 0.95 }}
+        disabled={isAnalyzing || !selectedDate} 
+        className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm ${isAnalyzing ? 'bg-yellow-50 text-yellow-700 border-yellow-200 cursor-wait dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800' : analysisSuccess ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : !selectedDate ? 'bg-slate-400 text-slate-200 border-slate-400 cursor-not-allowed dark:bg-slate-600 dark:text-slate-400 dark:border-slate-600' : 'bg-indigo-600 text-white border-transparent'}`}
+        whileHover={isAnalyzing || !selectedDate ? {} : { scale: 1.05 }}
+        whileTap={isAnalyzing || !selectedDate ? {} : { scale: 0.95 }}
         transition={{ duration: 0.15, ease: easeStandard }}
+        title={!selectedDate ? "请先选择日期" : undefined}
       >
         {isAnalyzing ? (
           <>
@@ -730,6 +731,11 @@ const App: React.FC = () => {
 
   const handleRunAnalysis = async () => {
     if (!selectedFeed || isAnalyzing) return;
+
+    if (!selectedDate) {
+      alert('请先选择一个日期以进行AI分析。');
+      return;
+    }
 
     if (!isAiConfigured) {
       alert('AI 功能未配置。请点击左下角的「设置」按钮，添加 API 提供商并配置「总模型」后重试。');
@@ -1468,7 +1474,7 @@ const App: React.FC = () => {
                 </button>
               </div>
             </div>
-            <FilterBar activeFilters={activeFilters} onToggleFilter={handleFilterToggle} onReset={() => setActiveFilters([])} onAnalyze={handleRunAnalysis} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess} />
+            <FilterBar activeFilters={activeFilters} onToggleFilter={handleFilterToggle} onReset={() => setActiveFilters([])} onAnalyze={handleRunAnalysis} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess} selectedDate={selectedDate} />
             <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
               {/* Pull-to-refresh indicator (mobile only) */}
               <div
