@@ -117,7 +117,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
             />
           ))}
           <motion.img 
-            src={feedContent?.image || fallbackAvatar} 
+            src={proxyImageUrl(feedContent?.image || '') || fallbackAvatar} 
             alt={displayTitle} 
             className="w-full h-full object-cover" 
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
@@ -187,7 +187,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
         {/* 头像：有内容时显示真实图片，无内容时显示骨架 */}
         {feedContent ? (
           <motion.img 
-            src={feedContent.image || fallbackAvatar} 
+            src={proxyImageUrl(feedContent.image || '') || fallbackAvatar} 
             alt="" 
             className="w-9 h-9 rounded-lg object-cover bg-slate-200 shrink-0 border border-slate-100 dark:border-slate-700" 
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
@@ -1051,7 +1051,7 @@ const App: React.FC = () => {
   const readingViewAvatar = useMemo(() => {
     const feedImage = selectedFeed?.image;
     const fallback = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`);
-    return feedImage || fallback;
+    return proxyImageUrl(feedImage || '') || fallback;
   }, [selectedFeed]);
 
   // Pull-to-refresh states (mobile only)

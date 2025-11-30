@@ -278,14 +278,14 @@ const parseXML = (xmlText: string, url: string): Feed => {
 
     items.push({
       title: entryTitle, pubDate, link, guid, author,
-      thumbnail: proxyImageUrl(thumbnail), // PROXY
+      thumbnail, // Store original URL, proxy decision made at render time
       description: desc, content, enclosure, feedTitle: title
     });
   });
 
   return {
     url, title, description,
-    image: proxyImageUrl(image), // PROXY
+    image, // Store original URL, proxy decision made at render time
     items
   };
 }
@@ -342,14 +342,14 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
     if (data.status === 'ok') {
       return {
         url: url, title: data.feed.title, description: data.feed.description,
-        image: proxyImageUrl(data.feed.image), // PROXY
+        image: data.feed.image, // Store original URL, proxy decision made at render time
         items: data.items.map((item: any) => {
           let thumbnail = item.thumbnail;
           if (!thumbnail && item.enclosure?.type?.startsWith('image/')) thumbnail = item.enclosure.link;
           if (!thumbnail) thumbnail = extractImageFromHtml(item.content || item.description);
           return {
             ...item,
-            thumbnail: proxyImageUrl(thumbnail), // PROXY
+            thumbnail, // Store original URL, proxy decision made at render time
             feedTitle: data.feed.title
           };
         }),

@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Article, ArticleCategory } from '../types';
 import { easeStandard, easeDecelerate } from './animations';
+import { proxyImageUrl } from '../services/rssService';
 
 interface ArticleCardProps {
   article: Article;
@@ -97,7 +98,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
       <div className={`${hasValidThumbnail ? 'h-48' : 'h-28'} w-full overflow-hidden bg-slate-100 relative dark:bg-slate-900 transition-all duration-300`}>
         {hasValidThumbnail ? (
           <img 
-            src={article.thumbnail} 
+            src={proxyImageUrl(article.thumbnail)} 
             alt="" 
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
