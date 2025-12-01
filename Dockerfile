@@ -33,6 +33,7 @@ COPY --from=builder /app/dist ./dist
 
 # 2. 从构建阶段复制服务端代码和依赖
 COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/proxyUtils.js ./proxyUtils.js
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
