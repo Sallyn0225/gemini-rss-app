@@ -9,7 +9,7 @@ const Database = require('better-sqlite3');
 const { fetchWithProxy, streamWithProxy, isProxyEnabled, buildProxiedMediaUrl } = require('./proxyUtils');
 
 // --- Configuration ---
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'feeds.json');
 const HISTORY_DB_FILE = path.join(DATA_DIR, 'history.db');
