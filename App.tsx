@@ -695,10 +695,10 @@ const App: React.FC = () => {
     return pages;
   }, [currentPage, totalPages]);
 
-  // Reset to page 1 when feed or filters change
+  // Reset to page 1 when feed or filters change (use feed ID to avoid reset on same-feed data refresh)
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedFeed, selectedDate, activeFilters]);
+  }, [selectedFeedMeta?.id, selectedDate, activeFilters]);
 
   const loadMoreHistory = useCallback(async () => {
     if (!selectedFeed || !selectedFeedMeta) return;
