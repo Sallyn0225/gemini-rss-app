@@ -1649,7 +1649,7 @@ const App: React.FC = () => {
                 <div className="py-6 mt-4 space-y-3">
                   <div className="hidden md:flex items-center justify-center gap-2">
                     <button
-                      onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                       className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
                     >
@@ -1667,7 +1667,7 @@ const App: React.FC = () => {
                         return (
                           <button
                             key={`page-${token}`}
-                            onClick={() => { setCurrentPage(token); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            onClick={() => setCurrentPage(token)}
                             className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${currentPage === token ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700'}`}
                           >
                             {token}
@@ -1676,7 +1676,7 @@ const App: React.FC = () => {
                       })}
                     </div>
                     <button
-                      onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                       className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
                     >
@@ -1686,7 +1686,7 @@ const App: React.FC = () => {
 
                   <div className="flex md:hidden items-center justify-between gap-3">
                     <button
-                      onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                       className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
                     >
@@ -1696,7 +1696,7 @@ const App: React.FC = () => {
                       第 {currentPage} / {totalPages} 页
                     </div>
                     <button
-                      onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); articleListRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                       className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
                     >
