@@ -467,6 +467,7 @@ const App: React.FC = () => {
   const ARTICLES_PER_PAGE = 10;
 
   const [scrollPosition, setScrollPosition] = useState(0);
+  const [shouldRestoreScroll, setShouldRestoreScroll] = useState(false);
   const articleListRef = useRef<HTMLDivElement>(null);
 
   const [showScrollToTop, setShowScrollToTop] = useState(false);
@@ -625,16 +626,17 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // When returning to the article list view, restore the scroll position.
-    if (!activeArticle && selectedFeed && articleListRef.current) {
+    if (!activeArticle && shouldRestoreScroll && articleListRef.current) {
       // A timeout ensures this runs after the list has been rendered.
       const timer = setTimeout(() => {
         if (articleListRef.current) {
           articleListRef.current.scrollTop = scrollPosition;
+          setShouldRestoreScroll(false);
         }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [activeArticle, selectedFeed]);
+  }, [activeArticle, shouldRestoreScroll, scrollPosition]);
 
   const baseArticles = useMemo(() => {
     if (!selectedFeed) return [];
@@ -896,6 +898,7 @@ const App: React.FC = () => {
   const handleArticleSelect = (article: Article) => {
     if (articleListRef.current) {
       setScrollPosition(articleListRef.current.scrollTop);
+      setShouldRestoreScroll(true);
     }
     setActiveArticle(article);
     setTranslatedContent(null);
