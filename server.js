@@ -6,6 +6,7 @@ const url = require('url');
 const dns = require('dns');
 const net = require('net');
 const Database = require('better-sqlite3');
+const { fetchWithProxy, streamWithProxy, isProxyEnabled, buildProxiedMediaUrl } = require('./proxyUtils');
 
 // --- Configuration ---
 const PORT = 3000;
@@ -16,18 +17,38 @@ const STATIC_PATH = path.join(__dirname, 'dist'); // Serve from the 'dist' folde
 // 管理接口密钥：必须从环境变量读取，未设置则管理接口不可用
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
-// 代理配置：支持通过环境变量自定义，默认指向本地 Clash
-const PROXY_CONFIG = {
-  host: process.env.PROXY_HOST || '127.0.0.1',
-  port: Number(process.env.PROXY_PORT) || 7890
-};
-
 // --- Caching Configuration ---
 const feedCache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+// --- Media Proxy Rate Limiting & Size Control ---
+const MEDIA_PROXY_WINDOW_MS = 60 * 1000; // 1 minute window
+const MEDIA_PROXY_MAX_REQUESTS = 120; // Max requests per IP per window
+const MEDIA_PROXY_MAX_BYTES = 50 * 1024 * 1024; // 50MB max file size
+const mediaProxyRateState = new Map();
+
 // --- In-memory store for feeds config ---
 let FEEDS_CONFIG = [];
+
+// --- Helper: Normalize client IP ---
+const normalizeClientIp = (req) => {
+  const forwarded = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  const raw = forwarded || req.socket.remoteAddress || '';
+  if (!raw) return 'unknown';
+  return raw.startsWith('::ffff:') ? raw.slice(7) : raw;
+};
+
+// --- Helper: Check media proxy rate limit ---
+const checkMediaProxyRateLimit = (ip) => {
+  const now = Date.now();
+  const entry = mediaProxyRateState.get(ip);
+  if (!entry || now - entry.start >= MEDIA_PROXY_WINDOW_MS) {
+    mediaProxyRateState.set(ip, { start: now, count: 1 });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > MEDIA_PROXY_MAX_REQUESTS;
+};
 
 // --- SQLite Database ---
 let db;
@@ -193,6 +214,28 @@ const inferAllowedImageHosts = (feedUrl) => {
   }
 
   return Array.from(hosts);
+};
+
+// --- Helper: Get all allowed media hosts from feed configs ---
+const getAllowedMediaHosts = () => {
+  const hosts = new Set();
+  for (const feed of FEEDS_CONFIG) {
+    const parsed = safeParseUrl(feed.url || '');
+    if (parsed?.hostname) {
+      hosts.add(parsed.hostname.toLowerCase());
+    }
+    // Allow explicit allowedMediaHosts from feed config
+    if (Array.isArray(feed.allowedMediaHosts)) {
+      feed.allowedMediaHosts.forEach((host) => {
+        if (typeof host === 'string' && host.trim()) {
+          hosts.add(host.trim().toLowerCase());
+        }
+      });
+    }
+    // Infer hosts from feed URL patterns
+    inferAllowedImageHosts(feed.url || '').forEach((host) => hosts.add(host));
+  }
+  return hosts;
 };
 
 // --- Security: Localhost-only check for admin APIs ---
@@ -618,65 +661,41 @@ const server = http.createServer((req, res) => {
     }
     console.log(`[Cache MISS] ID: ${feedId}`);
 
-    resolveAndValidateHost(parsedTarget.hostname).then(() => {
-      const proxyOptions = {
-        hostname: PROXY_CONFIG.host,
-        port: PROXY_CONFIG.port,
-        path: parsedTarget.toString(),
-        method: 'GET',
-        headers: {
-          'Host': parsedTarget.host,
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36'
-        },
-        timeout: 15000
-      };
-
-      const proxyReq = http.request(proxyOptions, (proxyRes) => {
-        console.log(`[Proxy Success] ID: ${feedId} | Upstream Status: ${proxyRes.statusCode}`);
-        if (proxyRes.statusCode >= 400) {
-          let body = '';
-          proxyRes.on('data', chunk => body += chunk);
-          proxyRes.on('end', () => {
-            res.writeHead(proxyRes.statusCode, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: `Upstream error for ID '${feedId}'`, status: proxyRes.statusCode, body: body.substring(0, 200) }));
-          });
+    resolveAndValidateHost(parsedTarget.hostname).then(async () => {
+      try {
+        const result = await fetchWithProxy(parsedTarget.toString(), { timeout: 15000 });
+        console.log(`[Feed Fetch] ID: ${feedId} | Status: ${result.statusCode}`);
+        
+        if (result.statusCode >= 400) {
+          res.writeHead(result.statusCode, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            error: `Upstream error for ID '${feedId}'`, 
+            status: result.statusCode, 
+            body: result.body.toString().substring(0, 200) 
+          }));
           return;
         }
 
-        const chunks = [];
-        proxyRes.on('data', chunk => chunks.push(chunk));
-        proxyRes.on('end', () => {
-          const content = Buffer.concat(chunks);
-          const contentType = proxyRes.headers['content-type'] || 'application/xml';
+        const contentType = result.headers['content-type'] || 'application/xml';
 
-          feedCache.set(cacheKey, {
-            content: content,
-            contentType: contentType,
-            timestamp: Date.now()
-          });
-
-          res.writeHead(proxyRes.statusCode, { 'Content-Type': contentType, 'Access-Control-Allow-Origin': '*' });
-          res.end(content);
+        feedCache.set(cacheKey, {
+          content: result.body,
+          contentType: contentType,
+          timestamp: Date.now()
         });
-      });
 
-      proxyReq.on('error', (e) => {
-        console.error(`[Proxy Error] ID: ${feedId} | ${e.message}`);
+        res.writeHead(result.statusCode, { 'Content-Type': contentType, 'Access-Control-Allow-Origin': '*' });
+        res.end(result.body);
+      } catch (e) {
+        console.error(`[Feed Fetch Error] ID: ${feedId} | ${e.message}`);
         if (!res.headersSent) {
-          res.writeHead(502, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Proxy fetch failed', details: e.message }));
+          const isTimeout = e.message.includes('超时');
+          res.writeHead(isTimeout ? 504 : 502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: isTimeout ? 'Fetch timeout' : 'Fetch failed', details: e.message }));
         }
-      });
-      proxyReq.on('timeout', () => {
-        proxyReq.destroy();
-        if (!res.headersSent) {
-          res.writeHead(504, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Proxy timeout' }));
-        }
-      });
-      proxyReq.end();
+      }
     }).catch((err) => {
-      console.error(`[Proxy Validation Error] ID: ${feedId} | ${err.message}`);
+      console.error(`[Feed Validation Error] ID: ${feedId} | ${err.message}`);
       if (!res.headersSent) {
         const status = err.code === 'PRIVATE_HOST' ? 403 : 502;
         res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -720,44 +739,87 @@ const server = http.createServer((req, res) => {
     }
 
     resolveAndValidateHost(parsedImage.hostname).then(() => {
-      const proxyOptions = {
-        hostname: PROXY_CONFIG.host,
-        port: PROXY_CONFIG.port,
-        path: parsedImage.toString(),
-        method: 'GET',
-        headers: {
-          'Host': parsedImage.host,
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-          'Referer': parsedImage.protocol + '//' + parsedImage.host
-        },
-        timeout: 20000
-      };
-
-      const proxyReq = http.request(proxyOptions, (proxyRes) => {
-        if (proxyRes.statusCode >= 400) {
-          console.error(`[Image Proxy] Upstream error for ${imageUrl}: ${proxyRes.statusCode}`);
-          res.writeHead(proxyRes.statusCode);
+      streamWithProxy(parsedImage.toString(), { timeout: 20000 }, res, (statusCode, errMsg) => {
+        console.error(`[Image Proxy] Error for ${imageUrl}: ${statusCode} ${errMsg || ''}`);
+        if (!res.headersSent) {
+          res.writeHead(statusCode || 502);
           res.end();
-          return;
         }
-        res.writeHead(proxyRes.statusCode, {
-          'Content-Type': proxyRes.headers['content-type'] || 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400'
-        });
-        proxyRes.pipe(res);
       });
-
-      proxyReq.on('error', (e) => {
-        console.error(`[Image Proxy] Error fetching ${imageUrl}: ${e.message}`);
-        if (!res.headersSent) { res.writeHead(502); res.end(); }
-      });
-      proxyReq.on('timeout', () => {
-        proxyReq.destroy();
-        if (!res.headersSent) { res.writeHead(504); res.end(); }
-      });
-      proxyReq.end();
     }).catch((err) => {
       console.error(`[Image Proxy Validation Error] URL: ${imageUrl} | ${err.message}`);
+      if (!res.headersSent) {
+        const status = err.code === 'PRIVATE_HOST' ? 403 : 502;
+        res.writeHead(status);
+        res.end();
+      }
+    });
+
+    return;
+  }
+
+  // === API: Media Proxy (通用媒体代理，支持图片/视频等) ===
+  if (parsedUrl.pathname === '/api/media/proxy') {
+    const mediaUrl = parsedUrl.query.url;
+    if (!mediaUrl || typeof mediaUrl !== 'string') {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'URL parameter is required' }));
+      return;
+    }
+
+    const parsedMedia = safeParseUrl(mediaUrl);
+    if (!parsedMedia || !parsedMedia.hostname) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid media URL' }));
+      return;
+    }
+
+    // 协议限制：仅允许 http/https
+    if (parsedMedia.protocol !== 'http:' && parsedMedia.protocol !== 'https:') {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Only http/https URLs can be proxied' }));
+      return;
+    }
+
+    // 限流检查
+    const clientIp = normalizeClientIp(req);
+    if (checkMediaProxyRateLimit(clientIp)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Too many media proxy requests' }));
+      return;
+    }
+
+    // 域名白名单检查
+    const allowedMediaHosts = getAllowedMediaHosts();
+    const mediaHost = parsedMedia.hostname.toLowerCase();
+    if (!allowedMediaHosts.has(mediaHost)) {
+      console.error(`[Media Proxy] Blocked media host: ${mediaHost}`);
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Media host is not allowed by server configuration' }));
+      return;
+    }
+
+    // 安全检查：验证主机不是私有地址，并获取解析后的IP
+    resolveAndValidateHost(parsedMedia.hostname).then((resolvedIp) => {
+      streamWithProxy(parsedMedia.toString(), { 
+        timeout: 30000,
+        cacheControl: 'public, max-age=86400',
+        resolvedAddress: resolvedIp,
+        maxBytes: MEDIA_PROXY_MAX_BYTES
+      }, res, (statusCode, errMsg) => {
+        console.error(`[Media Proxy] Error for ${mediaUrl}: ${statusCode} ${errMsg || ''}`);
+        if (!res.headersSent) {
+          const status = statusCode || 502;
+          res.writeHead(status, status === 413 ? { 'Content-Type': 'application/json' } : undefined);
+          if (status === 413) {
+            res.end(JSON.stringify({ error: 'Media exceeds configured size limit' }));
+          } else {
+            res.end();
+          }
+        }
+      });
+    }).catch((err) => {
+      console.error(`[Media Proxy Validation Error] URL: ${mediaUrl} | ${err.message}`);
       if (!res.headersSent) {
         const status = err.code === 'PRIVATE_HOST' ? 403 : 502;
         res.writeHead(status);
@@ -809,11 +871,11 @@ migrateHistoryToDatabase();
 loadHistory();
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log('--- Running Updated Server Code (v2) ---');
+  console.log('--- Running Updated Server Code (v3 - 可选代理架构) ---');
   console.log('[OK] Server running at http://localhost:' + PORT + '/');
   console.log('[OK] Data will be stored in: ' + DATA_FILE);
   console.log('[OK] History database: ' + HISTORY_DB_FILE);
-  console.log('[OK] Proxy target: ' + PROXY_CONFIG.host + ':' + PROXY_CONFIG.port);
+  console.log('[OK] Upstream Proxy: ' + (isProxyEnabled() ? '(已配置，通过代理访问外部资源)' : '(未配置，直接连接)'));
   console.log('[OK] Admin Secret: ' + (ADMIN_SECRET ? '(已配置)' : '(未配置，管理接口不可用)'));
   console.log('[Security] Admin APIs restricted to localhost only (use SSH tunnel for remote access)');
   console.log('[OK] Feed Caching enabled with ' + (CACHE_TTL_MS / 60000) + ' minute TTL.');

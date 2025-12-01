@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Article, ArticleCategory } from '../types';
 import { easeStandard, easeDecelerate } from './animations';
-import { proxyImageUrl } from '../services/rssService';
+import { getMediaUrl } from '../services/rssService';
 
 interface ArticleCardProps {
   article: Article;
@@ -14,8 +14,8 @@ interface ArticleCardProps {
 export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSelected, isRead }) => {
   const [imgError, setImgError] = useState(false);
 
-  // Check if article has a valid thumbnail
-  const hasValidThumbnail = !imgError && article.thumbnail;
+  // Check if article has a valid thumbnail (MediaUrl with non-empty original)
+  const hasValidThumbnail = !imgError && article.thumbnail?.original;
 
   // Strip HTML for the preview - show more text for articles without images
   const previewLength = hasValidThumbnail ? 150 : 250;
@@ -98,7 +98,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
       <div className={`${hasValidThumbnail ? 'h-48' : 'h-28'} w-full overflow-hidden bg-slate-100 relative dark:bg-slate-900 transition-all duration-300`}>
         {hasValidThumbnail ? (
           <img 
-            src={proxyImageUrl(article.thumbnail)} 
+            src={getMediaUrl(article.thumbnail)} 
             alt="" 
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 

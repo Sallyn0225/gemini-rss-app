@@ -4,11 +4,12 @@
 
 # Gemini RSS Translator
 
-一个面向多媒体企划 / 女声优情报的 **RSS 聚合 + AI 翻译与总结** Web 应用。
+一个面向多媒体企划 / 女声优情报的 **RSS 聚合 + AI 翻译与总结** Web 应用。最新版本引入双 URL 媒体架构与增强的安全防护，为国内外部署提供弹性体验。
 
-- 支持订阅多个 RSS 源（如官方账号、企划情报、活动信息等）
+- 支持订阅多个 RSS 源（官方账号、企划情报、活动信息等）
 - 前端内置阅读体验：列表视图 + 日历筛选 + 活跃度统计
-- 调用你自己的大模型 API（OpenAI 兼容 / Gemini）完成：翻译、按日总结、分类打标签
+- 可配置自有大模型 API（OpenAI 兼容 / Gemini）完成翻译、日总结、分类打标签
+- 全新双代理模式（浏览器直连 / 服务器代理 / 双重代理）适配不同网络环境
 - 不内置任何 API Key，所有密钥仅保存在浏览器本地
 
 > 本仓库是一个可本地运行 / 自部署的前端 + 轻量 Node.js 后端项目，不依赖 Google AI Studio 环境。
@@ -18,28 +19,39 @@
 ## 功能概览
 
 - **RSS 订阅与阅读**：
-  - 通过后台配置 RSS 源 ID 和 URL
-  - 左侧订阅列表 + 右侧文章卡片式阅读
-  - 支持滚动到底部自动加载更多历史记录（每页 200 条）
-  - 移动端支持一键回顶按钮
+  - 后台配置 RSS 源 ID 与 URL
+  - 列表 / 网格双模式阅读，移动端支持下拉刷新与一键回顶
+  - 自动合并历史记录（分页 200 条），支持按日筛选
 
 - **按天筛选与总结**：
-  - 使用日历选择某一天，查看当天所有更新
+  - 日历选择任意日期查看更新
   - 一键调用 AI 生成当日总结
 
 - **AI 翻译与分类**：
-  - 支持多语言翻译（简体中文等）
-  - 根据内容自动打标签（官方公告 / 媒体宣发 / 线下活动 / 社区互动 / 转发）
+  - 多语言翻译（默认简体中文）
+  - 内容自动分类（官方公告 / 媒体宣发 / 线下活动 / 社区互动 / 转发）
 
 - **订阅源管理（后台）**：
-  - 使用 Admin Secret 访问的简单管理界面
-  - 新增 / 编辑 / 删除 / 排序订阅源
-  - 支持通过「分类路径」为订阅源分组，形如 `企划/角色/声优`，会在管理界面中渲染为多级文件夹
-  - 顶级文件夹 / 子文件夹 / 文件夹内的订阅源均支持拖拽排序，可通过拖拽手柄精细调整顺序
+  - 通过 `ADMIN_SECRET` 访问的管理界面
+  - 多级目录（`企划/角色/声优`）与拖拽排序
+  - 支持批量导入 / 导出及订阅源可视化管理
 
 - **隐私与安全**：
-  - API Key 仅保存在浏览器 `localStorage` 中，不会写入后台或代码仓库
-  - 后端管理接口通过 `ADMIN_SECRET` 密钥保护，支持远程访问（推荐通过 SSH 隧道在本地浏览器访问管理界面）
+  - API Key 均保存在浏览器 `localStorage`
+  - 后端新增 SSRF 防护、域名白名单、限流、媒体大小限制等机制
+
+---
+
+## 核心功能 🌟
+
+| 模块 | 能力 | 说明 |
+| --- | --- | --- |
+| 双 URL 媒体架构 | `original` + `proxied` 双地址 | 后端为每条媒体生成原始 URL 与 `/api/media/proxy` 代理 URL，前端按用户策略自动选择 |
+| 代理模式切换 | `none` / `media_only` / `all` | 用户可在前端设置中选择：完全直连 / 仅媒体代理 / 全量代理，搭配上游代理实现双重代理 |
+| 富媒体处理 | 内容内嵌图片替换 | 富文本 `content` 中的 `<img>` 会结合代理模式自动替换为合适的 URL |
+| 安全防护 | SSRF / 白名单 / 限流 / 大小限制 | `/api/media/proxy` 针对内网访问、域名来源、请求频次、文件体积均设有硬限制 |
+| 快速阅读体验 | 动效 + 智能分页 | Framer Motion 动画、瀑布流样式、智能缓存与分页渲染 |
+| AI 工作流 | 翻译 / 分析 / 总结 | 用户可为「翻译」「日总结」「内容分析」分别指定模型与 API 端点 |
 
 ---
 
@@ -47,7 +59,7 @@
 
 ### 1. 环境准备
 
-- Node.js（建议 20+，推荐使用当前 LTS 版本）
+- Node.js（建议 20+，推荐当前 LTS）
 
 ### 2. 安装依赖
 
@@ -64,7 +76,7 @@ npm install
 GEMINI_API_KEY=your-gemini-api-key-here
 ```
 
-> 实际上，大部分情况下你会在前端「设置」里配置自己的 OpenAI 兼容 / Gemini / 反代 API，`GEMINI_API_KEY` 只是系统兜底用。
+> 实际部署时，多数情况下会直接在前端「设置」中配置自己的 OpenAI 兼容 / Gemini / 反代 API。`GEMINI_API_KEY` 仅作兜底。
 
 ### 4. 启动开发服务器
 
@@ -72,144 +84,179 @@ GEMINI_API_KEY=your-gemini-api-key-here
 npm run dev
 ```
 
-默认会在 `http://localhost:5173`（Vite 默认端口）启动前端。
-
-> 仅前端开发时，可以直接由浏览器跨域访问 RSS / AI 接口；生产部署请使用下文的 Node.js 后端 / Docker 方案。
+默认会在 `http://localhost:5173`（Vite 默认端口）启动前端。纯前端开发可直接跨域调用接口，生产环境请搭配后端 / Docker 方案。
 
 ---
 
-## 使用 Docker 部署（推荐）
+## 核心部署配置 ⚙️
 
-本仓库提供了一个简单的 `server.js` + `Dockerfile` + `docker-compose.yml`，用于：
-
-- 代理 RSS 源（可通过本地 Clash 等代理访问）
-- 代理图片地址，减轻跨域与直连问题
-- 提供订阅源配置接口 `/api/feeds/*`
-- 提供历史消息存储 API（基于 SQLite 的 `/api/history/upsert` 和 `/api/history/get`，支持分页与去重）
-- 提供前端静态资源服务（构建后的 `dist/`）
-
-### 1. 构建并启动
-
-```bash
-docker-compose up -d --build
-```
-
-默认行为：
-
-- 使用 `network_mode: host`，容器内的 `127.0.0.1:7890` 会指向宿主机（便于使用 Clash 等代理）
-- 将 `./data` 挂载到容器中的 `/app/data`，用于持久化：
-  - `feeds.json`（订阅源配置）
-  - `history.db`（SQLite 历史消息数据库）
-  - 以及可能存在的 `history.json.bak` 备份文件
-
-> 历史消息会存储在 SQLite 数据库 `data/history.db` 中，默认仅保留最近 60 天的记录。
-
-#### 历史消息存储与迁移
-
-- 旧版本使用 `data/history.json` 存储历史消息，新版本改为 `data/history.db`（SQLite）。
-- 首次启动使用 SQLite 版本的后端时，如果存在 `data/history.json`：
-  - 会自动读取旧文件中的历史数据并写入 `data/history.db`；
-  - 将原文件重命名为 `history.json.bak` 作为备份。
-- 历史记录默认保留最近 60 天，超过部分会在后台合并历史时自动清理。
-
-### 2. 管理密钥 `ADMIN_SECRET`
-
-在实际部署时，请在你**自己的** `docker-compose.yml` 或环境中设置强密码：
+### docker-compose.yml
 
 ```yaml
-environment:
-  - NODE_ENV=production
-  - ADMIN_SECRET=your-strong-admin-password
+services:
+  gemini-rss:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/usr/src/app/data
+    environment:
+      - NODE_ENV=production
+      - ADMIN_SECRET=your-strong-admin-password
+      - UPSTREAM_PROXY=http://127.0.0.1:7890   # 国内服务器：指向宿主机代理
+      # - UPSTREAM_PROXY=                       # 海外服务器：注释或删除表示直连
+      # 可选：调整安全阈值
+      # - MEDIA_PROXY_MAX_BYTES=52428800        # 50MB，单位 Bytes
+      # - MEDIA_PROXY_MAX_REQUESTS=120          # 每 IP 每分钟允许的请求数
+      # - MEDIA_PROXY_WINDOW_MS=60000           # 限流窗口（ms）
 ```
 
-公开仓库中的 `docker-compose.yml` 只包含注释示例，不会暴露你的真实密码。
+> `UPSTREAM_PROXY` 支持 `http://user:pass@host:port`。若部署在海外，可直接删除该行实现直连。
 
-### 3. 订阅源首次配置
+### data/feeds.json（可选白名单）
 
-- 首次启动时，如果 `data/feeds.json` 不存在，会初始化为空列表
-- 访问前端页面，在「设置 → 订阅源管理」中：
-  - 输入你部署时设置的 `ADMIN_SECRET`
-  - 通过界面添加 RSS 源（ID、URL、分类等）
-    - `分类路径` 支持多级结构，使用 `/` 作为分隔符，例如：`iDOLM@STER Project/女声优`、`BanG Dream!/MyGO!!!!!`
-    - 管理界面会根据分类路径自动生成「文件夹 / 子文件夹」树形结构，并支持展开 / 收起与拖拽排序
+若某些订阅源使用自定义 CDN，可在条目中显式声明 `allowedMediaHosts` 以加入代理白名单：
 
-> 管理接口 `/api/feeds/list/all`、`/api/feeds/add`、`/api/feeds/delete`、`/api/feeds/reorder` 通过 `ADMIN_SECRET` 密钥保护，支持远程访问。推荐通过 SSH 隧道在本地浏览器中访问管理界面以增强安全。
+```jsonc
+[
+  {
+    "id": "my-custom-feed",
+    "url": "https://example.com/rss",
+    "customTitle": "自定义订阅",
+    "category": "企划/特别节目",
+    "allowedMediaHosts": [
+      "cdn.example.com",
+      "images.example.net",
+      "i.imgur.com"
+    ]
+  }
+]
+```
 
-#### 4. 通过 SSH 隧道访问管理界面（推荐）
+若未设置，系统会自动根据订阅源 URL 与 RSSHub 路由推断常用域名（如 `pbs.twimg.com`）。
 
-当应用部署在远程服务器上时，建议使用 SSH 隧道进行安全的本地访问：
+### 安全参数调节
 
-- **示例（Linux / macOS / WSL）**：
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `MEDIA_PROXY_MAX_BYTES` | `50 * 1024 * 1024` (50MB) | 限制单个媒体资源的最大体积，可根据需求调整 |
+| `MEDIA_PROXY_MAX_REQUESTS` | `120` | 每个 IP 在窗口内允许的 `/api/media/proxy` 请求数 |
+| `MEDIA_PROXY_WINDOW_MS` | `60 * 1000` | 限流窗口长度（毫秒） |
 
-  ```bash
-  ssh -L 3000:127.0.0.1:3000 user@your-server-ip
-  ```
-
-  然后在本机浏览器访问：`http://localhost:3000`
-
-- **示例（Windows / XShell）**：
-  - 在 XShell 连接属性中添加一个「本地隧道」：
-    - 源主机：`localhost`，源端口：`3000`
-    - 目标主机：`127.0.0.1`，目标端口：`3000`
-  - 连接后，在本机浏览器访问：`http://localhost:3000`
-
-这样：
-
-- 普通用户访问 `http://服务器IP:3000` 只会看到阅读界面，无法访问订阅源管理接口；
-- 管理员通过 SSH 隧道访问 `http://localhost:3000`，在「设置 → 订阅源管理」中输入 `ADMIN_SECRET` 后即可管理订阅源。
+修改后需重新构建镜像或重启服务。
 
 ---
 
-## AI 设置与安全说明
+## 使用 Docker 部署 🐳
+
+项目提供 `server.js` + `Dockerfile` + `docker-compose.yml` 一键部署能力，用于：
+
+- 代理 RSS 源（可选上游代理）
+- 代理媒体资源（图片 / 视频）
+- 提供订阅源管理、历史记录 API
+- 提供前端静态资源服务（`dist/`）
+
+```bash
+# 停止旧实例
+docker-compose down
+
+# 重新构建镜像
+docker-compose build --no-cache
+
+# 后台启动
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f gemini-rss
+```
+
+容器会自动挂载 `./data` 到 `/usr/src/app/data`，用于持久化：
+
+- `feeds.json` —— 订阅源配置
+- `history.db` —— SQLite 历史消息数据库
+- `history.json.bak` —— 旧版本迁移备份
+
+### 首次配置
+
+- 若 `data/feeds.json` 不存在会自动初始化为空列表
+- 在前端「设置 → 订阅源管理」中输入 `ADMIN_SECRET` 后即可添加 / 编辑订阅源
+- 支持多级分类、拖拽排序、批量导入
+
+### SSH 隧道访问后台（推荐）
+
+```bash
+ssh -L 3000:127.0.0.1:3000 user@your-server-ip
+```
+
+隧道建立后访问 `http://localhost:3000`，即可在本地浏览器中安全管理订阅源。
+
+---
+
+## 安全说明 🔒
+
+- ✅ **SSRF 防护**：所有代理请求在发起前会解析真实 IP，并拒绝访问内网 / 回环地址。
+- ✅ **域名白名单**：仅允许出现在订阅配置或自动推断列表中的媒体域名进入代理。
+- ✅ **限流控制**：对 `/api/media/proxy` 按 IP 限定每分钟请求数，超限返回 429。
+- ✅ **体积限制**：媒体代理对 Content-Length 与实际传输字节提供双重大小检测，超过阈值直接中断。
+- ✅ **协议约束**：仅允许 `http` / `https` 协议，拒绝 `ftp://`、`file://` 等危险协议。
+- ✅ **Admin Secret**：后台管理接口需携带 `ADMIN_SECRET`，建议结合 SSH 隧道或反向代理进一步加固。
+- ✅ **前端存储隔离**：所有 API Key 存储在浏览器 `localStorage`，不会上传至服务器。
+
+---
+
+## API 接口 📡
+
+### `/api/media/proxy`
+
+- **Query 参数**：
+  - `url`：必填，目标媒体资源的完整 URL，仅支持 `http` / `https`
+
+- **行为**：
+  1. 验证域名是否在白名单中，检查协议是否合法。
+  2. 使用 DNS 解析后的真实 IP 发起请求，防止重绑定攻击。
+  3. 流式转发响应体，按配置注入 `Cache-Control`、`Access-Control-Allow-Origin` 等头。
+  4. 若超过大小限制返回 `413`，超出频次返回 `429`，若命中内网地址返回 `403`。
+
+- **典型响应**：
+  - 200：成功代理媒体
+  - 403：域名未在白名单 / 解析到内网
+  - 413：文件大小超出限制
+  - 429：触发限流
+  - 502 / 504：上游错误或超时
+
+### 其他接口
+
+- `/api/feed?id=feedId`：根据订阅配置抓取并缓存 RSS 内容
+- `/api/feeds/list/all`、`/api/feeds/add` 等：订阅源管理（需 `ADMIN_SECRET`）
+- `/api/history/upsert`、`/api/history/get`：历史记录同步与查询
+
+---
+
+## AI 设置
 
 - 在前端点击左下角「设置」：
-  - 添加 API 提供商（OpenAI 兼容 / Gemini）
-  - 配置 Base URL 和 API Key
-  - 为不同任务（总模型 / 翻译 / 总结 / 分析）选择模型
+  - 添加 API 提供商（OpenAI 兼容 / Gemini / 反代）
+  - 分别为「翻译」「总结」「分析」任务指定模型
+  - 配置代理模式、界面偏好等
 
-- 这些配置会存储在浏览器的 `localStorage` 中：
+- 所有配置均保存在浏览器 `localStorage`：
   - 不会写入代码仓库
-  - 不会通过后端接口上传
+  - 不会通过接口上传
 
-> 请不要将包含自己 API Key 的 `.env.local`、浏览器导出的配置等文件提交到公开仓库。
-
----
-
-## 安全注意事项
-
-- **管理接口访问控制**：
-  - 管理接口通过 `ADMIN_SECRET` 密钥保护，支持远程访问；推荐通过 SSH 隧道在本地访问后台以增强安全；
-  - 请为 `ADMIN_SECRET` 使用足够随机且复杂的强密码，并仅在服务器环境变量 / 私有配置文件中设置。
-
-- **RSS 内容安全**：
-  - 应用会渲染来自 RSS 的 HTML 内容，部署到公网时请优先使用可信的 RSS 源；
-  - 不要在不可信的机器或浏览器环境下输入具有管理权限的密钥。
-
-- **服务器与容器安全**：
-  - 请自行保障云服务器的 SSH 登录安全（强密码 / SSH Key 登录 / 限制暴露端口等）；
-  - 一旦宿主机被攻破，`ADMIN_SECRET`、订阅配置和历史记录等数据都有可能被访问。
+> 请勿将包含 API Key 的 `.env.local` 或浏览器导出的配置文件提交到公开仓库。
 
 ---
 
 ## 开发说明
 
-- 前端：
-  - React + TypeScript
-  - Vite 构建
-  - UI 动画使用 Framer Motion
-  - 图表使用 Recharts
+- **前端**：React + TypeScript + Vite，使用 Framer Motion / Recharts 构建交互与图表
+- **后端**：纯 Node.js HTTP 服务器，负责 RSS / 媒体代理、订阅源管理、SQLite 历史存储
 
-- 后端：
-  - 轻量 Node.js HTTP 服务器（无 Express）
-  - 负责 RSS 代理、图片代理、订阅源配置，以及基于 SQLite 的历史消息存储与分页查询
-
-你可以根据需要自由修改订阅源结构、UI 和 AI 调用逻辑。
+你可以根据业务需求自由扩展 UI、AI 工作流与订阅源结构。
 
 ---
 
 ## License
 
-本项目使用 [MIT License](./LICENSE) 开源。
-
-你可以自由地使用、修改和部署本项目，但请在再分发时保留版权和许可证声明。
+本项目使用 [MIT License](./LICENSE) 开源。欢迎自由使用、修改与部署，请在再分发时保留版权与许可证声明。
 

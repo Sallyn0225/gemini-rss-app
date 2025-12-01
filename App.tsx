@@ -3,9 +3,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DOMPurify from 'dompurify';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode, fetchHistory, setCurrentFeedCanProxyImages } from './services/rssService';
+import { fetchRSS, proxyImageUrl, fetchSystemFeeds, setImageProxyMode, getImageProxyMode, fetchHistory, setCurrentFeedCanProxyImages, getMediaUrl } from './services/rssService';
 import { translateContent, analyzeFeedContent } from './services/geminiService';
-import { Feed, Article, Language, ArticleCategory, AISettings, ImageProxyMode, FeedMeta } from './types';
+import { Feed, Article, Language, ArticleCategory, AISettings, ImageProxyMode, FeedMeta, selectMediaUrl } from './types';
 import { StatsChart } from './components/StatsChart';
 import { ArticleCard } from './components/ArticleCard';
 import { CalendarWidget } from './components/CalendarWidget';
@@ -117,7 +117,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
             />
           ))}
           <motion.img 
-            src={proxyImageUrl(feedContent?.image || '') || fallbackAvatar} 
+            src={getMediaUrl(feedContent?.image) || fallbackAvatar} 
             alt={displayTitle} 
             className="w-full h-full object-cover" 
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
@@ -187,7 +187,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
         {/* 头像：有内容时显示真实图片，无内容时显示骨架 */}
         {feedContent ? (
           <motion.img 
-            src={proxyImageUrl(feedContent.image || '') || fallbackAvatar} 
+            src={getMediaUrl(feedContent.image) || fallbackAvatar} 
             alt="" 
             className="w-9 h-9 rounded-lg object-cover bg-slate-200 shrink-0 border border-slate-100 dark:border-slate-700" 
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
@@ -446,7 +446,13 @@ const App: React.FC = () => {
   // --- Image Proxy Mode & First Visit Modal ---
   const [imageProxyMode, setImageProxyModeState] = useState<ImageProxyMode>(() => {
     const stored = localStorage.getItem('image_proxy_mode');
-    if (stored && ['all', 'none', 'twitter-only'].includes(stored)) {
+    // 兼容旧版 'twitter-only' 模式，自动迁移为 'media_only'
+    if (stored === 'twitter-only') {
+      localStorage.setItem('image_proxy_mode', 'media_only');
+      setImageProxyMode('media_only');
+      return 'media_only';
+    }
+    if (stored && ['all', 'none', 'media_only'].includes(stored)) {
       setImageProxyMode(stored as ImageProxyMode);
       return stored as ImageProxyMode;
     }
@@ -1049,9 +1055,8 @@ const App: React.FC = () => {
   }, [activeArticle]);
 
   const readingViewAvatar = useMemo(() => {
-    const feedImage = selectedFeed?.image;
     const fallback = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`);
-    return proxyImageUrl(feedImage || '') || fallback;
+    return getMediaUrl(selectedFeed?.image) || fallback;
   }, [selectedFeed]);
 
   // Pull-to-refresh states (mobile only)
@@ -1258,7 +1263,7 @@ const App: React.FC = () => {
                   for (const meta of node.feeds) {
                     if (previews.length >= 4) break;
                     const content = feedContentCache[meta.id];
-                    previews.push(content?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(meta.customTitle || meta.id)}&background=3b82f6&color=fff&size=64`);
+                    previews.push(getMediaUrl(content?.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(meta.customTitle || meta.id)}&background=3b82f6&color=fff&size=64`);
                   }
                   if (previews.length < 4) {
                     for (const child of node.children.values()) {
@@ -1292,7 +1297,7 @@ const App: React.FC = () => {
                       whileTap={{ scale: 0.95 }}
                     >
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-6 h-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="white" className="w-6 h-6">
                           <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z" />
                         </svg>
                       </div>
@@ -1580,7 +1585,7 @@ const App: React.FC = () => {
                     </svg>
                   </button>
                 )}
-                <img src={selectedFeed.image} className="w-10 h-10 object-contain rounded-md border border-slate-100 hidden sm:block" alt="" />
+                <img src={getMediaUrl(selectedFeed.image)} className="w-10 h-10 object-contain rounded-md border border-slate-100 hidden sm:block" alt="" />
                 <div className="overflow-hidden">
                   <h2 className="text-lg md:text-xl font-bold text-slate-800 truncate dark:text-slate-100">{selectedFeed.title}</h2>
                   <p className="text-xs text-slate-400 font-medium uppercase tracking-wider hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
@@ -1746,7 +1751,7 @@ const App: React.FC = () => {
                 <button onClick={handleTranslateToggle} disabled={isTranslating} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${isTranslating ? 'bg-indigo-100 text-indigo-400 cursor-wait' : showTranslation ? 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:bg-slate-800 dark:border-indigo-800' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
                   {isTranslating ? (
                     <>
-                      <svg className="animate-spin h-4 w-4 md:mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 md:mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -1915,11 +1920,11 @@ const App: React.FC = () => {
                 <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">所有图片通过服务器代理加载。适合无法直接访问 Twitter 等平台的用户。</div>
               </button>
               <button
-                onClick={() => handleImageProxyModeChange('twitter-only')}
+                onClick={() => handleImageProxyModeChange('media_only')}
                 className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
               >
-                <div className="font-semibold text-slate-800 dark:text-white">只代理 Twitter 图片</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">仅代理 Twitter 图片，其他图片直接加载。节省服务器流量。</div>
+                <div className="font-semibold text-slate-800 dark:text-white">仅代理媒体</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">RSS 内容直连，图片/视频通过服务器代理加载。节省部分服务器流量。</div>
               </button>
               <button
                 onClick={() => handleImageProxyModeChange('none')}

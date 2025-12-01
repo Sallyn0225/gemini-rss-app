@@ -1,6 +1,6 @@
 
 
-import { Feed, Article, ImageProxyMode } from '../types';
+import { Feed, Article, ImageProxyMode, MediaUrl, createMediaUrl, selectMediaUrl } from '../types';
 
 const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
 const ALL_ORIGINS_API = 'https://api.allorigins.win/get?url=';
@@ -10,6 +10,10 @@ const CODETABS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
 const THING_PROXY = 'https://thingproxy.freeboard.io/fetch/';
 
 // --- Image Proxy Mode Management ---
+// 代理模式：
+// - 'all': 全部代理（RSS内容 + 媒体都通过服务器加载）
+// - 'media_only': 仅代理媒体（RSS内容直连，图片/视频通过服务器加载）
+// - 'none': 不代理（全部从用户浏览器直连，不消耗服务器流量）
 let currentImageProxyMode: ImageProxyMode = 'all';
 let currentFeedCanProxyImages: boolean = true;
 
@@ -25,36 +29,34 @@ export const setCurrentFeedCanProxyImages = (canProxy: boolean): void => {
   currentFeedCanProxyImages = canProxy;
 };
 
-// Check if URL is a Twitter image
-const isTwitterImage = (url: string): boolean => {
-  return /twimg\.com|pbs\.twimg\.com|abs\.twimg\.com/i.test(url);
+/**
+ * 根据当前代理模式从MediaUrl中选择合适的URL
+ * @param media - MediaUrl对象
+ * @returns 选择后的URL字符串
+ */
+export const getMediaUrl = (media: MediaUrl | string | undefined): string => {
+  return selectMediaUrl(media, currentImageProxyMode);
 };
 
-// Helper to proxy image URLs through our backend (respects user's proxy mode setting)
-export const proxyImageUrl = (url: string, forceProxy: boolean = false): string => {
+/**
+ * @deprecated 请使用 selectMediaUrl 或 getMediaUrl 代替
+ * 保留此函数用于向后兼容，处理富文本等需要运行时选择的场景
+ */
+export const proxyImageUrl = (url: string, _forceProxy: boolean = false): string => {
   if (!url || !url.startsWith('http')) {
-    return url; // Return empty or relative URLs as is
+    return url;
   }
 
-  // If current feed is not allowed to use server-side image proxy, always fall back to direct URL
+  // 如果当前 feed 不在服务器图片代理白名单中，始终直连
   if (!currentFeedCanProxyImages) {
     return url;
   }
 
-  // If force proxy is requested (e.g., for thumbnails in list view), always proxy
-  if (forceProxy) {
-    return `/api/image?url=${encodeURIComponent(url)}`;
-  }
-
-  // Apply user's proxy mode preference
-  switch (currentImageProxyMode) {
-    case 'none':
-      return url; // Direct connection, no proxy
-    case 'twitter-only':
-      return isTwitterImage(url) ? `/api/image?url=${encodeURIComponent(url)}` : url;
-    case 'all':
-    default:
-      return `/api/image?url=${encodeURIComponent(url)}`;
+  // 根据用户代理模式偏好处理
+  if (currentImageProxyMode === 'none') {
+    return url;
+  } else {
+    return `/api/media/proxy?url=${encodeURIComponent(url)}`;
   }
 };
 
@@ -228,9 +230,10 @@ const parseXML = (xmlText: string, url: string): Feed => {
   const title = channel.querySelector('title')?.textContent || 'Untitled Feed';
   const description = channel.querySelector('description, subtitle')?.textContent || '';
 
-  let image = '';
+  // Feed 头像：生成双URL格式
+  let imageUrl = '';
   const imgNode = channel.querySelector('image url') || channel.querySelector('icon') || channel.querySelector('logo');
-  if (imgNode) image = imgNode.textContent || '';
+  if (imgNode) imageUrl = imgNode.textContent || '';
 
   const items: Article[] = [];
   const entries = xmlDoc.querySelectorAll('item, entry');
@@ -246,22 +249,23 @@ const parseXML = (xmlText: string, url: string): Feed => {
     const contentEncoded = entry.getElementsByTagNameNS('*', 'encoded')[0]?.textContent;
     const content = contentEncoded || entry.querySelector('content')?.textContent || desc;
 
-    let thumbnail = '';
+    // 提取缩略图原始URL
+    let thumbnailUrl = '';
 
     const mediaNodes = entry.getElementsByTagNameNS('*', 'content');
     if (mediaNodes.length > 0) {
       for (let i = 0; i < mediaNodes.length; i++) {
-        const url = mediaNodes[i].getAttribute('url');
-        if (url && (url.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
-          thumbnail = url; break;
+        const nodeUrl = mediaNodes[i].getAttribute('url');
+        if (nodeUrl && (nodeUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
+          thumbnailUrl = nodeUrl; break;
         }
       }
     }
 
-    if (!thumbnail) {
+    if (!thumbnailUrl) {
       const mediaThumb = entry.getElementsByTagNameNS('*', 'thumbnail');
       if (mediaThumb.length > 0 && mediaThumb[0].getAttribute('url')) {
-        thumbnail = mediaThumb[0].getAttribute('url')!;
+        thumbnailUrl = mediaThumb[0].getAttribute('url')!;
       }
     }
 
@@ -269,23 +273,24 @@ const parseXML = (xmlText: string, url: string): Feed => {
     const encNode = entry.querySelector('enclosure');
     if (encNode) {
       enclosure = { link: encNode.getAttribute('url') || '', type: encNode.getAttribute('type') || '' };
-      if (!thumbnail && enclosure.type.startsWith('image')) {
-        thumbnail = enclosure.link;
+      if (!thumbnailUrl && enclosure.type.startsWith('image')) {
+        thumbnailUrl = enclosure.link;
       }
     }
 
-    if (!thumbnail) thumbnail = extractImageFromHtml(content || desc);
+    if (!thumbnailUrl) thumbnailUrl = extractImageFromHtml(content || desc);
 
+    // 生成双URL格式的缩略图
     items.push({
       title: entryTitle, pubDate, link, guid, author,
-      thumbnail, // Store original URL, proxy decision made at render time
+      thumbnail: createMediaUrl(thumbnailUrl),  // 双URL格式
       description: desc, content, enclosure, feedTitle: title
     });
   });
 
   return {
     url, title, description,
-    image, // Store original URL, proxy decision made at render time
+    image: createMediaUrl(imageUrl),  // 双URL格式
     items
   };
 }
@@ -342,14 +347,14 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
     if (data.status === 'ok') {
       return {
         url: url, title: data.feed.title, description: data.feed.description,
-        image: data.feed.image, // Store original URL, proxy decision made at render time
+        image: createMediaUrl(data.feed.image || ''),  // 双URL格式
         items: data.items.map((item: any) => {
-          let thumbnail = item.thumbnail;
-          if (!thumbnail && item.enclosure?.type?.startsWith('image/')) thumbnail = item.enclosure.link;
-          if (!thumbnail) thumbnail = extractImageFromHtml(item.content || item.description);
+          let thumbnailUrl = item.thumbnail;
+          if (!thumbnailUrl && item.enclosure?.type?.startsWith('image/')) thumbnailUrl = item.enclosure.link;
+          if (!thumbnailUrl) thumbnailUrl = extractImageFromHtml(item.content || item.description);
           return {
             ...item,
-            thumbnail, // Store original URL, proxy decision made at render time
+            thumbnail: createMediaUrl(thumbnailUrl || ''),  // 双URL格式
             feedTitle: data.feed.title
           };
         }),

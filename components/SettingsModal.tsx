@@ -1229,18 +1229,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         <div className="text-sm text-slate-500 dark:text-slate-400">所有图片通过服务器代理加载。适合无法直接访问 Twitter 等平台的用户。</div>
                       </div>
                     </label>
-                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${imageProxyMode === 'twitter-only' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'}`}>
+                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${imageProxyMode === 'media_only' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'}`}>
                       <input
                         type="radio"
                         name="imageProxyMode"
-                        value="twitter-only"
-                        checked={imageProxyMode === 'twitter-only'}
-                        onChange={() => onImageProxyModeChange?.('twitter-only')}
+                        value="media_only"
+                        checked={imageProxyMode === 'media_only'}
+                        onChange={() => onImageProxyModeChange?.('media_only')}
                         className="mt-1"
                       />
                       <div>
-                        <div className="font-semibold text-slate-800 dark:text-white">只代理 Twitter 图片</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">仅代理 Twitter 图片，其他图片直接加载。节省服务器流量。</div>
+                        <div className="font-semibold text-slate-800 dark:text-white">仅代理媒体</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">RSS 内容直连，图片/视频通过服务器代理加载。节省部分服务器流量。</div>
                       </div>
                     </label>
                     <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${imageProxyMode === 'none' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'}`}>
