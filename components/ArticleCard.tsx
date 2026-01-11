@@ -1,8 +1,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Article, ArticleCategory } from '../types';
-import { easeStandard, easeDecelerate } from './animations';
 import { getMediaUrl } from '../services/rssService';
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, ExternalLink } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ArticleCardProps {
   article: Article;
@@ -43,85 +46,88 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({ article, on
     onClick();
   }, [onClick]);
 
-
-
   return (
-    <motion.div 
-      onClick={handleClick}
-      className={`
-        flex flex-col bg-white dark:bg-slate-800 cursor-pointer border border-flat-200 dark:border-slate-700 overflow-hidden group relative
-        ${isSelected 
-          ? 'border-accent ring-1 ring-accent' 
-          : 'hover:border-accent hover:bg-flat-50 dark:hover:bg-slate-700/50'}
-        rounded-none
-      `}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
+      className="h-full"
     >
-      {/* Thumbnail - conditional height based on image availability */}
-      <div className="relative">
-        <div className={`
-          ${hasValidThumbnail ? 'h-48' : 'h-24'} 
-          w-full overflow-hidden bg-flat-100 dark:bg-slate-900 relative transition-all duration-300
-          rounded-none
-        `}>
+      <Card
+        asChild
+        className={cn(
+          "flex flex-col h-full overflow-hidden group transition-all duration-300 hover:shadow-md text-left w-full p-0",
+          isSelected ? "ring-2 ring-primary border-primary" : "hover:border-primary/50"
+        )}
+      >
+        <button
+          onClick={handleClick}
+          aria-label={`阅读文章: ${article.title}`}
+          className="flex flex-col h-full w-full cursor-pointer"
+        >
+          <div className="relative aspect-video overflow-hidden bg-muted w-full">
           {hasValidThumbnail ? (
             <img 
               src={getMediaUrl(article.thumbnail)} 
               alt="" 
               loading="lazy"
-              className="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500" 
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-flat-50 dark:bg-slate-900 text-flat-400 px-4">
-               <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 select-none text-center line-clamp-2">
+            <div className="w-full h-full flex items-center justify-center p-6 text-center">
+               <span className="text-xs font-medium text-muted-foreground line-clamp-2 opacity-50">
                  {article.title}
                </span>
             </div>
           )}
           
-           <div className="absolute top-0 left-0 z-20 flex flex-col gap-0 items-start">
-                <span className="bg-accent text-white text-[9px] font-bold px-2 py-1 uppercase tracking-widest">
-                  {article.feedTitle}
-                </span>
-                {isRetweet && (
-                   <span className="bg-flat-800 text-white text-[9px] font-bold px-2 py-1 tracking-widest">
-                     RT
-                   </span>
-                )}
-                {article.aiCategory && article.aiCategory !== ArticleCategory.RETWEET && (
-                   <span className="bg-flat-200 text-flat-700 text-[9px] font-bold px-2 py-1 tracking-widest border-r border-b border-flat-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600">
-                     {article.aiCategory}
-                   </span>
-                )}
-           </div>
-        </div>
-      </div>
-
-      <div className="p-4 flex flex-col flex-1 relative">
-        <h3 className="font-bold text-base text-flat-900 dark:text-slate-100 mb-2 leading-snug line-clamp-2 transition-colors">
-          {article.title}
-        </h3>
-        
-        <p className="text-xs text-flat-500 dark:text-slate-400 leading-relaxed mb-4 flex-1 line-clamp-3">
-          {preview}
-        </p>
-        
-        <div className="flex items-center justify-between text-[10px] text-flat-400 mt-auto pt-3 border-t border-flat-100 dark:border-slate-700">
-          <time className="font-bold uppercase tracking-wider">{formattedDateTime}</time>
-          <div className="flex items-center gap-2">
-            {!isRead && (
-               <div className="h-1.5 w-1.5 bg-accent"></div>
+          <div className="absolute top-2 left-2 z-20 flex flex-wrap gap-1 items-start max-w-[90%]">
+            <Badge variant="default" className="bg-primary text-primary-foreground text-[10px] px-2 py-0">
+              {article.feedTitle}
+            </Badge>
+            {isRetweet && (
+              <Badge variant="secondary" className="text-[10px] px-2 py-0">
+                RT
+              </Badge>
             )}
-            <span className="font-bold text-accent opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-tighter">
-              Read More
-            </span>
+            {article.aiCategory && article.aiCategory !== ArticleCategory.RETWEET && (
+              <Badge variant="outline" className="bg-background/80 backdrop-blur-sm text-[10px] px-2 py-0">
+                {article.aiCategory}
+              </Badge>
+            )}
           </div>
+          
+          {!isRead && (
+            <div className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full shadow-[0_0_8px_rgba(var(--primary),0.8)]" />
+          )}
         </div>
-      </div>
+
+        <CardHeader className="p-4 pb-2 space-y-1">
+          <h3 className="font-bold text-base leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+            {article.title}
+          </h3>
+        </CardHeader>
+        
+        <CardContent className="p-4 pt-0 flex-1">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+            {preview}
+          </p>
+        </CardContent>
+        
+        <CardFooter className="p-4 pt-0 flex items-center justify-between border-t border-border/50 mt-auto">
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
+            <Calendar className="w-3 h-3" />
+            <time>{formattedDateTime}</time>
+          </div>
+          <div className="flex items-center gap-1 text-primary font-bold text-[10px] uppercase tracking-tight opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+            <span>阅读全文</span>
+            <ExternalLink className="w-3 h-3" />
+          </div>
+          </CardFooter>
+        </button>
+      </Card>
     </motion.div>
   );
 });

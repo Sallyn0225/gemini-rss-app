@@ -1,14 +1,22 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Feed } from '../types';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart3 } from "lucide-react";
 
 interface StatsChartProps {
   feeds: Feed[];
   isDarkMode: boolean;
 }
 
-// Organic Palette: #c69a72 (500), #b88057 (600), #d4b693 (400), #E0D4FC (soft-purple), #FCE4EC (soft-pink)
-const COLORS = ['#c69a72', '#b88057', '#d4b693', '#E0D4FC', '#FCE4EC', '#996646', '#e3d2b8'];
+// 使用 shadcn/ui 风格的配色方案
+const COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--primary) / 0.8)',
+  'hsl(var(--primary) / 0.6)',
+  'hsl(var(--primary) / 0.4)',
+  'hsl(var(--primary) / 0.2)',
+];
 
 export const StatsChart: React.FC<StatsChartProps> = React.memo(({ feeds, isDarkMode }) => {
   const data = useMemo(() => feeds.map((feed) => ({
@@ -20,14 +28,19 @@ export const StatsChart: React.FC<StatsChartProps> = React.memo(({ feeds, isDark
   if (data.length === 0) return null;
 
   return (
-    <div className="glass-panel backdrop-blur-md bg-white/80 p-4 rounded-organic-lg border border-white/50 h-64 flex flex-col dark:bg-slate-800/80 dark:border-slate-700 shadow-soft-lg">
-      <h3 className="text-[10px] font-bold text-organic-800/60 mb-4 uppercase tracking-[0.2em] dark:text-stone-400/60">订阅源活跃度</h3>
-      <div className="flex-1 w-full min-h-0">
+    <Card className="h-64 flex flex-col overflow-hidden border-none shadow-none bg-transparent">
+      <CardHeader className="p-0 pb-4 space-y-0 flex flex-row items-center gap-2">
+        <BarChart3 className="w-4 h-4 text-primary" />
+        <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
+          订阅源活跃度
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0 flex-1 w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
             <XAxis 
               dataKey="name" 
-              tick={{ fontSize: 10, fill: isDarkMode ? '#e2e8f0' : '#64748b', fontWeight: 500 }} 
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }} 
               axisLine={false}
               tickLine={false}
               dy={10}
@@ -36,27 +49,27 @@ export const StatsChart: React.FC<StatsChartProps> = React.memo(({ feeds, isDark
               hide 
             />
             <Tooltip 
-              cursor={{ fill: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(198,154,114,0.05)' }}
+              cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
               contentStyle={{ 
-                borderRadius: '16px', 
-                border: 'none', 
-                boxShadow: '0 10px 20px -5px rgba(0,0,0,0.03)',
-                backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(8px)',
+                borderRadius: 'var(--radius)', 
+                border: '1px solid hsl(var(--border))', 
+                boxShadow: 'var(--shadow-md)',
+                backgroundColor: 'hsl(var(--popover))',
+                color: 'hsl(var(--popover-foreground))',
                 padding: '12px',
                 fontSize: '12px'
               }}
-              labelStyle={{ color: isDarkMode ? '#f1f5f9' : '#1e293b', fontWeight: 700, marginBottom: '4px' }}
-              itemStyle={{ color: '#c69a72', fontWeight: 600 }}
+              labelStyle={{ fontWeight: 700, marginBottom: '4px' }}
+              itemStyle={{ color: 'hsl(var(--primary))', fontWeight: 600 }}
             />
-            <Bar dataKey="count" radius={[8, 8, 4, 4]} barSize={32}>
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={32}>
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 });

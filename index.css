@@ -3,86 +3,71 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
   body {
-    @apply bg-organic-50 text-slate-800 antialiased overflow-hidden selection:bg-soft-purple selection:text-slate-900;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply bg-background text-foreground;
   }
 }
 
-@layer components {
-  /* Prose styles */
-  .prose {
-    max-width: none;
-    line-height: 1.75;
-  }
-  .prose h2 {
-    @apply mt-6 mb-3 text-xl font-bold;
-  }
-  .prose h3 {
-    @apply mt-5 mb-2 text-lg font-semibold;
-  }
-  .prose p {
-    @apply my-3;
-  }
-  .prose ul, .prose ol {
-    @apply my-3 pl-6;
-  }
-  .prose ul {
-    list-style-type: disc;
-  }
-  .prose ol {
-    list-style-type: decimal;
-  }
-  .prose li + li {
-    @apply mt-1;
-  }
-  .prose a {
-    @apply text-blue-600 underline underline-offset-2 hover:text-blue-700;
-  }
-  .prose blockquote {
-    @apply my-4 py-2 px-4 border-l-4 border-blue-500 bg-blue-500/5 rounded italic;
-  }
-  .dark .prose blockquote {
-    @apply bg-blue-500/20;
-  }
-  .dark .prose {
-    @apply text-gray-200;
-  }
-}
-
-@layer utilities {
-  .glass-panel {
-    @apply bg-mist-200 backdrop-blur-md border border-white/40 shadow-soft-lg;
-  }
-  
-  .glass-card {
-    @apply bg-white/60 backdrop-blur-sm border border-white/50 shadow-soft-md transition-all duration-300;
-  }
-  
-  .organic-shape {
-    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-  }
-  
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-}
-
-/* Custom Scrollbar for organic feel */
-::-webkit-scrollbar {
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
 }
-
-::-webkit-scrollbar-track {
-  background: transparent;
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
 }
-
-::-webkit-scrollbar-thumb {
-  @apply bg-slate-300/50 rounded-full hover:bg-slate-400/50 transition-colors;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-muted rounded-full;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
 }
