@@ -1,5 +1,30 @@
 {
   "version": 2,
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ],
   "routes": [
     {
       "src": "/api/feeds/(add|delete|reorder|update|admin)",
@@ -17,18 +42,10 @@
       "src": "/api/history/(get|upsert)",
       "dest": "/api/history.ts?action=$1"
     },
-    {
-      "src": "/api/history/get",
-      "dest": "/api/history.ts?action=get"
-    },
-    {
-      "src": "/api/history/upsert",
-      "dest": "/api/history.ts?action=upsert"
-    },
     { "handle": "filesystem" },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "env": {

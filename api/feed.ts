@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { safeParseUrl, resolveAndValidateHost } from '../lib/security.js';
 import { fetchWithResolvedIp } from '../lib/http.js';
 
-const CACHE_CONTROL_HEADER = 'public, max-age=60, s-maxage=600, stale-while-revalidate=300';
+const CACHE_CONTROL_HEADER = 'public, max-age=60, s-maxage=1800, stale-while-revalidate=600';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
