@@ -7,9 +7,10 @@ import { zhCN } from "date-fns/locale";
 interface CalendarWidgetProps {
   selectedDate: Date | null;
   onDateSelect: (date: Date | null) => void;
+  articleCountByDate?: Record<string, number> | null;
 }
 
-export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, onDateSelect }) => {
+export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, onDateSelect, articleCountByDate }) => {
   return (
     <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
       <div className="flex items-center justify-between p-3 border-b border-border/50 bg-muted/30">
@@ -36,6 +37,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
           onSelect={(date) => onDateSelect(date || null)}
           locale={zhCN}
           className="rounded-md border-none"
+          articleCountByDate={articleCountByDate}
         />
       </div>
     </div>

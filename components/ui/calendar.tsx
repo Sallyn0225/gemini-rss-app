@@ -17,9 +17,11 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  articleCountByDate,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+  articleCountByDate?: Record<string, number> | null
 }) {
   const defaultClassNames = getDefaultClassNames()
 
@@ -153,7 +155,9 @@ function Calendar({
             <ChevronDownIcon className={cn("size-4", className)} {...props} />
           )
         },
-        DayButton: CalendarDayButton,
+        DayButton: (dayButtonProps) => (
+          <CalendarDayButton {...dayButtonProps} articleCountByDate={articleCountByDate} />
+        ),
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
@@ -174,9 +178,15 @@ function CalendarDayButton({
   className,
   day,
   modifiers,
+  articleCountByDate,
   ...props
-}: React.ComponentProps<typeof DayButton>) {
+}: React.ComponentProps<typeof DayButton> & {
+  articleCountByDate?: Record<string, number> | null
+}) {
   const defaultClassNames = getDefaultClassNames()
+
+  // 获取当天文章数量
+  const count = articleCountByDate?.[day.date.toDateString()] || 0;
 
   const ref = React.useRef<HTMLButtonElement>(null)
   React.useEffect(() => {
@@ -200,11 +210,25 @@ function CalendarDayButton({
       data-range-middle={modifiers.range_middle}
       className={cn(
         "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 flex aspect-square h-auto w-full min-w-[--cell-size] flex-col gap-1 font-normal leading-none data-[range-end=true]:rounded-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] [&>span]:text-xs [&>span]:opacity-70",
+        "relative", // 确保有 relative 定位用于角标
         defaultClassNames.day,
         className
       )}
       {...props}
-    />
+    >
+      {/* 原有的日期数字由 children 渲染 */}
+      {props.children}
+      
+      {/* 角标：仅当有文章且不是 outside 日期时显示 */}
+      {count > 0 && !modifiers.outside && (
+        <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5
+          bg-primary text-primary-foreground text-[9px] font-bold 
+          rounded-full flex items-center justify-center
+          pointer-events-none z-10">
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
+    </Button>
   )
 }
 

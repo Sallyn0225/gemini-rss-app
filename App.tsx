@@ -149,6 +149,18 @@ const App: React.FC = () => {
     );
   }, [baseArticles, activeFilters, articleClassifications]);
 
+  // 计算当前订阅源每天的文章数量（用于日历角标显示）
+  const articleCountByDate = useMemo(() => {
+    if (!selectedFeed) return null;
+    
+    const countMap: Record<string, number> = {};
+    selectedFeed.items.forEach(article => {
+      const dateKey = new Date(article.pubDate).toDateString();
+      countMap[dateKey] = (countMap[dateKey] || 0) + 1;
+    });
+    return countMap;
+  }, [selectedFeed]);
+
   const totalPages = Math.ceil(filteredArticles.length / ARTICLES_PER_PAGE);
   const paginatedArticlesWithCategory = useMemo(() => {
     const start = (currentPage - 1) * ARTICLES_PER_PAGE;
@@ -375,7 +387,7 @@ const App: React.FC = () => {
         <div className="p-4 flex flex-col gap-6 h-full overflow-y-auto">
           <div className="flex flex-col gap-1">
             <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">时间筛选</h3>
-            <CalendarWidget selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+            <CalendarWidget selectedDate={selectedDate} onDateSelect={setSelectedDate} articleCountByDate={articleCountByDate} />
           </div>
           
           <div className="flex flex-col gap-1">
