@@ -117,7 +117,7 @@ npm run dev
 export DATABASE_URL="your-neon-connection-string"
 
 # 运行迁移脚本
-node scripts/migrate-to-neon.js
+node scripts/migrate-to-neon.cjs
 ```
 
 如果是全新部署，可跳过此步骤。
