@@ -5,6 +5,10 @@
       "src": "/api/feeds/(add|delete|reorder|update)",
       "dest": "/api/feeds/manage.ts?action=$1"
     },
+    {
+      "src": "/api/feeds/list/admin",
+      "dest": "/api/feeds/list.ts"
+    },
     { "handle": "filesystem" },
     {
       "src": "/(.*)",

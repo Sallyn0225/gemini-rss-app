@@ -88,7 +88,8 @@ export const fetchSystemFeeds = async (): Promise<SystemFeedConfig[]> => {
 
 // New admin-only function to get all feed data
 export const fetchAllSystemFeeds = async (secret: string): Promise<FullSystemFeedConfig[]> => {
-  const response = await fetch('/api/feeds/list/all', {
+  const response = await fetch('/api/feeds/list/admin', {
+    method: 'POST',
     headers: {
       'x-admin-secret': secret
     }

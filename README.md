@@ -258,7 +258,7 @@ CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
 
 - `/api/feed?id=feedId`：根据订阅配置抓取 RSS 内容
 
-- `/api/feeds/list/all`、`/api/feeds/add` 等：订阅源管理（需 `ADMIN_SECRET`）
+- `/api/feeds/list/admin`、`/api/feeds/add` 等：订阅源管理（需 `ADMIN_SECRET`）
 - `/api/history/upsert`、`/api/history/get`：历史记录同步与查询
 
 ---
