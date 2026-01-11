@@ -129,7 +129,6 @@ git push origin main
    - `DATABASE_URL`: Your Neon connection string
    - `ADMIN_SECRET`: Your admin password (keep it secure!)
    - (Optional) `MEDIA_PROXY_MAX_BYTES`: Default is 50MB
-   - (Optional) `MEDIA_PROXY_MAX_REQUESTS`: Default is 120/min
 6. Click "Deploy"
 
 ### Via Vercel CLI

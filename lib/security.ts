@@ -116,26 +116,6 @@ export const validateAdminSecret = (headers: Headers): boolean => {
   return providedSecret === adminSecret;
 };
 
-/**
- * Rate limiting state for media proxy
- */
-const mediaProxyRateState = new Map<string, { start: number; count: number }>();
-const MEDIA_PROXY_WINDOW_MS = 60 * 1000; // 1 minute window
-const MEDIA_PROXY_MAX_REQUESTS = parseInt(process.env.MEDIA_PROXY_MAX_REQUESTS || '120', 10);
-
-/**
- * Check media proxy rate limit
- */
-export const checkMediaProxyRateLimit = (ip: string): boolean => {
-  const now = Date.now();
-  const entry = mediaProxyRateState.get(ip);
-  if (!entry || now - entry.start >= MEDIA_PROXY_WINDOW_MS) {
-    mediaProxyRateState.set(ip, { start: now, count: 1 });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > MEDIA_PROXY_MAX_REQUESTS;
-};
 
 /**
  * Build proxied media URL

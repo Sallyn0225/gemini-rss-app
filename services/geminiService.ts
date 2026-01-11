@@ -223,7 +223,7 @@ export const translateContent = async (
 
   try {
     const response = await systemAi.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: prompt,
     });
     return response.text || "翻译结果为空。";
@@ -330,7 +330,7 @@ export const analyzeFeedContent = async (
 
   try {
     const response = await systemAi.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });

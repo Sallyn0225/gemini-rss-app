@@ -133,7 +133,6 @@ node scripts/migrate-to-neon.js
    - `DATABASE_URL`: 你的 Neon 连接字符串
    - `ADMIN_SECRET`: 设置管理后台密码
    - `MEDIA_PROXY_MAX_BYTES`: (可选) 媒体大小限制
-   - `MEDIA_PROXY_MAX_REQUESTS`: (可选) 速率限制
 5. 点击 Deploy
 
 方式二：通过 Vercel CLI
@@ -227,8 +226,8 @@ CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
 
 
 - ✅ **SSRF 防护**：所有代理请求在发起前会解析真实 IP，并拒绝访问内网 / 回环地址。
+- ✅ **DNS 重绑定攻击防护**：使用 DNS 解析后的真实 IP 发起请求，防止 DNS 重绑定攻击。
 - ✅ **域名白名单**：仅允许出现在订阅配置或自动推断列表中的媒体域名进入代理。
-- ✅ **限流控制**：对 `/api/media/proxy` 按 IP 限定每分钟请求数，超限返回 429。
 - ✅ **体积限制**：媒体代理对 Content-Length 与实际传输字节提供双重大小检测，超过阈值直接中断。
 - ✅ **协议约束**：仅允许 `http` / `https` 协议，拒绝 `ftp://`、`file://` 等危险协议。
 - ✅ **Admin Secret**：后台管理接口需携带 `ADMIN_SECRET`，建议结合 SSH 隧道或反向代理进一步加固。
@@ -245,20 +244,20 @@ CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
 
 - **行为**：
   1. 验证域名是否在白名单中，检查协议是否合法。
-  2. 使用 DNS 解析后的真实 IP 发起请求，防止重绑定攻击。
+  2. 使用 DNS 解析后的真实 IP 发起请求，防止 DNS 重绑定攻击。
   3. 流式转发响应体，按配置注入 `Cache-Control`、`Access-Control-Allow-Origin` 等头。
-  4. 若超过大小限制返回 `413`，超出频次返回 `429`，若命中内网地址返回 `403`。
+  4. 若超过大小限制返回 `413`，若命中内网地址返回 `403`。
 
 - **典型响应**：
   - 200：成功代理媒体
   - 403：域名未在白名单 / 解析到内网
   - 413：文件大小超出限制
-  - 429：触发限流
   - 502 / 504：上游错误或超时
 
 ### 其他接口
 
-- `/api/feed?id=feedId`：根据订阅配置抓取并缓存 RSS 内容
+- `/api/feed?id=feedId`：根据订阅配置抓取 RSS 内容
+
 - `/api/feeds/list/all`、`/api/feeds/add` 等：订阅源管理（需 `ADMIN_SECRET`）
 - `/api/history/upsert`、`/api/history/get`：历史记录同步与查询
 

@@ -45,7 +45,7 @@ This project targets **Serverless (Vercel + Neon)** for production.
 - **Frontend**: React 19, TypeScript, Tailwind CSS
 - **API Layer**: Vercel Functions (Node.js runtime)
 - **Database**: Neon PostgreSQL with Drizzle ORM
-- **Security**: SSRF protection, rate limiting, domain whitelisting
+- **Security**: SSRF protection, domain whitelisting, DNS-rebinding mitigation via resolved IP fetches
 
 ---
 
@@ -75,9 +75,9 @@ This project targets **Serverless (Vercel + Neon)** for production.
 - **ORM**: Drizzle (lightweight, serverless-friendly)
 - **API Style**: Vercel Functions in `/api` directory
 - **File Naming**: Use `.ts` extension for TypeScript functions
-- **Security**: 
+- **Security**:
   - SSRF protection via `lib/security.ts`
-  - Rate limiting for media proxy
+  - DNS-rebinding mitigation via resolved IP fetches
   - Domain whitelisting for allowed media hosts
   - Admin secret validation for protected routes
 
@@ -115,9 +115,7 @@ The application uses different sets of environment variables for the frontend (V
 ### Backend (Runtime)
 - `DATABASE_URL`: Neon PostgreSQL connection string (required).
 - `ADMIN_SECRET`: Required for administrative API endpoints (`/api/feeds/*`).
-- `UPSTREAM_PROXY`: HTTP/HTTPS proxy for fetching external RSS/Media resources (optional).
 - `MEDIA_PROXY_MAX_BYTES`: Max size for proxied media (default: 50MB).
-- `MEDIA_PROXY_MAX_REQUESTS`: Rate limit for media proxy (default: 120 req/min).
 
 ---
 
@@ -146,7 +144,7 @@ AI tasks are handled in `services/geminiService.ts`. Users can configure differe
 ### 🔒 Security Checks
 When adding new backend endpoints that fetch external content:
 1. **Validate URL**: Use `safeParseUrl`.
-2. **SSRF Protection**: Use `resolveAndValidateHost` to ensure the target is not a private/loopback IP.
+2. **SSRF Protection**: Use `resolveAndValidateHost` to ensure the target is not a private/loopback IP. This also mitigates DNS-rebinding attacks by using resolved IP addresses for fetches.
 3. **Protocol Check**: Only allow `http:` and `https:`.
 
 ---
@@ -154,5 +152,5 @@ When adding new backend endpoints that fetch external content:
 ## 🤖 Interaction Rules
 - **Localization**: UI text is primarily in **Simplified Chinese**. Maintain this for user-facing strings.
 - **Privacy**: Never log or hardcode `ADMIN_SECRET` or API keys.
-- **Performance**: Be mindful of media proxying overhead. Implement caching where appropriate.
+- **Performance**: Be mindful of media proxying overhead.
 - **Git**: Follow conventional commits if possible. Do not commit secrets (e.g., `.env`, API keys).

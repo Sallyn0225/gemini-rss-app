@@ -29,8 +29,8 @@ All original endpoints migrated to serverless functions:
 | `/api/media/proxy` | `api/media/proxy.ts` | ✅ Complete |
 
 ### 3. Shared Libraries
-- **`lib/security.ts`**: SSRF protection, rate limiting, validation utilities
-- **`lib/http.ts`**: HTTP fetching with proxy support and size limits
+- **`lib/security.ts`**: SSRF protection, DNS-rebinding mitigation, validation utilities
+- **`lib/http.ts`**: HTTP fetching with size limits
 
 ### 4. Configuration
 - **`vercel.json`**: Vercel deployment configuration
@@ -71,12 +71,12 @@ Client → Vercel CDN (Static Frontend)
 
 ✅ All security features maintained:
 - SSRF protection (DNS resolution validation)
-- Rate limiting for media proxy
+- DNS-rebinding mitigation via resolved IP fetches
 - Domain whitelisting
 - Admin secret authentication
 
 ✅ All functionality maintained:
-- RSS feed proxying with caching
+- RSS feed proxying
 - Media proxy with size limits
 - Feed management (add/edit/delete/reorder)
 - History tracking and retrieval

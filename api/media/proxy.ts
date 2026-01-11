@@ -4,22 +4,12 @@ import { feeds } from '../../db/schema';
 import { 
   safeParseUrl, 
   resolveAndValidateHost, 
-  normalizeClientIp, 
-  checkMediaProxyRateLimit,
   inferAllowedImageHosts 
 } from '../../lib/security';
-import { fetchWithProxy, streamWithSizeLimit } from '../../lib/http';
+import { fetchWithResolvedIp, streamWithSizeLimit } from '../../lib/http';
 
 const MEDIA_PROXY_MAX_BYTES = parseInt(process.env.MEDIA_PROXY_MAX_BYTES || '52428800', 10); // 50MB
-const ALLOWED_MEDIA_HOSTS_CACHE_TTL_MS = 5 * 60 * 1000;
-
-let allowedMediaHostsCache: { hosts: Set<string>; expiresAt: number } | null = null;
-
 const getAllowedMediaHosts = async (): Promise<Set<string>> => {
-  if (allowedMediaHostsCache && allowedMediaHostsCache.expiresAt > Date.now()) {
-    return allowedMediaHostsCache.hosts;
-  }
-
   const allFeeds = await db.select().from(feeds);
   const hosts = new Set<string>();
 
@@ -38,11 +28,6 @@ const getAllowedMediaHosts = async (): Promise<Set<string>> => {
     }
     inferAllowedImageHosts(feed.url).forEach(h => hosts.add(h));
   }
-
-  allowedMediaHostsCache = {
-    hosts,
-    expiresAt: Date.now() + ALLOWED_MEDIA_HOSTS_CACHE_TTL_MS
-  };
 
   return hosts;
 };
@@ -78,12 +63,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Only http/https URLs can be proxied' });
     }
 
-    // Rate limiting
-    const clientIp = normalizeClientIp(new Headers(req.headers as any));
-    if (checkMediaProxyRateLimit(clientIp)) {
-      return res.status(429).json({ error: 'Too many media proxy requests' });
-    }
-
     // Domain whitelist check
     const allowedMediaHosts = await getAllowedMediaHosts();
 
@@ -96,8 +75,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // SSRF protection
     const resolvedIp = await resolveAndValidateHost(parsedMedia.hostname);
 
-    // Fetch media
-    const response = await fetchWithProxy(parsedMedia.toString(), { timeout: 30000 });
+    // Fetch media using resolved IP to prevent DNS rebinding
+    const response = await fetchWithResolvedIp(parsedMedia.toString(), resolvedIp, { timeout: 30000 });
 
     if (!response.ok) {
       return res.status(response.status).json({ error: 'Upstream media fetch failed' });

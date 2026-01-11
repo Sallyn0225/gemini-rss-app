@@ -21,7 +21,9 @@
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
     "recharts": "^3.5.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "undici": "^6.21.0"
+
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

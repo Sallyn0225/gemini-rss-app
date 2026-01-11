@@ -1,9 +1,8 @@
 /**
- * Fetch with optional proxy support for Vercel Functions
- * Note: UPSTREAM_PROXY in Vercel should point to a remote HTTP proxy, not localhost
+ * Fetch helpers for Vercel Functions
  */
 
-const UPSTREAM_PROXY = process.env.UPSTREAM_PROXY || null;
+import { Agent } from 'undici';
 
 interface FetchOptions {
   timeout?: number;
@@ -12,7 +11,7 @@ interface FetchOptions {
 }
 
 /**
- * Fetch with proxy support and timeout
+ * Fetch with timeout
  */
 export const fetchWithProxy = async (
   targetUrl: string,
@@ -25,28 +24,61 @@ export const fetchWithProxy = async (
 
   try {
     const target = new URL(targetUrl);
-    
+
     const normalizedHeaders = {
       'Host': target.host,
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
       ...headers
     };
 
-    // If proxy is configured, use it
-    let fetchUrl = targetUrl;
-    if (UPSTREAM_PROXY) {
-      // For HTTP proxies, we can use a simple proxy service
-      // This requires the proxy to support standard HTTP CONNECT or be a forwarding proxy
-      console.log(`[Proxy] Using upstream proxy: ${UPSTREAM_PROXY}`);
-      // Note: In serverless, you might need to use a library like https-proxy-agent
-      // For now, we'll attempt direct connection and log if proxy is set
-    }
-
-    const response = await fetch(fetchUrl, {
+    const response = await fetch(targetUrl, {
       method,
       headers: normalizedHeaders,
       signal: controller.signal,
     });
+
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+/**
+ * Fetch with resolved IP to mitigate DNS rebinding
+ */
+export const fetchWithResolvedIp = async (
+  targetUrl: string,
+  resolvedIp: string,
+  options: FetchOptions = {}
+): Promise<Response> => {
+  const { timeout = 15000, headers = {}, method = 'GET' } = options;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const target = new URL(targetUrl);
+    const pinnedUrl = new URL(targetUrl);
+    pinnedUrl.hostname = resolvedIp;
+
+    const normalizedHeaders = {
+      'Host': target.host,
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+      ...headers
+    };
+
+    const dispatcher = target.protocol === 'https:'
+      ? new Agent({ connect: { servername: target.hostname } })
+      : new Agent();
+
+    const init: RequestInit & { dispatcher: Agent } = {
+      method,
+      headers: normalizedHeaders,
+      signal: controller.signal,
+      dispatcher,
+    };
+
+    const response = await fetch(pinnedUrl.toString(), init);
 
     return response;
   } finally {

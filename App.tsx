@@ -15,6 +15,31 @@ import { easeStandard, easeDecelerate } from './components/animations';
 // ... (rest of the code remains the same)
 type SidebarViewMode = 'list' | 'grid';
 
+type RouteState = { feedId: string | null; articleId: string | null };
+
+const getArticleId = (article: Article): string => {
+  return article.guid || article.link || `${article.title}-${article.pubDate}`;
+};
+
+const buildFeedPath = (feedId: string): string => `/feed/${encodeURIComponent(feedId)}`;
+const buildArticlePath = (feedId: string, articleId: string): string =>
+  `${buildFeedPath(feedId)}/article/${encodeURIComponent(articleId)}`;
+
+const parseRoute = (): RouteState => {
+  if (typeof window === 'undefined') return { feedId: null, articleId: null };
+
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  if (parts[0] !== 'feed' || !parts[1]) return { feedId: null, articleId: null };
+
+  const feedId = decodeURIComponent(parts[1]);
+  if (parts[2] === 'article' && parts[3]) {
+    return { feedId, articleId: decodeURIComponent(parts[3]) };
+  }
+
+  return { feedId, articleId: null };
+};
+
+
 // --- New Helper Function to Proxy Media in HTML ---
 const proxyHtmlImages = (html: string | null | undefined): string => {
   if (!html) return '';
@@ -429,7 +454,9 @@ const App: React.FC = () => {
   const [openFolderPath, setOpenFolderPath] = useState<string | null>(null);
   const [selectedFeed, setSelectedFeed] = useState<Feed | null>(null);
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
+  const [pendingArticleId, setPendingArticleId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
   const [dailySummary, setDailySummary] = useState<string | null>(null);
   const [summaryCache, setSummaryCache] = useState<Record<string, string>>({});
 
@@ -770,15 +797,24 @@ const App: React.FC = () => {
   }, [selectedDate, selectedFeed, baseArticles, summaryCache]);
 
   // --- 优化后的 handleFeedSelect：点击时才加载内容，并合并历史记录 ---
-  const handleFeedSelect = useCallback(async (meta: FeedMeta) => {
+  const handleFeedSelect = useCallback(async (
+    meta: FeedMeta,
+    options?: { skipHistory?: boolean; articleId?: string }
+  ) => {
+    if (!options?.skipHistory && typeof window !== 'undefined') {
+      window.history.pushState({ feedId: meta.id }, '', buildFeedPath(meta.id));
+    }
+
     setSelectedFeedMeta(meta);
     setActiveArticle(null);
+    setPendingArticleId(options?.articleId || null);
 
     setTranslatedContent(null);
     setLastTranslatedLang(null);
     setShowTranslation(false);
     setSelectedDate(null);
     setActiveFilters([]);
+
 
     // Feed-level image proxy capability: inform rssService and optionally show one-time tip
     const canProxy = meta.canProxyImages !== false;
@@ -837,7 +873,7 @@ const App: React.FC = () => {
     } finally {
       setLoadingFeedId(null);
     }
-  }, [feedContentCache, mergeFeedItems]);
+  }, [feedContentCache, imageProxyMode, mergeFeedItems]);
 
   const handleDateSelect = (date: Date | null) => { setSelectedDate(date); setActiveArticle(null); setActiveFilters([]); };
 
@@ -894,7 +930,11 @@ const App: React.FC = () => {
     setLastTranslatedLang(null);
     setShowTranslation(false);
 
-    const id = article.guid || article.link;
+    const id = getArticleId(article);
+    if (selectedFeedMeta && typeof window !== 'undefined') {
+      window.history.pushState({ feedId: selectedFeedMeta.id, articleId: id }, '', buildArticlePath(selectedFeedMeta.id, id));
+    }
+
     if (!readArticleIds.has(id)) {
       const newSet = new Set(readArticleIds);
       newSet.add(id);
@@ -907,56 +947,79 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBackToArticles = () => setActiveArticle(null);
-  const handleBackToDashboard = () => { setSelectedFeed(null); setActiveArticle(null); setSelectedDate(null); };
-
-  // --- 移动端返回手势拦截逻辑 ---
-  // 用于追踪当前的"深度"，避免重复 pushState
-  const navigationDepthRef = useRef(0);
+  const handleBackToArticles = () => {
+    setActiveArticle(null);
+    if (selectedFeedMeta && typeof window !== 'undefined') {
+      window.history.pushState({ feedId: selectedFeedMeta.id }, '', buildFeedPath(selectedFeedMeta.id));
+    }
+  };
+  const handleBackToDashboard = () => {
+    setSelectedFeed(null);
+    setSelectedFeedMeta(null);
+    setActiveArticle(null);
+    setSelectedDate(null);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/');
+    }
+  };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!pendingArticleId || !selectedFeed) return;
 
-    // 计算当前应该处于的深度：仪表盘=0，信息流=1，文章详情=2
-    let targetDepth = 0;
-    if (selectedFeed) targetDepth = 1;
-    if (activeArticle) targetDepth = 2;
-
-    // 如果深度增加了，push 新的历史记录
-    while (navigationDepthRef.current < targetDepth) {
-      window.history.pushState({ depth: navigationDepthRef.current + 1 }, '');
-      navigationDepthRef.current++;
+    const target = selectedFeed.items.find(item => getArticleId(item) === pendingArticleId);
+    if (target) {
+      setActiveArticle(target);
     }
+  }, [pendingArticleId, selectedFeed]);
 
-    // 如果深度减少了（用户通过 UI 按钮返回），同步 ref
-    // 这里不需要 popState，因为是用户主动点击返回按钮
-    if (navigationDepthRef.current > targetDepth) {
-      navigationDepthRef.current = targetDepth;
-    }
-  }, [selectedFeed, activeArticle]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handlePopState = (event: PopStateEvent) => {
-      // 浏览器后退触发时，根据当前状态决定返回到哪一层
-      if (activeArticle) {
-        // 当前在文章详情，返回到信息流
-        setActiveArticle(null);
-        navigationDepthRef.current = 1;
-      } else if (selectedFeed) {
-        // 当前在信息流，返回到仪表盘
-        setSelectedFeed(null);
-        setActiveArticle(null);
-        setSelectedDate(null);
-        navigationDepthRef.current = 0;
+  // --- 路由同步：支持移动端返回手势与刷新恢复 ---
+  const syncStateWithRoute = useCallback((route: RouteState, skipHistory: boolean) => {
+    if (!route.feedId) {
+      setSelectedFeed(null);
+      setSelectedFeedMeta(null);
+      setActiveArticle(null);
+      setSelectedDate(null);
+      if (!skipHistory && typeof window !== 'undefined') {
+        window.history.replaceState({}, '', '/');
       }
-      // 如果已经在仪表盘，不拦截，让浏览器正常后退
+      return;
+    }
+
+    if (selectedFeedMeta?.id !== route.feedId) {
+      const meta = feedConfigs.find(feed => feed.id === route.feedId);
+      if (meta) {
+        handleFeedSelect(meta, { skipHistory: true, articleId: route.articleId || undefined });
+      } else {
+        setErrorMsg(`未找到订阅源: ${route.feedId}`);
+      }
+      return;
+    }
+
+    if (!route.articleId) {
+      setActiveArticle(null);
+      setPendingArticleId(null);
+      return;
+    }
+
+    setPendingArticleId(route.articleId);
+  }, [feedConfigs, handleFeedSelect, selectedFeedMeta]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePopState = () => {
+      syncStateWithRoute(parseRoute(), true);
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeArticle, selectedFeed]);
+  }, [syncStateWithRoute]);
+
+  useEffect(() => {
+    syncStateWithRoute(parseRoute(), true);
+  }, [feedConfigs, syncStateWithRoute]);
+
 
   const handleTranslateToggle = useCallback(async () => {
     if (!activeArticle) return;

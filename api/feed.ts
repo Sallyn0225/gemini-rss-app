@@ -3,11 +3,8 @@ import { db } from '../db';
 import { feeds } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { safeParseUrl, resolveAndValidateHost } from '../lib/security';
-import { fetchWithProxy } from '../lib/http';
+import { fetchWithResolvedIp } from '../lib/http';
 
-// In-memory cache for feed responses
-const feedCache = new Map<string, { content: string; contentType: string; timestamp: number }>();
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const CACHE_CONTROL_HEADER = 'public, max-age=60, s-maxage=600, stale-while-revalidate=300';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -50,22 +47,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(502).json({ error: 'Invalid upstream URL for this feed' });
     }
 
-    // Check cache
-    const cacheKey = feedId;
-    const cached = feedCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
-      console.log(`[Cache HIT] ID: ${feedId}`);
-      res.setHeader('Content-Type', cached.contentType);
-      res.setHeader('Cache-Control', CACHE_CONTROL_HEADER);
-      return res.status(200).send(cached.content);
-    }
-    console.log(`[Cache MISS] ID: ${feedId}`);
-
     // Validate host (SSRF protection)
-    await resolveAndValidateHost(parsedTarget.hostname);
+    const resolvedIp = await resolveAndValidateHost(parsedTarget.hostname);
 
-    // Fetch feed
-    const response = await fetchWithProxy(parsedTarget.toString(), { timeout: 15000 });
+    // Fetch feed using resolved IP to prevent DNS rebinding
+    const response = await fetchWithResolvedIp(parsedTarget.toString(), resolvedIp, { timeout: 15000 });
     console.log(`[Feed Fetch] ID: ${feedId} | Status: ${response.status}`);
 
     if (!response.ok) {
@@ -80,12 +66,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = await response.text();
     const contentType = response.headers.get('content-type') || 'application/xml';
 
-    // Cache the response
-    feedCache.set(cacheKey, {
-      content: body,
-      contentType,
-      timestamp: Date.now(),
-    });
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', CACHE_CONTROL_HEADER);
