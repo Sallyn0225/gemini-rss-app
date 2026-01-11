@@ -244,18 +244,18 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             <Button
               variant={sidebarMode === 'list' ? "secondary" : "ghost"}
               size="icon"
-              className="h-7 w-7 rounded-sm"
+              className="h-8 w-8 md:h-7 md:w-7 rounded-sm"
               onClick={() => setSidebarMode('list')}
             >
-              <List className="w-3.5 h-3.5" />
+              <List className="w-4 h-4 md:w-3.5 md:h-3.5" />
             </Button>
             <Button
               variant={sidebarMode === 'grid' ? "secondary" : "ghost"}
               size="icon"
-              className="h-7 w-7 rounded-sm"
+              className="h-8 w-8 md:h-7 md:w-7 rounded-sm"
               onClick={() => setSidebarMode('grid')}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
+              <LayoutGrid className="w-4 h-4 md:w-3.5 md:h-3.5" />
             </Button>
           </div>
         </div>
@@ -334,8 +334,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             <Settings className="w-4 h-4" />
             设置
           </Button>
-          <Button variant="outline" size="icon" onClick={() => setDarkMode(!darkMode)} title={darkMode ? "切换到浅色模式" : "切换到深色模式"}>
-            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          <Button variant="outline" size="icon" className="h-10 w-10 md:h-9 md:w-9" onClick={() => setDarkMode(!darkMode)} title={darkMode ? "切换到浅色模式" : "切换到深色模式"}>
+            {darkMode ? <Sun className="w-5 h-5 md:w-4 md:h-4" /> : <Moon className="w-5 h-5 md:w-4 md:h-4" />}
           </Button>
         </div>
       </aside>

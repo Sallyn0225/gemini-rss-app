@@ -665,8 +665,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl h-[85vh] p-0 flex flex-col overflow-hidden rounded-[2rem]">
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
+      <DialogContent className="max-w-4xl w-[95vw] md:w-full h-[90vh] md:h-[85vh] p-0 flex flex-col overflow-hidden rounded-[1.5rem] md:rounded-[2rem]">
+        <DialogHeader className="px-4 md:px-6 py-4 border-b shrink-0">
           <div className="flex items-center gap-2">
             <Settings2 className="w-5 h-5 text-primary" />
             <DialogTitle className="text-xl font-black tracking-tight">偏好设置</DialogTitle>
@@ -674,8 +674,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          <TabsList className="w-full md:w-48 h-auto flex flex-row md:flex-col justify-start bg-muted/30 p-2 gap-1 shrink-0 overflow-x-auto">
-            <TabsTrigger value="providers" className="justify-start gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsList className="w-full md:w-48 h-auto flex flex-row md:flex-col justify-start bg-muted/30 p-2 gap-1 shrink-0 overflow-x-auto custom-scrollbar">
+            <TabsTrigger value="providers" className="justify-start gap-2 px-3 md:px-4 py-2 md:py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs md:text-sm">
               <Cpu className="w-4 h-4" />
               <span className="hidden md:inline">API 提供商</span>
             </TabsTrigger>
@@ -1229,9 +1229,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
           </div>
         </Tabs>
 
-        <DialogFooter className="px-6 py-4 border-t shrink-0 bg-muted/20">
-          <Button variant="ghost" onClick={onClose}>取消</Button>
-          <Button onClick={handleSaveAll} className="px-8">保存所有设置</Button>
+        <DialogFooter className="px-4 md:px-6 py-4 border-t shrink-0 bg-muted/20 flex flex-row gap-2">
+          <Button variant="ghost" onClick={onClose} className="flex-1 md:flex-none">取消</Button>
+          <Button onClick={handleSaveAll} className="flex-1 md:flex-none md:px-8">保存所有设置</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

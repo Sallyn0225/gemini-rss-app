@@ -40,10 +40,11 @@ export const FeedItem: React.FC<FeedItemProps> = React.memo(({ feedMeta, feedCon
           )}
           title={displayTitle}
         >
-          <img 
-            src={getMediaUrl(feedContent?.image) || fallbackAvatar} 
-            alt={displayTitle} 
-            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110" 
+          <img
+            src={getMediaUrl(feedContent?.image) || fallbackAvatar}
+            alt={displayTitle}
+            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-110 bg-muted"
+            loading="lazy"
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
@@ -80,13 +81,14 @@ export const FeedItem: React.FC<FeedItemProps> = React.memo(({ feedMeta, feedCon
         )}
       >
         {feedContent ? (
-          <img 
-            src={getMediaUrl(feedContent.image) || fallbackAvatar} 
-            alt="" 
+          <img
+            src={getMediaUrl(feedContent.image) || fallbackAvatar}
+            alt=""
             className={cn(
-              "w-8 h-8 rounded-md object-cover shrink-0 border",
+              "w-8 h-8 rounded-md object-cover shrink-0 border bg-muted",
               isSelected ? "border-primary-foreground/20" : "border-border"
-            )} 
+            )}
+            loading="lazy"
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
           />
         ) : (

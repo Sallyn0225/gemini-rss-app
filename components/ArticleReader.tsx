@@ -129,14 +129,14 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
                 <Sparkles className="w-3 h-3" />
                 由 {getTranslatorName()} 翻译
               </div>
-              <div className="prose prose-slate dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: translatedContent }} />
+              <div className="prose prose-slate dark:prose-invert max-w-none prose-table:block prose-table:overflow-x-auto prose-img:max-w-full prose-img:h-auto" dangerouslySetInnerHTML={{ __html: translatedContent }} />
             </div>
           )}
 
           {!showTranslation && (
-            <div 
-              className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-2xl prose-headings:font-black selection:bg-primary selection:text-primary-foreground"
-              dangerouslySetInnerHTML={{ __html: proxiedArticleContent }} 
+            <div
+              className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-2xl prose-headings:font-black selection:bg-primary selection:text-primary-foreground prose-table:block prose-table:overflow-x-auto prose-img:max-w-full prose-img:h-auto prose-pre:max-w-full prose-pre:overflow-x-auto"
+              dangerouslySetInnerHTML={{ __html: proxiedArticleContent }}
             />
           )}
           

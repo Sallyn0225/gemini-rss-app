@@ -42,6 +42,9 @@ interface ArticleListProps {
   handleScrollToTop: () => void;
   articleListRef: React.RefObject<HTMLDivElement>;
   visiblePageTokens: (number | string)[];
+  handleTouchStart?: (e: React.TouchEvent) => void;
+  handleTouchMove?: (e: React.TouchEvent) => void;
+  handleTouchEnd?: () => void;
 }
 
 export const ArticleList: React.FC<ArticleListProps> = ({
@@ -70,10 +73,18 @@ export const ArticleList: React.FC<ArticleListProps> = ({
   showScrollToTop,
   handleScrollToTop,
   articleListRef,
-  visiblePageTokens
+  visiblePageTokens,
+  handleTouchStart,
+  handleTouchMove,
+  handleTouchEnd
 }) => {
   return (
-    <div className="h-full flex flex-col animate-in fade-in duration-500">
+    <div
+      className="h-full flex flex-col animate-in fade-in duration-500"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <header className="h-16 px-4 md:px-8 flex items-center justify-between bg-background/80 backdrop-blur-md border-b sticky top-0 z-20 shrink-0">
         <div className="flex items-center gap-3 overflow-hidden">
           {!isSidebarOpen && (
@@ -93,7 +104,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
             variant={isRightSidebarOpen ? "default" : "outline"} 
             size="sm" 
             onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-            className="text-[10px] font-black uppercase tracking-widest h-8"
+            className="text-[10px] font-black uppercase tracking-widest h-10 md:h-8"
           >
             {isRightSidebarOpen ? <PanelRight className="w-3.5 h-3.5 mr-2" /> : <Filter className="w-3.5 h-3.5 mr-2" />}
             {isRightSidebarOpen ? '关闭侧栏' : '筛选与分析'}
