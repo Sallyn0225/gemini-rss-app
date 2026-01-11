@@ -10,7 +10,7 @@ import { StatsChart } from './components/StatsChart';
 import { ArticleCard } from './components/ArticleCard';
 import { CalendarWidget } from './components/CalendarWidget';
 import { SettingsModal } from './components/SettingsModal';
-import { easeStandard, easeDecelerate } from './components/animations';
+import { easeStandard, easeDecelerate, easeOutBack } from './components/animations';
 
 // ... (rest of the code remains the same)
 type SidebarViewMode = 'list' | 'grid';
@@ -83,7 +83,7 @@ interface FeedItemProps {
 
 const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSelected, isLoading, onSelect }) => {
   const displayTitle = feedMeta.customTitle || feedContent?.title || feedMeta.id;
-  const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(displayTitle)}&background=3b82f6&color=fff&size=128`), [displayTitle]);
+  const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(displayTitle)}&background=b88057&color=fff&size=128`), [displayTitle]);
   const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; size: number }>>([]);
 
   const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -112,11 +112,11 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
       >
         <motion.button
           onClick={handleClick}
-          className={`relative aspect-square rounded-xl overflow-hidden border w-full block ${isSelected ? 'ring-2 ring-blue-500 border-transparent shadow-md' : 'border-slate-200 dark:border-slate-700'}`}
+          className={`relative aspect-square rounded-organic-md overflow-hidden border w-full block transition-all duration-300 ${isSelected ? 'ring-2 ring-organic-500 border-transparent shadow-soft-lg' : 'border-organic-200 dark:border-slate-700 hover:border-organic-300'}`}
           title={displayTitle}
           whileHover={{ 
             scale: 1.05,
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+            y: -4,
             transition: { duration: 0.2, ease: easeStandard }
           }}
           whileTap={{ 
@@ -149,12 +149,12 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
             whileHover={{ scale: 1.1 }}
             transition={{ duration: 0.5, ease: easeStandard }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex flex-col justify-end p-3">
-            <p className="text-white text-xs font-bold line-clamp-2 leading-tight shadow-black drop-shadow-md text-left">{displayTitle}</p>
+          <div className="absolute inset-0 bg-gradient-to-t from-organic-900/90 via-organic-900/20 to-transparent flex flex-col justify-end p-3">
+            <p className="text-white text-[10px] font-bold line-clamp-2 leading-tight drop-shadow-md text-left">{displayTitle}</p>
           </div>
           {isSelected && (
             <motion.div 
-              className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-sm"
+              className="absolute top-2 right-2 w-3 h-3 bg-organic-500 rounded-full border-2 border-white shadow-soft-md"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 500, damping: 25 }}
@@ -162,8 +162,8 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
           )}
           {/* Loading indicator */}
           {isLoading && (
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            <div className="absolute inset-0 bg-white/40 backdrop-blur-xs flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-organic-600"></div>
             </div>
           )}
         </motion.button>
@@ -178,12 +178,11 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3, ease: easeDecelerate }}
     >
-      {feedMeta.isSub && <div className="absolute left-3 top-0 bottom-1/2 w-3 border-l-2 border-b-2 border-slate-200 dark:border-slate-700 rounded-bl-lg -z-10"></div>}
+      {feedMeta.isSub && <div className="absolute left-3 top-0 bottom-1/2 w-3 border-l-2 border-b-2 border-organic-200 dark:border-slate-700 rounded-bl-lg -z-10"></div>}
       <motion.button
         onClick={handleClick}
-        className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-left pr-8 relative overflow-hidden ${isSelected ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800' : 'text-slate-600 dark:text-slate-400'}`}
+        className={`flex items-center gap-3 w-full p-2.5 rounded-organic-md text-left pr-8 relative overflow-hidden transition-all duration-300 ${isSelected ? 'bg-organic-100 text-organic-800 shadow-soft-md ring-1 ring-organic-200 dark:bg-organic-900/30 dark:text-organic-300 dark:ring-organic-800' : 'text-slate-600 hover:bg-organic-50/80 dark:text-slate-400'}`}
         whileHover={{ 
-          backgroundColor: isSelected ? undefined : 'rgba(241, 245, 249, 1)',
           x: 4,
           transition: { duration: 0.2, ease: easeStandard }
         }}
@@ -202,7 +201,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
               top: ripple.y - ripple.size / 2,
               width: ripple.size,
               height: ripple.size,
-              backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.3)' : 'rgba(148, 163, 184, 0.3)',
+              backgroundColor: isSelected ? 'rgba(198, 154, 114, 0.3)' : 'rgba(212, 182, 147, 0.2)',
             }}
             initial={{ scale: 0, opacity: 0.6 }}
             animate={{ scale: 1, opacity: 0 }}
@@ -214,27 +213,27 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
           <motion.img 
             src={getMediaUrl(feedContent.image) || fallbackAvatar} 
             alt="" 
-            className="w-9 h-9 rounded-lg object-cover bg-slate-200 shrink-0 border border-slate-100 dark:border-slate-700" 
+            className="w-9 h-9 rounded-organic-md object-cover bg-organic-100 shrink-0 border border-white/40" 
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
             whileHover={{ scale: 1.1, rotate: 3 }}
             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
           />
         ) : (
-          <div className="w-9 h-9 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0 border border-slate-100 dark:border-slate-600 animate-pulse" />
+          <div className="w-9 h-9 rounded-organic-md bg-organic-200 dark:bg-slate-700 shrink-0 animate-pulse" />
         )}
         <div className="flex-1 overflow-hidden">
-          <p className={`font-semibold text-sm truncate ${isSelected ? 'text-blue-800 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}`}>{displayTitle}</p>
+          <p className={`font-bold text-sm truncate ${isSelected ? 'text-organic-900 dark:text-organic-300' : 'text-slate-700 dark:text-slate-300'}`}>{displayTitle}</p>
           {/* 文章数：有内容时显示真实数量，无内容时显示骨架 */}
           {feedContent ? (
-            <p className="text-xs text-slate-400 truncate">{feedContent.items.length} 条更新</p>
+            <p className="text-[10px] text-organic-400 truncate font-medium">{feedContent.items.length} 条更新</p>
           ) : (
-            <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mt-1" />
+            <div className="h-3 w-16 bg-organic-100 dark:bg-slate-700 rounded animate-pulse mt-1" />
           )}
         </div>
         {/* Loading spinner when this feed is being loaded */}
         {isLoading && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-organic-500"></div>
           </div>
         )}
       </motion.button>
@@ -250,102 +249,104 @@ interface FilterBarProps {
 const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, onReset, onAnalyze, isAnalyzing, analysisSuccess, selectedDate }) => {
   const filters = [ArticleCategory.OFFICIAL, ArticleCategory.MEDIA, ArticleCategory.EVENT, ArticleCategory.COMMUNITY, ArticleCategory.RETWEET,];
   return (
-    <motion.div 
-      className="flex items-center gap-2 py-3 px-4 md:px-8 border-b border-slate-200 overflow-x-auto custom-scrollbar bg-white sticky top-[81px] z-10 shrink-0 dark:bg-slate-900 dark:border-slate-800"
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: easeDecelerate }}
-    >
-      <motion.button 
-        onClick={onAnalyze} 
-        disabled={isAnalyzing || !selectedDate} 
-        className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm ${isAnalyzing ? 'bg-yellow-50 text-yellow-700 border-yellow-200 cursor-wait dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800' : analysisSuccess ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : !selectedDate ? 'bg-slate-400 text-slate-200 border-slate-400 cursor-not-allowed dark:bg-slate-600 dark:text-slate-400 dark:border-slate-600' : 'bg-indigo-600 text-white border-transparent'}`}
-        whileHover={isAnalyzing || !selectedDate ? {} : { scale: 1.05 }}
-        whileTap={isAnalyzing || !selectedDate ? {} : { scale: 0.95 }}
-        transition={{ duration: 0.15, ease: easeStandard }}
-        title={!selectedDate ? "请先选择日期" : undefined}
+    <div className="flex justify-center sticky top-0 z-20 py-4 pointer-events-none">
+      <motion.div 
+        className="flex items-center gap-2 py-2 px-3 glass-card rounded-full pointer-events-auto shadow-soft-lg mx-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: easeOutBack }}
       >
-        {isAnalyzing ? (
-          <>
-            <motion.svg 
-              className="-ml-1 mr-1 h-3 w-3 text-yellow-600 dark:text-yellow-400" 
-              xmlns="http://www.w3.org/2000/svg" 
-              fill="none" 
-              viewBox="0 0 24 24"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            >
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </motion.svg>
-            <span>分析中...</span>
-          </>
-        ) : analysisSuccess ? (
-          <>
-            <motion.svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 24 24" 
-              fill="currentColor" 
-              className="w-3 h-3"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-            >
-              <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-            </motion.svg>
-            <span>完成</span>
-          </>
-        ) : (
-          <>
-            <motion.svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              className="w-3 h-3"
-              animate={{ rotate: [0, 15, -15, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-            >
-              <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 19L13 11" />
-                <path d="M7 21L15 13" />
-                <path d="M13 9.5L14.2 8.3L15.4 9.5L14.2 10.7Z" />
-                <path d="M18 4L18 6" />
-                <path d="M18 9L18 11" />
-                <path d="M17 8L19 8" />
-              </g>
-            </motion.svg>
-            <span>AI 分析</span>
-          </>
-        )}
-      </motion.button>
-      <div className="w-px h-6 bg-slate-200 mx-1 shrink-0 dark:bg-slate-700"></div>
-      <motion.button 
-        onClick={onReset} 
-        className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${activeFilters.length === 0 ? 'bg-slate-800 text-white border-slate-800 dark:bg-slate-700' : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        transition={{ duration: 0.15, ease: easeStandard }}
-        layout
-      >
-        全部
-      </motion.button>
-      {filters.map((filter, index) => (
         <motion.button 
-          key={filter} 
-          onClick={() => onToggleFilter(filter)} 
-          disabled={isAnalyzing && !activeFilters.includes(filter)} 
-          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${activeFilters.includes(filter) ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800' : 'bg-white text-slate-600 border-slate-200 dark:bg-slate-800 dark:border-slate-700'} ${isAnalyzing ? 'opacity-50' : ''}`}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: index * 0.05, ease: easeDecelerate }}
-          whileHover={isAnalyzing ? {} : { scale: 1.05 }}
-          whileTap={isAnalyzing ? {} : { scale: 0.95 }}
+          onClick={onAnalyze} 
+          disabled={isAnalyzing || !selectedDate} 
+          className={`shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${isAnalyzing ? 'bg-organic-100 text-organic-700 cursor-wait' : analysisSuccess ? 'bg-green-100 text-green-700' : !selectedDate ? 'bg-organic-200 text-organic-400 cursor-not-allowed' : 'bg-organic-800 text-white hover:bg-organic-900 shadow-soft-md'}`}
+          whileHover={isAnalyzing || !selectedDate ? {} : { scale: 1.05, y: -1 }}
+          whileTap={isAnalyzing || !selectedDate ? {} : { scale: 0.95 }}
+          title={!selectedDate ? "请先选择日期" : undefined}
+        >
+          {isAnalyzing ? (
+            <>
+              <motion.svg 
+                className="-ml-1 mr-1 h-3 w-3 text-organic-600" 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              >
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </motion.svg>
+              <span>分析中...</span>
+            </>
+          ) : analysisSuccess ? (
+            <>
+              <motion.svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                fill="currentColor" 
+                className="w-3 h-3"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+              >
+                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+              </motion.svg>
+              <span>完成</span>
+            </>
+          ) : (
+            <>
+              <motion.svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                className="w-3 h-3"
+                animate={{ rotate: [0, 15, -15, 0] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              >
+                <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 19L13 11" />
+                  <path d="M7 21L15 13" />
+                  <path d="M13 9.5L14.2 8.3L15.4 9.5L14.2 10.7Z" />
+                  <path d="M18 4L18 6" />
+                  <path d="M18 9L18 11" />
+                  <path d="M17 8L19 8" />
+                </g>
+              </motion.svg>
+              <span>AI 分析</span>
+            </>
+          )}
+        </motion.button>
+        <div className="w-px h-4 bg-organic-200 mx-1 shrink-0"></div>
+        <motion.button 
+          onClick={onReset} 
+          className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeFilters.length === 0 ? 'bg-organic-100 text-organic-800 shadow-inner-light' : 'text-organic-600 hover:bg-organic-50'}`}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           layout
         >
-          {filter}
+          全部
         </motion.button>
-      ))}
-    </motion.div>
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
+          {filters.map((filter, index) => (
+            <motion.button 
+              key={filter} 
+              onClick={() => onToggleFilter(filter)} 
+              disabled={isAnalyzing && !activeFilters.includes(filter)} 
+              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeFilters.includes(filter) ? 'bg-organic-200 text-organic-800' : 'text-organic-600 hover:bg-organic-50'} ${isAnalyzing ? 'opacity-50' : ''}`}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05, ease: easeDecelerate }}
+              whileHover={isAnalyzing ? {} : { scale: 1.05 }}
+              whileTap={isAnalyzing ? {} : { scale: 0.95 }}
+              layout
+            >
+              {filter}
+            </motion.button>
+          ))}
+        </div>
+      </motion.div>
+    </div>
   );
 };
 
@@ -1230,31 +1231,39 @@ const App: React.FC = () => {
   }, [helpContent]);
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <div className={`fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden ${isSidebarOpen ? 'block' : 'hidden'}`} onClick={() => setIsSidebarOpen(false)} />
-      <div className={`fixed inset-y-0 left-0 z-40 w-80 flex flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 ease-in-out dark:bg-slate-900 dark:border-slate-800 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${!isSidebarOpen && 'lg:hidden'} shrink-0`}>
-        <div className="p-6 border-b border-slate-100 bg-white dark:bg-slate-900 dark:border-slate-800">
+    <div className="flex h-screen bg-organic-50 font-sans text-slate-900 overflow-hidden relative dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
+      {/* Organic Breathing Background Blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-soft-purple/30 rounded-blob blur-3xl animate-blob-morph" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-soft-pink/30 rounded-blob blur-3xl animate-blob-morph" style={{ animationDelay: '-2s' }} />
+        <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-soft-cyan/30 rounded-blob blur-3xl animate-blob-morph" style={{ animationDelay: '-4s' }} />
+        <div className="absolute bottom-[20%] left-[10%] w-[30%] h-[30%] bg-soft-sage/30 rounded-blob blur-3xl animate-blob-morph" style={{ animationDelay: '-6s' }} />
+      </div>
+
+      <div className={`fixed inset-0 bg-black/20 backdrop-blur-xs z-30 lg:hidden ${isSidebarOpen ? 'block' : 'hidden'}`} onClick={() => setIsSidebarOpen(false)} />
+      <div className={`fixed inset-y-0 left-0 z-40 w-80 flex flex-col glass-panel m-4 rounded-organic-lg transition-transform duration-300 ease-in-out dark:bg-slate-900/80 dark:border-slate-800 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${!isSidebarOpen && 'lg:hidden'} shrink-0`}>
+        <div className="p-6 border-b border-white/20">
           <div className="flex items-center justify-between mb-2">
             <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2 group">
-              <div className="bg-blue-600 text-white p-1.5 rounded-lg flex items-center justify-center text-lg">
+              <div className="bg-organic-600 text-white p-2 rounded-organic-md flex items-center justify-center text-lg shadow-soft-md group-hover:scale-110 transition-transform">
                 🌸
               </div>
-              <h1 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">NSYC订阅站</h1>
+              <h1 className="text-xl font-extrabold text-organic-900 dark:text-slate-100">NSYC订阅站</h1>
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg dark:hover:bg-slate-800" title="收起侧边栏"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 lg:hidden"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 hidden lg:block"><path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg></button>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-slate-400 hover:text-organic-600 rounded-organic-md transition-colors dark:hover:bg-slate-800" title="收起侧边栏"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 lg:hidden"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 hidden lg:block"><path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg></button>
           </div>
-          <p className="text-xs text-slate-400">Make Josei Seiyu Great Again</p>
+          <p className="text-xs text-organic-500 font-medium px-1">Make Josei Seiyu Great Again</p>
           {errorMsg && <p className="text-xs text-red-500 mt-2 px-1">{errorMsg}</p>}
           {proxyInfoMsg && !errorMsg && (
             <p className="text-xs text-amber-500 mt-2 px-1">{proxyInfoMsg}</p>
           )}
         </div>
         <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">订阅源</span>
-          <div className="flex bg-slate-100 rounded-lg p-1 gap-1 dark:bg-slate-800">
+          <span className="text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em]">订阅源</span>
+          <div className="flex bg-organic-100 rounded-full p-1 gap-1 dark:bg-slate-800">
             <button
               onClick={() => setSidebarMode('list')}
-              className={`p-1.5 rounded-md transition-all ${sidebarMode === 'list' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700' : 'text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'}`}
+              className={`p-1.5 rounded-full transition-all ${sidebarMode === 'list' ? 'bg-white text-organic-700 shadow-soft-md dark:bg-slate-700' : 'text-organic-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1276,7 +1285,7 @@ const App: React.FC = () => {
             </button>
             <button
               onClick={() => setSidebarMode('grid')}
-              className={`p-1.5 rounded-md transition-all ${sidebarMode === 'grid' ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-700' : 'text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/50'}`}
+              className={`p-1.5 rounded-full transition-all ${sidebarMode === 'grid' ? 'bg-white text-organic-700 shadow-soft-md dark:bg-slate-700' : 'text-organic-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1587,67 +1596,69 @@ const App: React.FC = () => {
           </button>
         </div>
       </div>
-      <div className="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden min-w-0 dark:bg-black/90">
+      <div className="flex-1 flex flex-col h-full bg-transparent relative overflow-hidden min-w-0">
         {!selectedFeed && (
           <div className="h-full overflow-y-auto p-4 md:p-12 animate-fade-in custom-scrollbar">
             <div className="max-w-5xl mx-auto">
               <header className="mb-10 flex items-center gap-4">
                 {!isSidebarOpen && (
-                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="展开侧边栏">
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-organic-500 hover:text-organic-700 rounded-organic-md transition-colors" title="展开侧边栏">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
                   </button>
                 )}
-                <div><h2 className="text-3xl font-bold text-slate-800 dark:text-white">仪表盘</h2><p className="text-slate-500 dark:text-slate-400">您的多媒体企划新闻生态系统概览。</p></div>
+                <div><h2 className="text-3xl font-extrabold text-organic-900 dark:text-white">仪表盘</h2><p className="text-organic-500 dark:text-slate-400 font-medium">您的多媒体企划新闻生态系统概览。</p></div>
               </header>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
-                  <div className="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                <div className="glass-card p-6 rounded-organic-lg flex items-center gap-6">
+                  <div className="bg-soft-purple p-4 organic-shape text-organic-700 shadow-soft-md">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">文章总数</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{feeds.reduce((acc, f) => acc + f.items.length, 0)}</h3>
+                    <p className="text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em]">文章总数</p>
+                    <h3 className="text-2xl font-black text-organic-900 dark:text-white">{feeds.reduce((acc, f) => acc + f.items.length, 0)}</h3>
                   </div>
                 </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
-                  <div className="bg-purple-100 p-3 rounded-full text-purple-600 dark:bg-purple-900/30 dark:text-purple-300">
+                <div className="glass-card p-6 rounded-organic-lg flex items-center gap-6">
+                  <div className="bg-soft-sage p-4 organic-shape text-organic-700 shadow-soft-md">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 19.5v-.75a7.5 7.5 0 00-7.5-7.5H4.5m0-6.75h.75c7.87 0 14.25 6.38 14.25 14.25v.75M6 18.75a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">活跃订阅源</p>
-                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{feeds.length}</h3>
+                    <p className="text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em]">活跃订阅源</p>
+                    <h3 className="text-2xl font-black text-organic-900 dark:text-white">{feeds.length}</h3>
                   </div>
                 </div>
               </div>
-              <StatsChart feeds={feeds} isDarkMode={darkMode} />
+              <div className="glass-card p-8 rounded-organic-lg overflow-hidden">
+                <StatsChart feeds={feeds} isDarkMode={darkMode} />
+              </div>
             </div>
           </div>
         )}
         {selectedFeed && !activeArticle && (
-          <div className="h-full flex flex-col animate-fade-in bg-slate-50 dark:bg-slate-950/50">
-            <div className="h-20 px-4 md:px-8 flex items-center justify-between bg-white border-b border-slate-200 shadow-sm sticky top-0 z-20 shrink-0 dark:bg-slate-900 dark:border-slate-800">
+          <div className="h-full flex flex-col animate-fade-in">
+            <div className="h-20 px-4 md:px-8 flex items-center justify-between bg-white/40 backdrop-blur-md border-b border-white/20 sticky top-0 z-20 shrink-0">
               <div className="flex items-center gap-3 overflow-hidden">
                 {!isSidebarOpen && (
-                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg" title="展开侧边栏">
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-organic-500 hover:text-organic-700 rounded-organic-md transition-colors" title="展开侧边栏">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
                   </button>
                 )}
-                <img src={getMediaUrl(selectedFeed.image)} className="w-10 h-10 object-contain rounded-md border border-slate-100 hidden sm:block" alt="" />
+                <img src={getMediaUrl(selectedFeed.image)} className="w-10 h-10 object-contain rounded-organic-md border border-white/40 bg-white/50 hidden sm:block shadow-soft-md" alt="" />
                 <div className="overflow-hidden">
-                  <h2 className="text-lg md:text-xl font-bold text-slate-800 truncate dark:text-slate-100">{selectedFeed.title}</h2>
-                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wider hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
+                  <h2 className="text-lg md:text-xl font-black text-organic-900 truncate dark:text-slate-100">{selectedFeed.title}</h2>
+                  <p className="text-[10px] text-organic-400 font-bold uppercase tracking-[0.2em] hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="切换右侧边栏">
+                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-organic-md transition-all shadow-soft-md ${isRightSidebarOpen ? 'bg-organic-600 text-white' : 'glass-card text-organic-500 hover:text-organic-700'}`} title="切换右侧边栏">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                   </svg>
@@ -1658,7 +1669,7 @@ const App: React.FC = () => {
             <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
               {/* Pull-to-refresh indicator (mobile only) */}
               <div
-                className="lg:hidden flex items-center justify-center text-xs text-slate-400 overflow-hidden transition-all duration-200 ease-out"
+                className="lg:hidden flex items-center justify-center text-xs text-organic-400 overflow-hidden transition-all duration-200 ease-out"
                 style={{
                   height: pullDistance > 0 || isRefreshing ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0,
                   opacity: pullDistance > 0 || isRefreshing ? 1 : 0,
@@ -1666,21 +1677,21 @@ const App: React.FC = () => {
               >
                 {isRefreshing ? (
                   <div className="flex items-center gap-2">
-                    <svg className="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-4 w-4 text-organic-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>正在刷新...</span>
+                    <span className="font-bold">正在刷新...</span>
                   </div>
                 ) : pullDistance >= 60 ? (
-                  <div className="flex items-center gap-1 text-blue-500">
+                  <div className="flex items-center gap-1 text-organic-600 font-bold">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
                     </svg>
                     <span>释放刷新</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 font-bold">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L3 6m0 0l6-6M3 6h12a6 6 0 010 12h-3" />
                     </svg>
@@ -1701,20 +1712,20 @@ const App: React.FC = () => {
               </div>
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="py-6 mt-4 space-y-3">
+                <div className="py-12 mt-4 space-y-3">
                   <div className="hidden md:flex items-center justify-center gap-2">
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
+                      className="px-6 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
                     >
                       上一页
                     </button>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 glass-card p-1 rounded-full">
                       {visiblePageTokens.map(token => {
                         if (typeof token === 'string') {
                           return (
-                            <span key={token} className="w-9 h-9 inline-flex items-center justify-center rounded-lg text-sm font-semibold text-slate-400 dark:text-slate-500">
+                            <span key={token} className="w-8 h-8 inline-flex items-center justify-center text-xs font-bold text-organic-400">
                               ···
                             </span>
                           );
@@ -1723,7 +1734,7 @@ const App: React.FC = () => {
                           <button
                             key={`page-${token}`}
                             onClick={() => setCurrentPage(token)}
-                            className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${currentPage === token ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700'}`}
+                            className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${currentPage === token ? 'bg-organic-800 text-white shadow-soft-md' : 'hover:bg-white/50 text-organic-600'}`}
                           >
                             {token}
                           </button>
@@ -1733,7 +1744,7 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
+                      className="px-6 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
                     >
                       下一页
                     </button>
@@ -1743,17 +1754,17 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
+                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
                     >
                       上一页
                     </button>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      第 {currentPage} / {totalPages} 页
+                    <div className="glass-card px-4 py-2 rounded-full text-[10px] font-bold text-organic-600 whitespace-nowrap">
+                      {currentPage} / {totalPages}
                     </div>
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
+                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
                     >
                       下一页
                     </button>
@@ -1761,52 +1772,52 @@ const App: React.FC = () => {
                 </div>
               )}
               {(isLoadingMoreHistory || canLoadMoreHistory) && (
-                <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500">
+                <div className="py-8 text-center text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em]">
                   {isLoadingMoreHistory ? '正在加载更早的内容…' : '滑动到底部以加载更早的内容'}
                 </div>
               )}
             </div>
-            <p className="text-center text-xs text-slate-400 pb-4">
-              共 {filteredArticles.length} 篇文章，当前第 {currentPage} / {totalPages || 1} 页
+            <p className="text-center text-[10px] font-bold text-organic-400 pb-4 uppercase tracking-widest">
+              共 {filteredArticles.length} 篇文章 • 第 {currentPage} / {totalPages || 1} 页
             </p>
             <button
               type="button"
               aria-label="返回顶部"
               onClick={handleScrollToTop}
-              className={`md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out hover:bg-blue-700 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${showScrollToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+              className={`md:hidden fixed bottom-6 right-6 z-30 w-12 h-12 bg-organic-800 text-white rounded-full shadow-soft-lg flex items-center justify-center transition-all duration-300 ease-in-out hover:bg-organic-900 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-organic-500 ${showScrollToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
               </svg>
             </button>
           </div>
         )}
         {activeArticle && (
-          <div className="h-full flex flex-col bg-white animate-slide-in dark:bg-slate-900">
-            <div className="h-16 border-b border-slate-200 flex items-center justify-between px-2 md:px-6 bg-white/95 backdrop-blur sticky top-0 z-20 shadow-sm dark:bg-slate-900/95 dark:border-slate-800">
+          <div className="h-full flex flex-col bg-transparent animate-slide-in">
+            <div className="h-16 border-b border-white/20 flex items-center justify-between px-2 md:px-6 bg-white/60 backdrop-blur-md sticky top-0 z-20 shadow-soft-md">
               <div className="flex items-center gap-2">
                 {!isSidebarOpen && (
-                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-600 rounded-lg mr-2">
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-organic-500 hover:text-organic-700 rounded-organic-md transition-colors mr-2">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
                   </button>
                 )}
-                <button onClick={handleBackToArticles} className="flex items-center gap-2 text-slate-500 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                <button onClick={handleBackToArticles} className="flex items-center gap-2 text-organic-600 hover:text-organic-800 px-3 py-1.5 rounded-full hover:bg-white/50 transition-all font-bold text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                   </svg>
-                  <span className="font-semibold text-sm hidden sm:inline">返回</span>
+                  <span className="hidden sm:inline">返回列表</span>
                 </button>
               </div>
               <div className="flex items-center gap-1 md:gap-3">
                 <div className="flex items-center gap-2 mr-2">
-                  <select value={targetLang} onChange={(e) => setTargetLang(e.target.value as Language)} className="px-2 py-1.5 md:px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs md:text-sm text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 truncate max-w-[5rem] md:max-w-none">{Object.values(Language).map(lang => <option key={lang} value={lang}>{lang}</option>)}</select>
+                  <select value={targetLang} onChange={(e) => setTargetLang(e.target.value as Language)} className="px-3 py-1.5 glass-card rounded-full text-xs font-bold text-organic-700 focus:outline-none focus:ring-2 focus:ring-organic-500 cursor-pointer truncate max-w-[5rem] md:max-w-none">{Object.values(Language).map(lang => <option key={lang} value={lang}>{lang}</option>)}</select>
                 </div>
-                <button onClick={handleTranslateToggle} disabled={isTranslating} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${isTranslating ? 'bg-indigo-100 text-indigo-400 cursor-wait' : showTranslation ? 'bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:bg-slate-800 dark:border-indigo-800' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+                <button onClick={handleTranslateToggle} disabled={isTranslating} className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-soft-md ${isTranslating ? 'bg-organic-200 text-organic-400 cursor-wait' : showTranslation ? 'bg-white text-organic-800 hover:bg-organic-50' : 'bg-organic-800 text-white hover:bg-organic-900'}`}>
                   {isTranslating ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 md:mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -1814,26 +1825,26 @@ const App: React.FC = () => {
                     </>
                   ) : showTranslation ? (
                     <>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:mr-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
                       </svg>
                       <span className="hidden md:inline">查看原文</span>
                     </>
                   ) : (
                     <>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:mr-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
                       </svg>
                       <span className="hidden md:inline">AI 翻译</span>
                     </>
                   )}
                 </button>
-                <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-blue-600 rounded-lg dark:hover:bg-slate-800" title="打开原文链接">
+                <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-organic-400 hover:text-organic-600 rounded-full hover:bg-white/50 transition-colors" title="打开原文链接">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                   </svg>
                 </a>
-                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-lg transition-colors border border-slate-200 bg-white ml-2 dark:bg-slate-800 dark:border-slate-700 ${isRightSidebarOpen ? 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800' : 'text-slate-500 hover:text-blue-600'}`} title="切换右侧边栏">
+                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-full transition-all shadow-soft-md ml-2 ${isRightSidebarOpen ? 'bg-organic-600 text-white' : 'glass-card text-organic-500 hover:text-organic-700'}`} title="切换右侧边栏">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                   </svg>
@@ -1841,30 +1852,30 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-8 md:px-10 custom-scrollbar">
-              <div className="max-w-3xl mx-auto pb-20">
-                <h1 className="text-2xl md:text-5xl font-extrabold text-slate-900 mb-6 dark:text-white">{activeArticle.title}</h1>
-                <div className="flex items-center gap-3 text-sm text-slate-500 mb-10 pb-8 border-b border-slate-100 dark:text-slate-400 dark:border-slate-800">
-                  <img src={readingViewAvatar} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-50 dark:ring-slate-800 bg-slate-100 dark:bg-slate-800" onError={(e) => { (e.target as HTMLImageElement).src = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`); }} />
+              <div className="max-w-4xl mx-auto pb-20 glass-card p-8 md:p-12 rounded-organic-lg shadow-soft-lg">
+                <h1 className="text-3xl md:text-5xl font-black text-organic-950 mb-8 leading-tight dark:text-white">{activeArticle.title}</h1>
+                <div className="flex items-center gap-4 text-sm text-organic-500 mb-10 pb-8 border-b border-organic-100">
+                  <img src={readingViewAvatar} alt="" className="w-12 h-12 rounded-organic-md object-cover ring-4 ring-white shadow-soft-md bg-organic-50" onError={(e) => { (e.target as HTMLImageElement).src = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`); }} />
                   <div className="flex flex-col">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{activeArticle.author || activeArticle.feedTitle}</span>
-                    <span>{new Date(activeArticle.pubDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
+                    <span className="font-bold text-organic-900 text-base dark:text-slate-200">{activeArticle.author || activeArticle.feedTitle}</span>
+                    <span className="font-medium">{new Date(activeArticle.pubDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
                   </div>
                 </div>
 
                 {/* Translation Disclaimer / Header */}
                 {showTranslation && translatedContent && (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500 mb-6 px-4 py-3 bg-slate-100 rounded-lg dark:bg-slate-800 dark:text-slate-400 border-l-4 border-blue-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-blue-500">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-organic-600 mb-8 px-5 py-4 bg-organic-50 rounded-organic-md border-l-4 border-organic-500 shadow-soft-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-organic-500">
                       <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 12.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm-1.5-6.5a.75.75 0 100 1.5.75.75 0 000-1.5z" />
                     </svg>
-                    <span>由 <strong>{getTranslatorName()}</strong> 翻译，仅供参考</span>
-                    <span className="text-slate-300 mx-1">|</span>
+                    <span>由 <span className="text-organic-900">{getTranslatorName()}</span> 翻译</span>
+                    <span className="text-organic-200 mx-1">|</span>
                     <div className="flex items-center gap-1">
-                      <span>翻译至</span>
+                      <span>目标语言</span>
                       <select
                         value={targetLang}
                         onChange={(e) => handleLanguageSwitch(e.target.value as Language)}
-                        className="bg-transparent font-bold text-blue-600 outline-none cursor-pointer hover:text-blue-700 py-0 pr-6 border-none focus:ring-0 text-sm dark:text-blue-400"
+                        className="bg-transparent font-black text-organic-800 outline-none cursor-pointer hover:text-organic-950 py-0 pr-6 border-none focus:ring-0 text-xs"
                       >
                         {Object.values(Language).map(l => <option key={l} value={l}>{l}</option>)}
                       </select>
@@ -1874,7 +1885,7 @@ const App: React.FC = () => {
 
                 {/* Content Area (Switches between Translation and Original) */}
                 <div
-                  className={`prose prose-slate prose-lg max-w-none prose-img:rounded-xl dark:prose-invert`}
+                  className={`prose prose-slate prose-lg max-w-none prose-img:rounded-organic-md prose-img:shadow-soft-lg dark:prose-invert selection:bg-soft-purple selection:text-organic-900`}
                   dangerouslySetInnerHTML={{ __html: showTranslation && translatedContent ? translatedContent : proxiedArticleContent }}
                 />
 
@@ -1884,51 +1895,55 @@ const App: React.FC = () => {
         )}
       </div>
       {selectedFeed && (
-        <div className={`fixed inset-y-0 right-0 z-30 w-80 bg-slate-50/80 backdrop-blur-xl border-l border-slate-200 shadow-lg transform transition-transform duration-300 ${isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:translate-x-0 lg:shadow-none lg:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 ${!isRightSidebarOpen && 'lg:hidden'}`}>
-          <div className="flex flex-col h-full p-4 gap-4 overflow-y-auto">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-bold text-slate-600 dark:text-slate-300">筛选与 AI</h3>
-              <button onClick={() => setIsRightSidebarOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded dark:hover:bg-slate-800">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+        <div className={`fixed inset-y-0 right-0 z-30 w-80 glass-panel m-4 rounded-organic-lg transform transition-transform duration-300 ${isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:translate-x-0 lg:shadow-soft-lg dark:bg-slate-900/80 dark:border-slate-800 ${!isRightSidebarOpen && 'lg:hidden'}`}>
+          <div className="flex flex-col h-full p-6 gap-6 overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between">
+              <h3 className="font-black text-organic-900 text-sm tracking-wider uppercase dark:text-slate-300">筛选与 AI</h3>
+              <button onClick={() => setIsRightSidebarOpen(false)} className="p-2 text-organic-400 hover:text-organic-600 rounded-full transition-colors dark:hover:bg-slate-800">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div>
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">按日期筛选</h4>
-              <CalendarWidget selectedDate={selectedDate} onDateSelect={handleDateSelect} />
-            </div>
-            <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden dark:bg-slate-800 dark:border-slate-700">
-              <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 flex items-center justify-between dark:from-indigo-900/20 dark:border-slate-700">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-slate-700 text-sm dark:text-slate-200">AI 每日摘要</h3>
-                </div>
-                {!selectedDate && <span className="text-[10px] text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 dark:bg-orange-900/30">请选择日期</span>}
+              <h4 className="text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em] mb-4">按日期筛选</h4>
+              <div className="glass-card rounded-organic-md p-1">
+                <CalendarWidget selectedDate={selectedDate} onDateSelect={handleDateSelect} />
               </div>
-              <div className="flex-1 p-4 overflow-y-auto">
+            </div>
+            <div className="flex-1 flex flex-col min-h-0 glass-card rounded-organic-lg overflow-hidden border-none shadow-soft-lg">
+              <div className="p-5 bg-gradient-to-r from-soft-purple/20 to-soft-pink/20 border-b border-white/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-organic-900 text-xs tracking-wider uppercase dark:text-slate-200">AI 每日摘要</h3>
+                </div>
+                {!selectedDate && <span className="text-[9px] font-bold text-organic-500 bg-white/50 px-3 py-1 rounded-full shadow-soft-sm">请选择日期</span>}
+              </div>
+              <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
                 {!selectedDate ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                    <p className="text-slate-400 text-sm mb-2">请在上方日历中选择一个具体日期以生成摘要。</p>
+                  <div className="h-full flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 bg-soft-purple/20 rounded-blob mb-4 flex items-center justify-center text-2xl">✨</div>
+                    <p className="text-organic-400 text-xs font-bold leading-relaxed px-4">请在上方日历中选择一个具体日期以生成摘要。</p>
                   </div>
                 ) : baseArticles.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                    <p className="text-slate-400 text-sm">该日期下没有文章。</p>
+                  <div className="h-full flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 bg-organic-100 rounded-blob mb-4 flex items-center justify-center text-2xl">📭</div>
+                    <p className="text-organic-400 text-xs font-bold">该日期下没有文章。</p>
                   </div>
                 ) : dailySummary ? (
-                  <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap animate-fade-in font-sans dark:text-slate-300">{dailySummary}</div>
+                  <div className="text-xs text-organic-800 leading-relaxed whitespace-pre-wrap animate-fade-in font-medium dark:text-slate-300">{dailySummary}</div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center">
-                    <button onClick={handleRunAnalysis} disabled={isAnalyzing} className="group relative inline-flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-white transition-all duration-200 bg-indigo-600 rounded-full hover:bg-indigo-700 disabled:bg-indigo-500 disabled:cursor-wait">
+                    <button onClick={handleRunAnalysis} disabled={isAnalyzing} className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 font-bold text-white transition-all duration-300 bg-organic-800 rounded-full hover:bg-organic-950 hover:scale-105 shadow-soft-lg disabled:opacity-50 disabled:cursor-wait">
                       {isAnalyzing ? (
                         <>
-                          <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          <span>分析中...</span>
+                          <span className="text-xs">分析中...</span>
                         </>
                       ) : (
-                        `总结 ${baseArticles.length} 篇文章`
+                        <span className="text-xs">总结 {baseArticles.length} 篇文章</span>
                       )}
                     </button>
                   </div>
