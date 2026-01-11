@@ -27,6 +27,7 @@ interface ArticleListProps {
   handleRunAnalysis: () => void;
   isAnalyzing: boolean;
   analysisSuccess: boolean;
+  isAiConfigured: boolean;
   paginatedArticlesWithCategory: any[];
   readArticleIds: Set<string>;
   handleArticleSelect: (article: Article) => void;
@@ -151,14 +152,15 @@ export const ArticleList: React.FC<ArticleListProps> = ({
         </div>
       </header>
 
-      <FilterBar 
-        activeFilters={activeFilters} 
-        onToggleFilter={handleFilterToggle} 
+      <FilterBar
+        activeFilters={activeFilters}
+        onToggleFilter={handleFilterToggle}
         onReset={() => handleFilterToggle('__reset__')} // Note: Logic handled in App.tsx
-        onAnalyze={handleRunAnalysis} 
-        isAnalyzing={isAnalyzing} 
-        analysisSuccess={analysisSuccess} 
-        selectedDate={selectedDate} 
+        onAnalyze={handleRunAnalysis}
+        isAnalyzing={isAnalyzing}
+        analysisSuccess={analysisSuccess}
+        selectedDate={selectedDate}
+        isAiConfigured={isAiConfigured}
       />
 
       <ScrollArea ref={articleListRef as any} className="flex-1 bg-muted/10">

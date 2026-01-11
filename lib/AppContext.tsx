@@ -42,6 +42,7 @@ interface AppContextType {
   // Reading Progress
   readArticleIds: Set<string>;
   markAsRead: (id: string) => void;
+  isAiConfigured: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -116,6 +117,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [darkMode]);
 
+  const isAiConfigured = useMemo(() => {
+    const { providers, tasks } = aiSettings;
+    return providers.length > 0 && !!tasks.general?.providerId;
+  }, [aiSettings]);
+
   const value = {
     darkMode, setDarkMode,
     isSidebarOpen, setIsSidebarOpen,
@@ -128,7 +134,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     activeArticle, setActiveArticle,
     aiSettings, setAiSettings,
     imageProxyMode, setImageProxyMode,
-    readArticleIds, markAsRead
+    readArticleIds, markAsRead,
+    isAiConfigured
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

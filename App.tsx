@@ -65,7 +65,8 @@ const App: React.FC = () => {
     activeArticle, setActiveArticle,
     aiSettings, setAiSettings,
     imageProxyMode, setImageProxyMode,
-    readArticleIds, markAsRead
+    readArticleIds, markAsRead,
+    isAiConfigured
   } = useAppContext();
 
   const FEED_CACHE_TTL = 10 * 60 * 1000;
@@ -99,11 +100,6 @@ const App: React.FC = () => {
   const [pendingArticleId, setPendingArticleId] = useState<string | null>(null);
 
   const articleListRef = useRef<HTMLDivElement>(null);
-
-  const isAiConfigured = useMemo(() => {
-    const { providers, tasks } = aiSettings;
-    return providers.length > 0 && !!tasks.general?.providerId;
-  }, [aiSettings]);
 
   const groupedFeeds = useMemo(() => {
     const root: Map<string, CategoryNode> = new Map();
@@ -273,6 +269,7 @@ const App: React.FC = () => {
               else setActiveFilters(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
             }}
             handleRunAnalysis={() => {}} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess}
+            isAiConfigured={isAiConfigured}
             paginatedArticlesWithCategory={paginatedArticlesWithCategory} readArticleIds={readArticleIds}
             handleArticleSelect={handleArticleSelect} onRefresh={handleRefresh} isRefreshing={isRefreshing}
             currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages}

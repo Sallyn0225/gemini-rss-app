@@ -13,16 +13,18 @@ interface FilterBarProps {
   isAnalyzing: boolean;
   analysisSuccess: boolean;
   selectedDate: Date | null;
+  isAiConfigured: boolean;
 }
 
-export const FilterBar: React.FC<FilterBarProps> = React.memo(({ 
-  activeFilters, 
-  onToggleFilter, 
-  onReset, 
-  onAnalyze, 
-  isAnalyzing, 
-  analysisSuccess, 
-  selectedDate 
+export const FilterBar: React.FC<FilterBarProps> = React.memo(({
+  activeFilters,
+  onToggleFilter,
+  onReset,
+  onAnalyze,
+  isAnalyzing,
+  analysisSuccess,
+  selectedDate,
+  isAiConfigured
 }) => {
   const filters = [
     ArticleCategory.OFFICIAL, 
@@ -35,17 +37,27 @@ export const FilterBar: React.FC<FilterBarProps> = React.memo(({
   return (
     <div className="flex justify-center sticky top-0 z-20 py-3 pointer-events-none">
       <div className="flex items-center bg-background/80 backdrop-blur-md border rounded-full shadow-lg pointer-events-auto mx-4 overflow-hidden p-1">
-        <Button 
+        <Button
           variant={analysisSuccess ? "default" : "ghost"}
           size="sm"
-          onClick={onAnalyze} 
-          disabled={isAnalyzing || !selectedDate} 
+          onClick={() => {
+            if (!selectedDate) {
+              alert("请先选择日期以进行 AI 分析");
+              return;
+            }
+            if (!isAiConfigured) {
+              alert("请先在设置中配置 AI 模型");
+              return;
+            }
+            onAnalyze();
+          }}
+          disabled={isAnalyzing}
           className={cn(
             "h-8 rounded-full px-4 text-xs font-bold transition-all",
             analysisSuccess && "bg-green-500 hover:bg-green-600 text-white",
-            !analysisSuccess && !isAnalyzing && selectedDate && "text-primary hover:bg-primary/10"
+            !analysisSuccess && !isAnalyzing && "text-primary hover:bg-primary/10"
           )}
-          title={!selectedDate ? "请先选择日期" : undefined}
+          title={!selectedDate ? "请先选择日期" : !isAiConfigured ? "请先配置 AI 模型" : undefined}
         >
           {isAnalyzing ? (
             <>
