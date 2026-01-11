@@ -4,23 +4,76 @@ This document provides essential information for AI coding agents to operate eff
 
 ## 🛠 Build & Development Commands
 
-This project uses **Vite** for the frontend and a custom **Node.js** server for the backend.
+This project supports **two deployment modes**:
+1. **Serverless (Vercel + Neon)** - Recommended for production
+2. **Traditional (Docker + SQLite)** - Legacy support
 
 ### Setup
 - `npm install`: Install dependencies.
 
 ### Development
 - `npm run dev`: Start the Vite development server (usually at `http://localhost:5173`).
-- `node server.js`: Start the backend server (usually at `http://localhost:3000`).
-  - *Note:* In development, you may need to set `ADMIN_SECRET` environment variable for management APIs.
+
+**For Docker/Local Backend:**
+- `node server.js`: Start the legacy Node.js server (port 3000).
+
+**For Vercel/Serverless Development:**
+- `vercel dev`: Start Vercel development environment with serverless functions.
 
 ### Build
 - `npm run build`: Build the frontend for production (output to `dist/`).
+- `npm run vercel-build`: Build command used by Vercel.
+
+**For Docker deployment:**
 - `docker-compose up --build`: Build and start the entire stack using Docker.
 
 ### Testing & Linting
 - There are currently no automated tests or linters configured in `package.json`. 
 - **Manual Verification**: Verify frontend changes by running `npm run build` to ensure no TypeScript or Vite build errors.
+
+---
+
+## 🏗️ Architecture Overview
+
+### Serverless Architecture (Current)
+
+```
+┌─────────────────┐
+│  Vercel CDN     │  ← Static frontend (React + Vite)
+└────────┬────────┘
+         │
+┌────────▼────────────────────────┐
+│  Vercel Functions (/api/*.ts)   │  ← Serverless API endpoints
+└────────┬────────────────────────┘
+         │
+┌────────▼────────┐
+│  Neon PostgreSQL │  ← Serverless database
+└─────────────────┘
+```
+
+**Key Components:**
+- **Frontend**: React 19, TypeScript, Tailwind CSS
+- **API Layer**: Vercel Functions (Node.js runtime)
+- **Database**: Neon PostgreSQL with Drizzle ORM
+- **Security**: SSRF protection, rate limiting, domain whitelisting
+
+### Legacy Architecture (Docker)
+
+```
+┌──────────────────┐
+│  Nginx/Caddy     │  ← Reverse proxy
+└────────┬─────────┘
+         │
+┌────────▼─────────┐
+│  Node.js Server  │  ← server.js (vanilla HTTP)
+│  (Port 3000)     │
+└────────┬─────────┘
+         │
+┌────────▼─────────┐
+│  SQLite DB       │  ← data/history.db
+│  JSON Config     │  ← data/feeds.json
+└──────────────────┘
+```
 
 ---
 
@@ -43,7 +96,20 @@ This project uses **Vite** for the frontend and a custom **Node.js** server for 
 - **Enums**: Use `enum` for fixed categories (e.g., `ArticleCategory`, `Language`).
 - **Media Utilities**: Use `selectMediaUrl`, `buildProxiedUrl`, and `createMediaUrl` from `types.ts` for handling dual-URL media.
 
-### 🔌 Backend (Node.js)
+### 🔌 Backend (Serverless Functions)
+- **Runtime**: Node.js 20.x (Vercel default)
+- **Framework**: `@vercel/node` for type definitions
+- **Database**: Neon PostgreSQL with Drizzle ORM
+- **ORM**: Drizzle (lightweight, serverless-friendly)
+- **API Style**: Vercel Functions in `/api` directory
+- **File Naming**: Use `.ts` extension for TypeScript functions
+- **Security**: 
+  - SSRF protection via `lib/security.ts`
+  - Rate limiting for media proxy
+  - Domain whitelisting for allowed media hosts
+  - Admin secret validation for protected routes
+
+### 🔌 Backend (Legacy Docker)
 - **Runtime**: CommonJS (as per `package.json` `"type": "commonjs"`). Use `require()`.
 - **Database**: `better-sqlite3`. Database file located at `data/history.db`.
 - **API Style**: Vanilla `http` module. No Express. Handle routing via `req.url` parsing in `server.js`.

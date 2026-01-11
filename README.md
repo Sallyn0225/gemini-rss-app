@@ -88,7 +88,142 @@ npm run dev
 
 ---
 
-## 核心部署配置 ⚙️
+## Serverless 部署（Vercel + Neon）🚀 **推荐**
+
+本项目已完成 Serverless 架构重构，支持零运维部署到 Vercel + Neon PostgreSQL。
+
+### 优势
+
+- ✅ **零服务器维护**：无需管理 Docker 容器或 VPS
+- ✅ **全球 CDN 加速**：Vercel 边缘网络自动优化访问速度
+- ✅ **按需付费**：Neon 和 Vercel 均提供免费额度，超出才计费
+- ✅ **自动扩容**：流量高峰自动扩展，无需手动干预
+- ✅ **HTTPS 默认启用**：自动 SSL 证书配置
+
+### 部署步骤
+
+#### 1. 准备 Neon 数据库
+
+1. 访问 [Neon.tech](https://neon.tech) 创建免费账号
+2. 创建新项目和数据库
+3. 复制连接字符串（格式：`postgresql://user:password@host.neon.tech/dbname?sslmode=require`）
+
+#### 2. 数据迁移（如果从 Docker/本地迁移）
+
+如果你已有本地 `data/feeds.json` 和 `data/history.db`：
+
+```bash
+# 设置环境变量
+export DATABASE_URL="your-neon-connection-string"
+
+# 运行迁移脚本
+node scripts/migrate-to-neon.js
+```
+
+如果是全新部署，可跳过此步骤。
+
+#### 3. 部署到 Vercel
+
+方式一：通过 GitHub（推荐）
+
+1. 将代码推送到 GitHub 仓库
+2. 访问 [Vercel Dashboard](https://vercel.com/new)
+3. 导入你的 GitHub 仓库
+4. 配置环境变量：
+   - `DATABASE_URL`: 你的 Neon 连接字符串
+   - `ADMIN_SECRET`: 设置管理后台密码
+   - `MEDIA_PROXY_MAX_BYTES`: (可选) 媒体大小限制
+   - `MEDIA_PROXY_MAX_REQUESTS`: (可选) 速率限制
+5. 点击 Deploy
+
+方式二：通过 Vercel CLI
+
+```bash
+# 安装 Vercel CLI
+npm i -g vercel
+
+# 登录
+vercel login
+
+# 部署
+vercel
+
+# 配置环境变量（在 Vercel Dashboard 或通过 CLI）
+vercel env add DATABASE_URL
+vercel env add ADMIN_SECRET
+
+# 生产部署
+vercel --prod
+```
+
+#### 4. 初始化数据库表结构
+
+部署完成后，需要创建数据库表：
+
+```bash
+# 使用 Drizzle Kit 生成并推送表结构
+npx drizzle-kit push
+```
+
+或者手动在 Neon SQL Editor 中执行：
+
+```sql
+CREATE TABLE feeds (
+  id TEXT PRIMARY KEY,
+  url TEXT NOT NULL,
+  category TEXT NOT NULL,
+  is_sub BOOLEAN DEFAULT false NOT NULL,
+  custom_title TEXT DEFAULT '',
+  allowed_media_hosts TEXT,
+  display_order INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+CREATE TABLE history (
+  id SERIAL PRIMARY KEY,
+  feed_id TEXT NOT NULL REFERENCES feeds(id) ON DELETE CASCADE,
+  guid TEXT,
+  link TEXT,
+  title TEXT,
+  pub_date TEXT,
+  content TEXT,
+  description TEXT,
+  thumbnail TEXT,
+  author TEXT,
+  enclosure TEXT,
+  feed_title TEXT,
+  last_updated TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+CREATE INDEX idx_history_feed_id_pub_date ON history (feed_id, pub_date);
+CREATE UNIQUE INDEX idx_history_feed_id_guid ON history (feed_id, guid);
+CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
+```
+
+#### 5. 访问你的应用
+
+- 前端：`https://your-project.vercel.app`
+- API: `https://your-project.vercel.app/api/feeds/list`
+
+### 架构说明
+
+| 组件 | 技术栈 | 说明 |
+| --- | --- | --- |
+| 前端 | React + Vite | 静态托管在 Vercel CDN |
+| API | Vercel Functions | Serverless 函数，自动扩展 |
+| 数据库 | Neon PostgreSQL | Serverless 数据库，按需计费 |
+| ORM | Drizzle ORM | 轻量级，Serverless 友好 |
+
+### 注意事项
+
+- ⚠️ Vercel 免费版函数执行时间限制为 10 秒，Hobby 版为 10 秒，Pro 版为 60 秒
+- ⚠️ 大型媒体文件代理可能会超时，建议前端设置为「不代理」模式
+- ⚠️ Neon 免费版有存储限制（0.5 GB），超出需升级套餐
+
+---
+
+## 核心部署配置 ⚙️ (Docker 方式)
 
 ### docker-compose.yml
 

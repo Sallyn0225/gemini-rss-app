@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "vercel-build": "vite build"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
+    "@neondatabase/serverless": "^0.10.4",
+    "@vercel/node": "^3.2.29",
     "better-sqlite3": "^12.5.0",
     "dompurify": "^3.1.7",
+    "drizzle-orm": "^0.36.4",
     "framer-motion": "^12.23.24",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -22,6 +26,7 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "drizzle-kit": "^0.28.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

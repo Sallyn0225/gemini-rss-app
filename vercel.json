@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/feeds/list",
+      "dest": "/api/feeds/list.ts"
+    },
+    {
+      "src": "/api/feeds/(add|delete|reorder)",
+      "dest": "/api/feeds/manage.ts?action=$1"
+    },
+    {
+      "src": "/api/history/upsert",
+      "dest": "/api/history/upsert.ts"
+    },
+    {
+      "src": "/api/history/get",
+      "dest": "/api/history/get.ts"
+    },
+    {
+      "src": "/api/feed",
+      "dest": "/api/feed.ts"
+    },
+    {
+      "src": "/api/media/proxy",
+      "dest": "/api/media/proxy.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/dist/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
