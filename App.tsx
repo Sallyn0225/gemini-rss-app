@@ -196,6 +196,9 @@ const App: React.FC = () => {
   const handleArticleSelect = (article: Article) => {
     setActiveArticle(article);
     markAsRead(getArticleId(article));
+    // Reset translation state when switching articles
+    setShowTranslation(false);
+    setTranslatedContent(null);
     if (selectedFeedMeta) window.history.pushState({}, '', buildArticlePath(selectedFeedMeta.id, getArticleId(article)));
   };
 
