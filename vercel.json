@@ -7,7 +7,7 @@
     },
     {
       "src": "/api/feeds/list/admin",
-      "dest": "/api/feeds/list.ts"
+      "dest": "/api/feeds/list.ts?admin=true"
     },
     { "handle": "filesystem" },
     {

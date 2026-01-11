@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(413).json({ error: 'Too many items in a single request' });
     }
 
-    const clientIp = normalizeClientIp(new Headers(req.headers as any));
+    const clientIp = normalizeClientIp(req.headers);
     if (checkHistoryUpsertRateLimit(clientIp)) {
       return res.status(429).json({ error: 'Too many history upsert requests' });
     }
@@ -102,11 +102,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         pubDate: item.pubDate || null,
         content: item.content || null,
         description: item.description || null,
-        thumbnail: item.thumbnail || null,
+        thumbnail: item.thumbnail ? JSON.stringify(item.thumbnail) : null,
         author: item.author || null,
         enclosure: item.enclosure ? JSON.stringify(item.enclosure) : null,
         feedTitle: item.feedTitle || null,
-      }).onConflictDoNothing();
+      } as any).onConflictDoNothing();
     }
 
     // Get total count

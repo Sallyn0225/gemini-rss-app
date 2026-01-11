@@ -61,9 +61,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       guid: row.guid,
       author: row.author,
       description: row.description,
-      content: row.content,
-      thumbnail: row.thumbnail,
-      enclosure: row.enclosure ? JSON.parse(row.enclosure) : null,
+       content: row.content,
+       thumbnail: row.thumbnail ? JSON.parse(row.thumbnail) : null,
+       enclosure: row.enclosure ? JSON.parse(row.enclosure) : null,
       feedTitle: row.feedTitle,
     }));
 

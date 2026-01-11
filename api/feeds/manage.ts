@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(503).json({ error: 'Admin secret is not configured on server.' });
   }
 
-  if (!validateAdminSecret(new Headers(req.headers as any))) {
+  if (!validateAdminSecret(req.headers)) {
     return res.status(401).json({ error: 'Unauthorized: Invalid Admin Secret' });
   }
 

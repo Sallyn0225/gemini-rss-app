@@ -99,9 +99,15 @@ export const inferAllowedImageHosts = (feedUrl: string): string[] => {
 /**
  * Normalize client IP from request headers
  */
-export const normalizeClientIp = (headers: Headers): string => {
-  const forwarded = (headers.get('x-forwarded-for') || '').split(',')[0].trim();
-  const raw = forwarded || headers.get('x-real-ip') || 'unknown';
+export const normalizeClientIp = (headers: any): string => {
+  // Handle both Web API Headers and Node.js IncomingHttpHeaders
+  const getHeader = (name: string) => {
+    if (typeof headers.get === 'function') return headers.get(name);
+    return headers[name.toLowerCase()];
+  };
+
+  const forwarded = (getHeader('x-forwarded-for') || '').split(',')[0].trim();
+  const raw = forwarded || getHeader('x-real-ip') || 'unknown';
   if (!raw) return 'unknown';
   return raw.startsWith('::ffff:') ? raw.slice(7) : raw;
 };
@@ -109,11 +115,19 @@ export const normalizeClientIp = (headers: Headers): string => {
 /**
  * Validate admin secret from request headers
  */
-export const validateAdminSecret = (headers: Headers): boolean => {
+export const validateAdminSecret = (headers: any): boolean => {
   const adminSecret = process.env.ADMIN_SECRET;
   if (!adminSecret) return false;
-  const providedSecret = headers.get('x-admin-secret');
-  return providedSecret === adminSecret;
+  
+  // Handle both Web API Headers and Node.js IncomingHttpHeaders
+  let providedSecret: string | null = null;
+  if (typeof headers.get === 'function') {
+    providedSecret = headers.get('x-admin-secret');
+  } else {
+    providedSecret = headers['x-admin-secret'] as string;
+  }
+  
+  return !!providedSecret && providedSecret === adminSecret;
 };
 
 

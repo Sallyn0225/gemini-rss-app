@@ -88,15 +88,24 @@ export const fetchSystemFeeds = async (): Promise<SystemFeedConfig[]> => {
 
 // New admin-only function to get all feed data
 export const fetchAllSystemFeeds = async (secret: string): Promise<FullSystemFeedConfig[]> => {
-  const response = await fetch('/api/feeds/list/admin', {
+  // Use query param as fallback for routing
+  const response = await fetch('/api/feeds/list/admin?admin=true', {
     method: 'POST',
     headers: {
       'x-admin-secret': secret
     }
   });
   if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || "Failed to fetch full feed list");
+    let errorMessage = "Failed to fetch full feed list";
+    try {
+      const err = await response.json();
+      errorMessage = err.error || errorMessage;
+    } catch {
+      // If it's not JSON, might be a raw error message
+      const text = await response.text();
+      if (text) errorMessage = text.substring(0, 100);
+    }
+    throw new Error(errorMessage);
   }
   return await response.json();
 };

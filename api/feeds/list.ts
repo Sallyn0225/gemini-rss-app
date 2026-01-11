@@ -31,8 +31,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // POST /api/feeds/list/admin - Admin endpoint (returns full feed data including URLs)
-    if (req.method === 'POST' && req.url?.includes('/admin')) {
-      if (!validateAdminSecret(new Headers(req.headers as any))) {
+    // Supports both direct URL check and query param for reliability
+    if (req.method === 'POST' && (req.url?.includes('/admin') || req.query.admin === 'true')) {
+      if (!validateAdminSecret(req.headers)) {
         return res.status(401).json({ error: 'Unauthorized: Invalid Admin Secret' });
       }
 
