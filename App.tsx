@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 import { 
   fetchRSS, 
   fetchSystemFeeds, 
@@ -199,6 +199,58 @@ const App: React.FC = () => {
     if (selectedFeedMeta) window.history.pushState({}, '', buildArticlePath(selectedFeedMeta.id, getArticleId(article)));
   };
 
+  const handleRunAnalysis = useCallback(async () => {
+    if (!selectedFeedMeta || !selectedFeed || !selectedDate || isAnalyzing) return;
+    setIsAnalyzing(true);
+    setAnalysisSuccess(false);
+    
+    try {
+      const cacheKey = `${selectedFeedMeta.id}-${selectedDate.toDateString()}`;
+      
+      const result = await analyzeFeedContent(
+        selectedFeed.title,
+        selectedDate,
+        baseArticles,
+        aiSettings
+      );
+      
+      setDailySummary(result.summary);
+      setSummaryCache(prev => ({ ...prev, [cacheKey]: result.summary }));
+      
+      // 更新文章分类
+      const newClassifications = { ...articleClassifications };
+      baseArticles.forEach((article, index) => {
+        if (result.classifications[index]) {
+          newClassifications[article.guid] = result.classifications[index];
+        }
+      });
+      setArticleClassifications(newClassifications);
+      setAnalysisSuccess(true);
+      setIsRightSidebarOpen(true); // 分析完成后自动打开右侧栏查看结果
+    } catch (e) {
+      console.error("Analysis failed:", e);
+      setErrorMsg("分析失败，请检查 AI 配置");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [selectedFeedMeta, selectedFeed, selectedDate, isAnalyzing, baseArticles, aiSettings, articleClassifications, setIsRightSidebarOpen]);
+
+  useEffect(() => {
+    if (selectedFeedMeta && selectedDate) {
+      const cacheKey = `${selectedFeedMeta.id}-${selectedDate.toDateString()}`;
+      if (summaryCache[cacheKey]) {
+        setDailySummary(summaryCache[cacheKey]);
+        setAnalysisSuccess(true);
+      } else {
+        setDailySummary(null);
+        setAnalysisSuccess(false);
+      }
+    } else {
+      setDailySummary(null);
+      setAnalysisSuccess(false);
+    }
+  }, [selectedFeedMeta, selectedDate, summaryCache]);
+
   const syncStateWithRoute = useCallback((route: any, skipHistory: boolean) => {
     if (!route.feedId) {
       setSelectedFeed(null); setSelectedFeedMeta(null); setActiveArticle(null);
@@ -268,7 +320,7 @@ const App: React.FC = () => {
               if (f === '__reset__') setActiveFilters([]);
               else setActiveFilters(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
             }}
-            handleRunAnalysis={() => {}} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess}
+            handleRunAnalysis={handleRunAnalysis} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess}
             isAiConfigured={isAiConfigured}
             paginatedArticlesWithCategory={paginatedArticlesWithCategory} readArticleIds={readArticleIds}
             handleArticleSelect={handleArticleSelect} onRefresh={handleRefresh} isRefreshing={isRefreshing}
@@ -325,12 +377,30 @@ const App: React.FC = () => {
           
           <div className="flex flex-col gap-1">
             <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">数据概览</h3>
-            <div className="bg-muted/30 rounded-xl border border-dashed p-8 flex flex-col items-center justify-center text-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                <span className="text-xs">📊</span>
+            {dailySummary ? (
+              <div className="bg-muted/30 rounded-xl border p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-primary">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">AI 每日总结</span>
+                </div>
+                <ScrollArea className="max-h-[400px]">
+                  <div className="text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap font-medium">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {dailySummary}
+                    </ReactMarkdown>
+                  </div>
+                </ScrollArea>
               </div>
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">更多分析功能<br/>即将上线</p>
-            </div>
+            ) : (
+              <div className="bg-muted/30 rounded-xl border border-dashed p-8 flex flex-col items-center justify-center text-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  <span className="text-xs">📊</span>
+                </div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                  {isAnalyzing ? "正在进行 AI 分析..." : "选择日期并点击\n「AI 分析」生成总结"}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </aside>
