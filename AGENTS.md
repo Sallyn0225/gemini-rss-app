@@ -4,28 +4,18 @@ This document provides essential information for AI coding agents to operate eff
 
 ## 🛠 Build & Development Commands
 
-This project supports **two deployment modes**:
-1. **Serverless (Vercel + Neon)** - Recommended for production
-2. **Traditional (Docker + SQLite)** - Legacy support
+This project targets **Serverless (Vercel + Neon)** for production.
 
 ### Setup
 - `npm install`: Install dependencies.
 
 ### Development
 - `npm run dev`: Start the Vite development server (usually at `http://localhost:5173`).
-
-**For Docker/Local Backend:**
-- `node server.js`: Start the legacy Node.js server (port 3000).
-
-**For Vercel/Serverless Development:**
 - `vercel dev`: Start Vercel development environment with serverless functions.
 
 ### Build
 - `npm run build`: Build the frontend for production (output to `dist/`).
 - `npm run vercel-build`: Build command used by Vercel.
-
-**For Docker deployment:**
-- `docker-compose up --build`: Build and start the entire stack using Docker.
 
 ### Testing & Linting
 - There are currently no automated tests or linters configured in `package.json`. 
@@ -56,24 +46,6 @@ This project supports **two deployment modes**:
 - **API Layer**: Vercel Functions (Node.js runtime)
 - **Database**: Neon PostgreSQL with Drizzle ORM
 - **Security**: SSRF protection, rate limiting, domain whitelisting
-
-### Legacy Architecture (Docker)
-
-```
-┌──────────────────┐
-│  Nginx/Caddy     │  ← Reverse proxy
-└────────┬─────────┘
-         │
-┌────────▼─────────┐
-│  Node.js Server  │  ← server.js (vanilla HTTP)
-│  (Port 3000)     │
-└────────┬─────────┘
-         │
-┌────────▼─────────┐
-│  SQLite DB       │  ← data/history.db
-│  JSON Config     │  ← data/feeds.json
-└──────────────────┘
-```
 
 ---
 
@@ -109,23 +81,17 @@ This project supports **two deployment modes**:
   - Domain whitelisting for allowed media hosts
   - Admin secret validation for protected routes
 
-### 🔌 Backend (Legacy Docker)
-- **Runtime**: CommonJS (as per `package.json` `"type": "commonjs"`). Use `require()`.
-- **Database**: `better-sqlite3`. Database file located at `data/history.db`.
-- **API Style**: Vanilla `http` module. No Express. Handle routing via `req.url` parsing in `server.js`.
-- **Security**: 
-  - Use `ADMIN_SECRET` for protected routes.
-  - Validate all incoming URLs for SSRF/private IP protection (see `isPrivateIp` in `server.js`).
-  - Check `allowedMediaHosts` white-list for media proxying.
-
 ### 📂 Directory Structure
 - `components/`: React UI components.
 - `services/`: API and business logic (e.g., `geminiService.ts`, `rssService.ts`).
-- `data/`: Persistent data (SQLite DB, feeds JSON). **Do not commit contents of this folder.**
+- `api/`: Vercel Functions (serverless API endpoints).
+- `db/`: Drizzle schema and database connection.
+- `lib/`: Shared serverless utilities (security, HTTP helpers).
+- `scripts/`: Migration and maintenance scripts.
 - `dist/`: Build output.
 - `types.ts`: Shared TypeScript definitions.
-- `server.js`: The primary backend entry point.
-- `proxyUtils.js`: Network/proxy utility functions.
+- `vercel.json`: Vercel routing and build config.
+- `drizzle.config.ts`: Drizzle ORM configuration.
 
 ### 📝 Naming Conventions
 - **Files**: PascalCase for components (`ArticleCard.tsx`), camelCase for utilities/services (`rssService.ts`).
@@ -147,9 +113,9 @@ The application uses different sets of environment variables for the frontend (V
 - `process.env.API_KEY`: Alias for `GEMINI_API_KEY` in the frontend code.
 
 ### Backend (Runtime)
-- `PORT`: Server port (default: 3000).
+- `DATABASE_URL`: Neon PostgreSQL connection string (required).
 - `ADMIN_SECRET`: Required for administrative API endpoints (`/api/feeds/*`).
-- `UPSTREAM_PROXY`: HTTP/HTTPS proxy for fetching external RSS/Media resources (e.g., `http://127.0.0.1:7890`).
+- `UPSTREAM_PROXY`: HTTP/HTTPS proxy for fetching external RSS/Media resources (optional).
 - `MEDIA_PROXY_MAX_BYTES`: Max size for proxied media (default: 50MB).
 - `MEDIA_PROXY_MAX_REQUESTS`: Rate limit for media proxy (default: 120 req/min).
 
@@ -157,29 +123,11 @@ The application uses different sets of environment variables for the frontend (V
 
 ## 💾 Data Persistence
 
-This project manages two main data files in the `data/` directory:
-1. `feeds.json`: Stores the configuration of all subscribed RSS feeds.
-2. `history.db`: A SQLite database managed by `better-sqlite3` for storing article history and AI-generated metadata.
+This project stores data in **Neon PostgreSQL**:
+- `feeds` table: RSS feed configuration (replaces `feeds.json`).
+- `history` table: Article history (replaces SQLite `history.db`).
 
-### Database Schema (`history` table)
-- `feedId` (TEXT): ID of the source feed.
-- `guid` (TEXT): Unique identifier for the article.
-- `pubDate` (TEXT): Publication date in ISO format.
-- `aiCategory` (TEXT): AI-classified category.
-- `content` / `description` (TEXT): Article body.
-
----
-
-## 🚢 Docker Deployment
-
-The `Dockerfile` is a multi-stage build:
-1. **Frontend Build**: Uses Node to run `npm run build`.
-2. **Production Runtime**: Uses a lightweight Node image to serve the `dist/` folder and run `server.js`.
-
-### Commands
-- `docker-compose up -d`: Run in detached mode.
-- `docker-compose logs -f`: Stream logs.
-- `docker-compose down`: Stop and remove containers.
+See `db/schema.ts` for the canonical schema.
 
 ---
 
@@ -207,4 +155,4 @@ When adding new backend endpoints that fetch external content:
 - **Localization**: UI text is primarily in **Simplified Chinese**. Maintain this for user-facing strings.
 - **Privacy**: Never log or hardcode `ADMIN_SECRET` or API keys.
 - **Performance**: Be mindful of media proxying overhead. Implement caching where appropriate.
-- **Git**: Follow conventional commits if possible. Do not commit `data/` directory contents.
+- **Git**: Follow conventional commits if possible. Do not commit secrets (e.g., `.env`, API keys).

@@ -12,7 +12,7 @@
 - 全新双代理模式（浏览器直连 / 服务器代理 / 双重代理）适配不同网络环境
 - 不内置任何 API Key，所有密钥仅保存在浏览器本地
 
-> 本仓库是一个可本地运行 / 自部署的前端 + 轻量 Node.js 后端项目，不依赖 Google AI Studio 环境。
+> 本仓库是一个可本地运行 / 自部署的前端 + Serverless 后端项目（Vercel Functions + Neon），不依赖 Google AI Studio 环境。
 
 ---
 
@@ -84,7 +84,7 @@ GEMINI_API_KEY=your-gemini-api-key-here
 npm run dev
 ```
 
-默认会在 `http://localhost:5173`（Vite 默认端口）启动前端。纯前端开发可直接跨域调用接口，生产环境请搭配后端 / Docker 方案。
+默认会在 `http://localhost:5173`（Vite 默认端口）启动前端。纯前端开发可直接跨域调用接口，生产环境请使用 Vercel + Neon 部署。
 
 ---
 
@@ -223,111 +223,8 @@ CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
 
 ---
 
-## 核心部署配置 ⚙️ (Docker 方式)
-
-### docker-compose.yml
-
-```yaml
-services:
-  gemini-rss:
-    build: .
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/usr/src/app/data
-    environment:
-      - NODE_ENV=production
-      - ADMIN_SECRET=your-strong-admin-password
-      - UPSTREAM_PROXY=http://127.0.0.1:7890   # 国内服务器：指向宿主机代理
-      # - UPSTREAM_PROXY=                       # 海外服务器：注释或删除表示直连
-      # 可选：调整安全阈值
-      # - MEDIA_PROXY_MAX_BYTES=52428800        # 50MB，单位 Bytes
-      # - MEDIA_PROXY_MAX_REQUESTS=120          # 每 IP 每分钟允许的请求数
-      # - MEDIA_PROXY_WINDOW_MS=60000           # 限流窗口（ms）
-```
-
-> `UPSTREAM_PROXY` 支持 `http://user:pass@host:port`。若部署在海外，可直接删除该行实现直连。
-
-### data/feeds.json（可选白名单）
-
-若某些订阅源使用自定义 CDN，可在条目中显式声明 `allowedMediaHosts` 以加入代理白名单：
-
-```jsonc
-[
-  {
-    "id": "my-custom-feed",
-    "url": "https://example.com/rss",
-    "customTitle": "自定义订阅",
-    "category": "企划/特别节目",
-    "allowedMediaHosts": [
-      "cdn.example.com",
-      "images.example.net",
-      "i.imgur.com"
-    ]
-  }
-]
-```
-
-若未设置，系统会自动根据订阅源 URL 与 RSSHub 路由推断常用域名（如 `pbs.twimg.com`）。
-
-### 安全参数调节
-
-| 环境变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `MEDIA_PROXY_MAX_BYTES` | `50 * 1024 * 1024` (50MB) | 限制单个媒体资源的最大体积，可根据需求调整 |
-| `MEDIA_PROXY_MAX_REQUESTS` | `120` | 每个 IP 在窗口内允许的 `/api/media/proxy` 请求数 |
-| `MEDIA_PROXY_WINDOW_MS` | `60 * 1000` | 限流窗口长度（毫秒） |
-
-修改后需重新构建镜像或重启服务。
-
----
-
-## 使用 Docker 部署 🐳
-
-项目提供 `server.js` + `Dockerfile` + `docker-compose.yml` 一键部署能力，用于：
-
-- 代理 RSS 源（可选上游代理）
-- 代理媒体资源（图片 / 视频）
-- 提供订阅源管理、历史记录 API
-- 提供前端静态资源服务（`dist/`）
-
-```bash
-# 停止旧实例
-docker-compose down
-
-# 重新构建镜像
-docker-compose build --no-cache
-
-# 后台启动
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f gemini-rss
-```
-
-容器会自动挂载 `./data` 到 `/usr/src/app/data`，用于持久化：
-
-- `feeds.json` —— 订阅源配置
-- `history.db` —— SQLite 历史消息数据库
-- `history.json.bak` —— 旧版本迁移备份
-
-### 首次配置
-
-- 若 `data/feeds.json` 不存在会自动初始化为空列表
-- 在前端「设置 → 订阅源管理」中输入 `ADMIN_SECRET` 后即可添加 / 编辑订阅源
-- 支持多级分类、拖拽排序、批量导入
-
-### SSH 隧道访问后台（推荐）
-
-```bash
-ssh -L 3000:127.0.0.1:3000 user@your-server-ip
-```
-
-隧道建立后访问 `http://localhost:3000`，即可在本地浏览器中安全管理订阅源。
-
----
-
 ## 安全说明 🔒
+
 
 - ✅ **SSRF 防护**：所有代理请求在发起前会解析真实 IP，并拒绝访问内网 / 回环地址。
 - ✅ **域名白名单**：仅允许出现在订阅配置或自动推断列表中的媒体域名进入代理。
@@ -385,7 +282,7 @@ ssh -L 3000:127.0.0.1:3000 user@your-server-ip
 ## 开发说明
 
 - **前端**：React + TypeScript + Vite，使用 Framer Motion / Recharts 构建交互与图表
-- **后端**：纯 Node.js HTTP 服务器，负责 RSS / 媒体代理、订阅源管理、SQLite 历史存储
+- **后端**：Vercel Functions + Neon PostgreSQL，负责 RSS / 媒体代理、订阅源管理、历史存储
 
 你可以根据业务需求自由扩展 UI、AI 工作流与订阅源结构。
 
