@@ -2,12 +2,28 @@
   "version": 2,
   "routes": [
     {
-      "src": "/api/feeds/(add|delete|reorder|update)",
-      "dest": "/api/feeds/manage.ts?action=$1"
+      "src": "/api/feeds/(add|delete|reorder|update|admin)",
+      "dest": "/api/feeds.ts?action=$1"
     },
     {
       "src": "/api/feeds/list/admin",
-      "dest": "/api/feeds/list.ts?admin=true"
+      "dest": "/api/feeds.ts?action=admin"
+    },
+    {
+      "src": "/api/feeds/list",
+      "dest": "/api/feeds.ts"
+    },
+    {
+      "src": "/api/history/(get|upsert)",
+      "dest": "/api/history.ts?action=$1"
+    },
+    {
+      "src": "/api/history/get",
+      "dest": "/api/history.ts?action=get"
+    },
+    {
+      "src": "/api/history/upsert",
+      "dest": "/api/history.ts?action=upsert"
     },
     { "handle": "filesystem" },
     {

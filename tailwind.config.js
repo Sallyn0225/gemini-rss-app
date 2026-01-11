@@ -3,7 +3,10 @@ export default {
   darkMode: 'class',
   content: [
     "./index.html",
-    "./**/*.{js,ts,jsx,tsx}",
+    "./App.tsx",
+    "./index.tsx",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    // 排除后端代码目录，减少构建扫描范围
   ],
   theme: {
     extend: {

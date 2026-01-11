@@ -1,157 +1,63 @@
-# Agentic Development Guidelines - Gemini RSS Translator
+# PROJECT KNOWLEDGE BASE
 
-This document provides essential information for AI coding agents to operate effectively in this repository.
+**Generated:** Sun Jan 11 2026
+**Commit:** 19ff07e
+**Branch:** vercel-neon-refactor
 
-## 🛠 Build & Development Commands
+## OVERVIEW
+Gemini RSS Translator: A React 19 + Vercel Serverless application for RSS aggregation, AI translation, and media proxying with Neon PostgreSQL.
 
-This project targets **Serverless (Vercel + Neon)** for production.
-
-### Setup
-- `npm install`: Install dependencies.
-
-### Development
-- `npm run dev`: Start the Vite development server (usually at `http://localhost:5173`).
-- `vercel dev`: Start Vercel development environment with serverless functions.
-
-### Build
-- `npm run build`: Build the frontend for production (output to `dist/`).
-- `npm run vercel-build`: Build command used by Vercel.
-
-### Testing & Linting
-- There are currently no automated tests or linters configured in `package.json`. 
-- **Manual Verification**: Verify frontend changes by running `npm run build` to ensure no TypeScript or Vite build errors.
-
----
-
-## 🏗️ Architecture Overview
-
-### Serverless Architecture (Current)
-
+## STRUCTURE
 ```
-┌─────────────────┐
-│  Vercel CDN     │  ← Static frontend (React + Vite)
-└────────┬────────┘
-         │
-┌────────▼────────────────────────┐
-│  Vercel Functions (/api/*.ts)   │  ← Serverless API endpoints
-└────────┬────────────────────────┘
-         │
-┌────────▼────────┐
-│  Neon PostgreSQL │  ← Serverless database
-└─────────────────┘
+.
+├── api/             # Vercel Serverless Functions (Backend)
+├── components/      # React UI Components (Frontend)
+├── db/              # Drizzle ORM Schema & Migrations
+├── lib/             # Shared Security & HTTP Utilities
+├── services/        # Business Logic (Gemini AI, RSS Processing)
+├── scripts/         # Maintenance & Migration Scripts
+├── App.tsx          # Main Application Orchestrator
+├── index.tsx        # Frontend Entry Point
+└── types.ts         # Shared TypeScript Definitions
 ```
 
-**Key Components:**
-- **Frontend**: React 19, TypeScript, Tailwind CSS
-- **API Layer**: Vercel Functions (Node.js runtime)
-- **Database**: Neon PostgreSQL with Drizzle ORM
-- **Security**: SSRF protection, domain whitelisting, DNS-rebinding mitigation via resolved IP fetches
+## WHERE TO LOOK
+| Task | Location | Notes |
+|------|----------|-------|
+| UI / Styling | `components/`, `App.tsx` | Tailwind CSS + Framer Motion |
+| API / Backend | `api/` | Vercel Node.js functions |
+| DB Schema | `db/schema.ts` | Managed via Drizzle Kit |
+| Security / SSRF | `lib/security.ts` | DNS-rebinding & private IP protection |
+| AI Prompting | `services/geminiService.ts` | Translation & Analysis logic |
 
----
+## CONVENTIONS
+- **Serverless-First**: Backend resides in `/api`, follows Vercel function signature.
+- **Flat Source**: Frontend source files (`App.tsx`, `index.tsx`) live in the root, not `/src`.
+- **Media Architecture**: Use `MediaUrl` interface; backend provides dual (original/proxied) URLs.
+- **Localization**: UI text is primarily **Simplified Chinese**.
+- **State Management**: Local state/Context + `localStorage` cache; no Redux/Zustand.
 
-## 🎨 Code Style & Conventions
+## ANTI-PATTERNS (THIS PROJECT)
+- **DO NOT** use `any` in TypeScript; strictly follow `tsconfig.json`.
+- **DO NOT** log or hardcode `ADMIN_SECRET` or API keys.
+- **DO NOT** commit `.env` or secrets.
+- **NEVER** use raw `<img>` tags without `selectMediaUrl` utility.
+- **DO NOT** refactor backend security without unit-testing SSRF safeguards.
 
-### ⚛️ React & Frontend
-- **Framework**: React 19 with TypeScript.
-- **Styling**: Tailwind CSS (Utility-first). Use standard Tailwind classes.
-- **Animations**: `framer-motion`. Prefer using constants from `components/animations.tsx`.
-- **Icons**: Use inline SVGs (Lucide style) or heroicons.
-- **Components**: 
-  - Functional components with `React.FC` or standard function declarations.
-  - Use `useCallback` and `useMemo` for performance optimization in complex components.
-  - **Reordering Logic**: When implementing drag-and-drop reordering (e.g., in `SettingsModal.tsx`), always use debouncing for API calls to prevent race conditions and excessive database load.
-  - Files located in `components/`.
+## UNIQUE STYLES
+- **Animations**: Standardized Material-like ease (`easeStandard [0.4, 0, 0.2, 1]`) via `components/animations.tsx`.
+- **Styling**: Flat UI aesthetic using custom `accent` and `flat` palettes.
 
-### 📘 TypeScript
-- **Strictness**: Follow `tsconfig.json` settings. Avoid `any` at all costs.
-- **Types**: Centralized in `types.ts`. Import from there when possible.
-- **Interfaces**: Prefer `interface` for props and public APIs, `type` for unions/aliases.
-- **Enums**: Use `enum` for fixed categories (e.g., `ArticleCategory`, `Language`).
-- **Media Utilities**: Use `selectMediaUrl`, `buildProxiedUrl`, and `createMediaUrl` from `types.ts` for handling dual-URL media.
-
-### 🔌 Backend (Serverless Functions)
-- **Runtime**: Node.js 20.x (Vercel default)
-- **Framework**: `@vercel/node` for type definitions
-- **Database**: Neon PostgreSQL with Drizzle ORM
-- **ORM**: Drizzle (lightweight, serverless-friendly)
-- **API Style**: Vercel Functions in `/api` directory
-- **File Naming**: Use `.ts` extension for TypeScript functions
-- **Security**:
-  - SSRF protection via `lib/security.ts`
-  - DNS-rebinding mitigation via resolved IP fetches
-  - Domain whitelisting for allowed media hosts
-  - Admin secret validation for protected routes
-
-### 📂 Directory Structure
-- `components/`: React UI components.
-- `services/`: API and business logic (e.g., `geminiService.ts`, `rssService.ts`).
-- `api/`: Vercel Functions (serverless API endpoints).
-- `db/`: Drizzle schema and database connection.
-- `lib/`: Shared serverless utilities (security, HTTP helpers).
-- `scripts/`: Migration and maintenance scripts.
-- `dist/`: Build output.
-- `types.ts`: Shared TypeScript definitions.
-- `vercel.json`: Vercel routing and build config.
-- `drizzle.config.ts`: Drizzle ORM configuration.
-
-### 📝 Naming Conventions
-- **Files**: PascalCase for components (`ArticleCard.tsx`), camelCase for utilities/services (`rssService.ts`).
-- **Variables/Functions**: camelCase.
-- **Constants**: SCREAMING_SNAKE_CASE for global constants.
-
-### 🚨 Error Handling
-- **Frontend**: Use `try/catch` for API calls. Display user-friendly error messages (e.g., `setImgError(true)`).
-- **Backend**: Always check `res.headersSent` before sending error responses. Log errors with descriptive prefixes like `[Server Error]`.
-
----
-
-## ⚙️ Environment Variables
-
-The application uses different sets of environment variables for the frontend (Vite) and backend (Node.js).
-
-### Frontend (Build-time)
-- `GEMINI_API_KEY`: Fallback API key for Gemini. Loaded via `loadEnv` in `vite.config.ts`.
-- `process.env.API_KEY`: Alias for `GEMINI_API_KEY` in the frontend code.
-
-### Backend (Runtime)
-- `DATABASE_URL`: Neon PostgreSQL connection string (required).
-- `ADMIN_SECRET`: Required for administrative API endpoints (`/api/feeds/*`).
-- `MEDIA_PROXY_MAX_BYTES`: Max size for proxied media (default: 50MB).
-
----
-
-## 💾 Data Persistence
-
-This project stores data in **Neon PostgreSQL**:
-- `feeds` table: RSS feed configuration (replaces `feeds.json`).
-- `history` table: Article history (replaces SQLite `history.db`).
-
-See `db/schema.ts` for the canonical schema.
-
----
-
-## 🧩 Common Development Patterns
-
-### 🔄 Dual Media URL Handling
-Always use the `MediaUrl` interface for images and videos. The system supports two proxy modes (`all`, `none`).
-```typescript
-// Example usage in components
-const imageUrl = selectMediaUrl(article.thumbnail, userSettings.imageProxyMode);
+## COMMANDS
+```bash
+npm install        # Setup
+npm run dev        # Local Vite dev server
+vercel dev         # Full environment (Vercel + Local API)
+npm run build      # Frontend build verification
+npx drizzle-kit push # Sync DB schema to Neon
 ```
 
-### 🤖 AI Workflow
-AI tasks are handled in `services/geminiService.ts`. Users can configure different providers (OpenAI/Gemini) for different tasks (Translation, Summary, Analysis).
-
-### 🔒 Security Checks
-When adding new backend endpoints that fetch external content:
-1. **Validate URL**: Use `safeParseUrl`.
-2. **SSRF Protection**: Use `resolveAndValidateHost` to ensure the target is not a private/loopback IP. This also mitigates DNS-rebinding attacks by using resolved IP addresses for fetches.
-3. **Protocol Check**: Only allow `http:` and `https:`.
-
----
-
-## 🤖 Interaction Rules
-- **Localization**: UI text is primarily in **Simplified Chinese**. Maintain this for user-facing strings.
-- **Privacy**: Never log or hardcode `ADMIN_SECRET` or API keys.
-- **Performance**: Be mindful of media proxying overhead.
-- **Git**: Follow conventional commits if possible. Do not commit secrets (e.g., `.env`, API keys).
+## NOTES
+- **SSRF Shield**: `api/feed.ts` and `api/media/proxy.ts` use `resolveAndValidateHost` to block internal network access.
+- **DB Transactions**: `neon-http` does not support transactions; multi-write operations are sequential.
+- **Cache Policy**: RSS feeds use `s-maxage` (10m) edge caching.
