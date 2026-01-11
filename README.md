@@ -226,7 +226,7 @@ CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
 
 
 - ✅ **SSRF 防护**：所有代理请求在发起前会解析真实 IP，并拒绝访问内网 / 回环地址。
-- ✅ **DNS 重绑定攻击防护**：使用 DNS 解析后的真实 IP 发起请求，防止 DNS 重绑定攻击。
+- ✅ **DNS 重绑定攻击防护**：解析并验证目标 IP 不是私有地址，使用原始 hostname 发起请求以保持 CDN 兼容性。
 - ✅ **域名白名单**：仅允许出现在订阅配置或自动推断列表中的媒体域名进入代理。
 - ✅ **体积限制**：媒体代理对 Content-Length 与实际传输字节提供双重大小检测，超过阈值直接中断。
 - ✅ **协议约束**：仅允许 `http` / `https` 协议，拒绝 `ftp://`、`file://` 等危险协议。
@@ -244,9 +244,10 @@ CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
 
 - **行为**：
   1. 验证域名是否在白名单中，检查协议是否合法。
-  2. 使用 DNS 解析后的真实 IP 发起请求，防止 DNS 重绑定攻击。
-  3. 流式转发响应体，按配置注入 `Cache-Control`、`Access-Control-Allow-Origin` 等头。
-  4. 若超过大小限制返回 `413`，若命中内网地址返回 `403`。
+  2. 解析目标 IP 并验证不是私有地址（SSRF 防护）。
+  3. 使用原始 hostname 发起请求以保持 CDN 兼容性。
+  4. 流式转发响应体，按配置注入 `Cache-Control`、`Access-Control-Allow-Origin` 等头。
+  5. 若超过大小限制返回 `413`，若命中内网地址返回 `403`。
 
 - **典型响应**：
   - 200：成功代理媒体

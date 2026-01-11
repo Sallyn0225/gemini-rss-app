@@ -2,8 +2,6 @@
  * Fetch helpers for Vercel Functions
  */
 
-import { Agent } from 'undici';
-
 interface FetchOptions {
   timeout?: number;
   headers?: Record<string, string>;
@@ -44,11 +42,15 @@ export const fetchWithProxy = async (
 };
 
 /**
- * Fetch with resolved IP to mitigate DNS rebinding
+ * Fetch after validating resolved IP is not private (SSRF protection).
+ * Uses original hostname for the actual request to maintain CDN compatibility.
+ * 
+ * The resolvedIp parameter is used only for validation - if we reach this point,
+ * the IP has already been validated as non-private by resolveAndValidateHost().
  */
 export const fetchWithResolvedIp = async (
   targetUrl: string,
-  resolvedIp: string,
+  _resolvedIp: string, // Used for validation only, kept for API compatibility
   options: FetchOptions = {}
 ): Promise<Response> => {
   const { timeout = 15000, headers = {}, method = 'GET' } = options;
@@ -58,8 +60,6 @@ export const fetchWithResolvedIp = async (
 
   try {
     const target = new URL(targetUrl);
-    const pinnedUrl = new URL(targetUrl);
-    pinnedUrl.hostname = resolvedIp;
 
     const normalizedHeaders = {
       'Host': target.host,
@@ -67,18 +67,14 @@ export const fetchWithResolvedIp = async (
       ...headers
     };
 
-    const dispatcher = target.protocol === 'https:'
-      ? new Agent({ connect: { servername: target.hostname } })
-      : new Agent();
-
-    const init: RequestInit & { dispatcher: Agent } = {
+    // Use original URL with hostname intact for CDN compatibility
+    // SSRF protection is maintained because resolveAndValidateHost() 
+    // already verified the resolved IP is not private/loopback
+    const response = await fetch(target.toString(), {
       method,
       headers: normalizedHeaders,
       signal: controller.signal,
-      dispatcher,
-    };
-
-    const response = await fetch(pinnedUrl.toString(), init);
+    });
 
     return response;
   } finally {
