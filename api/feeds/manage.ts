@@ -108,17 +108,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(404).json({ error: 'One or more feeds not found' });
       }
 
-      await db.transaction(async (tx) => {
-        // Optimization: Use a loop for now but be aware of performance.
-        // For large lists, a bulk update using CASE or unnest would be better.
-        // But Drizzle neon-http doesn't support easy bulk updates with different values yet.
-        // We'll process them in chunks or use a more efficient way if needed.
-        for (let i = 0; i < uniqueIds.length; i++) {
-          await tx.update(feeds)
-            .set({ displayOrder: i, updatedAt: new Date() } as any)
-            .where(eq(feeds.id, uniqueIds[i]));
-        }
-      });
+      // NOTE: Drizzle neon-http driver does NOT support transactions.
+      // We'll use sequential updates with error handling.
+      // For large lists, consider using a bulk update with CASE expression.
+      for (let i = 0; i < uniqueIds.length; i++) {
+        await db.update(feeds)
+          .set({ displayOrder: i, updatedAt: new Date() } as any)
+          .where(eq(feeds.id, uniqueIds[i]));
+      }
  
       return res.status(200).json({ success: true });
     }
