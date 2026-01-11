@@ -281,7 +281,7 @@ CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
 
 ## 开发说明
 
-- **前端**：React + TypeScript + Vite，使用 Framer Motion / Recharts 构建交互与图表
+- **前端**：React 19 + TypeScript + Vite，使用 Framer Motion / Recharts 构建交互与图表
 - **后端**：Vercel Functions + Neon PostgreSQL，负责 RSS / 媒体代理、订阅源管理、历史存储
 
 你可以根据业务需求自由扩展 UI、AI 工作流与订阅源结构。

@@ -1,5 +1,5 @@
 {
-  "name": "NSYC订阅站",
-  "description": "一个女声优吃的订阅站，利用RSS+AI服务，可以将每日的信息分类、总结。",
+  "name": "Gemini RSS - 女声优情报站",
+  "description": "专为多媒体企划与女声优情报设计的 RSS 聚合站。集成 Gemini AI 实现每日信息自动分类、多语言翻译与智能总结，提供高效的阅读体验。",
   "requestFramePermissions": []
 }

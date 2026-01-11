@@ -15,7 +15,7 @@ Gemini RSS Translator: A React 19 + Vercel Serverless application for RSS aggreg
 ├── db/              # Drizzle ORM Schema & Migrations
 ├── lib/             # Shared Security & HTTP Utilities
 ├── services/        # Business Logic (Gemini AI, RSS Processing)
-├── scripts/         # Maintenance & Migration Scripts
+├── scripts/         # Maintenance & Migration Scripts (migrate-to-neon.cjs)
 ├── App.tsx          # Main Application Orchestrator
 ├── index.tsx        # Frontend Entry Point
 └── types.ts         # Shared TypeScript Definitions

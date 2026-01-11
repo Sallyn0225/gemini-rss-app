@@ -89,7 +89,7 @@ Run the migration script:
 export DATABASE_URL="your-neon-connection-string"
 
 # Run migration
-node scripts/migrate-to-neon.js
+node scripts/migrate-to-neon.cjs
 ```
 
 Expected output:
@@ -191,7 +191,7 @@ If you had hardcoded API URLs in your frontend:
 ### Missing Data After Migration
 
 **Solution**:
-- Re-run migration script: `node scripts/migrate-to-neon.js`
+- Re-run migration script: `node scripts/migrate-to-neon.cjs`
 - Check Neon SQL editor to verify tables have data:
   ```sql
   SELECT COUNT(*) FROM feeds;

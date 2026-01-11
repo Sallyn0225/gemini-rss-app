@@ -12,7 +12,7 @@ Successfully refactored Gemini RSS Translator from a traditional Node.js + Docke
   - `history` table: Stores article history (replaces `history.db`)
   - Proper indexes for query performance
 - **Created**: Database connection utility (`db/index.ts`)
-- **Created**: Migration script (`scripts/migrate-to-neon.js`) to transfer existing data
+- **Created**: Migration script (`scripts/migrate-to-neon.cjs`) to transfer existing data
 
 ### 2. API Layer - Vercel Functions
 All original endpoints migrated to serverless functions:
@@ -103,7 +103,7 @@ gemini-rss-app/
 │   ├── security.ts          # Security utilities
 │   └── http.ts              # HTTP utilities
 ├── scripts/                  # NEW: Migration scripts
-│   └── migrate-to-neon.js   # SQLite → Neon migration
+│   └── migrate-to-neon.cjs   # SQLite → Neon migration
 ├── server.js                 # LEGACY: Keep for Docker users
 ├── vercel.json              # NEW: Vercel configuration
 ├── drizzle.config.ts        # NEW: Drizzle configuration
@@ -130,7 +130,7 @@ The project now supports **two deployment modes**:
 ## 🔄 Migration Path
 
 For existing Docker users:
-1. Run migration script to transfer data to Neon
+1. Run migration script to transfer data to Neon (scripts/migrate-to-neon.cjs)
 2. Deploy to Vercel
 3. Verify functionality
 4. Decommission Docker server (optional)
