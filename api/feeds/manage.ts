@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             customTitle: customTitle || '',
             allowedMediaHosts: allowedMediaHosts ? JSON.stringify(allowedMediaHosts) : null,
             updatedAt: new Date(),
-          })
+          } as any)
           .where(eq(feeds.id, id));
       } else {
         // Insert new feed
@@ -63,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           customTitle: customTitle || '',
           allowedMediaHosts: allowedMediaHosts ? JSON.stringify(allowedMediaHosts) : null,
           displayOrder: 0,
-        });
+        } as any);
       }
 
       return res.status(200).json({ success: true });
@@ -111,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await db.transaction(async (tx) => {
         for (let i = 0; i < uniqueIds.length; i++) {
           await tx.update(feeds)
-            .set({ displayOrder: i, updatedAt: new Date() })
+            .set({ displayOrder: i, updatedAt: new Date() } as any)
             .where(eq(feeds.id, uniqueIds[i]));
         }
       });
