@@ -12,7 +12,6 @@ import { CalendarWidget } from './components/CalendarWidget';
 import { SettingsModal } from './components/SettingsModal';
 import { easeStandard, easeDecelerate, easeOutBack } from './components/animations';
 
-// ... (rest of the code remains the same)
 type SidebarViewMode = 'list' | 'grid';
 
 type RouteState = { feedId: string | null; articleId: string | null };
@@ -81,24 +80,11 @@ interface FeedItemProps {
   onSelect: (feedMeta: FeedMeta) => void;
 }
 
-const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSelected, isLoading, onSelect }) => {
+const FeedItem: React.FC<FeedItemProps> = React.memo(({ feedMeta, feedContent, mode, isSelected, isLoading, onSelect }) => {
   const displayTitle = feedMeta.customTitle || feedContent?.title || feedMeta.id;
-  const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(displayTitle)}&background=b88057&color=fff&size=128`), [displayTitle]);
-  const [ripples, setRipples] = useState<Array<{ id: number; x: number; y: number; size: number }>>([]);
+  const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(displayTitle)}&background=3b82f6&color=fff&size=128`), [displayTitle]);
 
-  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const size = Math.max(rect.width, rect.height) * 2;
-    
-    const newRipple = { id: Date.now(), x, y, size };
-    setRipples(prev => [...prev, newRipple]);
-    
-    setTimeout(() => {
-      setRipples(prev => prev.filter(r => r.id !== newRipple.id));
-    }, 600);
-
+  const handleClick = useCallback(() => {
     onSelect(feedMeta);
   }, [onSelect, feedMeta]);
 
@@ -106,64 +92,34 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
     return (
       <motion.div 
         className="relative group w-full"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3, ease: easeDecelerate }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
       >
         <motion.button
           onClick={handleClick}
-          className={`relative aspect-square rounded-organic-md overflow-hidden border w-full block transition-all duration-300 ${isSelected ? 'ring-2 ring-organic-500 border-transparent shadow-soft-lg' : 'border-organic-200 dark:border-slate-700 hover:border-organic-300'}`}
+          className={`relative aspect-square rounded-none overflow-hidden border w-full block transition-colors duration-200 ${isSelected ? 'border-accent ring-1 ring-accent bg-flat-100' : 'border-flat-200 dark:border-slate-700 hover:bg-flat-50'}`}
           title={displayTitle}
-          whileHover={{ 
-            scale: 1.05,
-            y: -4,
-            transition: { duration: 0.2, ease: easeStandard }
-          }}
-          whileTap={{ 
-            scale: 0.95,
-            transition: { duration: 0.1, ease: easeStandard }
-          }}
         >
-          {/* 波纹效果 */}
-          {ripples.map(ripple => (
-            <motion.span
-              key={ripple.id}
-              className="absolute rounded-full pointer-events-none z-30"
-              style={{
-                left: ripple.x - ripple.size / 2,
-                top: ripple.y - ripple.size / 2,
-                width: ripple.size,
-                height: ripple.size,
-                backgroundColor: 'rgba(255, 255, 255, 0.4)',
-              }}
-              initial={{ scale: 0, opacity: 0.6 }}
-              animate={{ scale: 1, opacity: 0 }}
-              transition={{ duration: 0.6, ease: easeDecelerate }}
-            />
-          ))}
-          <motion.img 
+          <img 
             src={getMediaUrl(feedContent?.image) || fallbackAvatar} 
             alt={displayTitle} 
-            className="w-full h-full object-cover" 
+            className="w-full h-full object-cover grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" 
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
-            whileHover={{ scale: 1.1 }}
-            transition={{ duration: 0.5, ease: easeStandard }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-organic-900/90 via-organic-900/20 to-transparent flex flex-col justify-end p-3">
-            <p className="text-white text-[10px] font-bold line-clamp-2 leading-tight drop-shadow-md text-left">{displayTitle}</p>
+          <div className="absolute inset-0 bg-flat-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+            <p className="text-white text-[10px] font-medium line-clamp-2 leading-tight text-left">{displayTitle}</p>
           </div>
           {isSelected && (
-            <motion.div 
-              className="absolute top-2 right-2 w-3 h-3 bg-organic-500 rounded-full border-2 border-white shadow-soft-md"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-            />
+            <div className="absolute top-0 right-0 w-4 h-4 bg-accent flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-white">
+                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+              </svg>
+            </div>
           )}
-          {/* Loading indicator */}
           {isLoading && (
-            <div className="absolute inset-0 bg-white/40 dark:bg-slate-950/40 backdrop-blur-xs flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-organic-600"></div>
+            <div className="absolute inset-0 bg-white/20 dark:bg-slate-950/20 backdrop-blur-none flex items-center justify-center">
+              <div className="h-4 w-4 border-2 border-accent border-t-transparent animate-spin"></div>
             </div>
           )}
         </motion.button>
@@ -173,184 +129,269 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
 
   return (
     <motion.div 
-      className={`relative group w-full ${feedMeta.isSub ? 'pl-6' : ''}`}
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3, ease: easeDecelerate }}
+      className={`relative group w-full ${feedMeta.isSub ? 'pl-4' : ''}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
     >
-      {feedMeta.isSub && <div className="absolute left-3 top-0 bottom-1/2 w-3 border-l-2 border-b-2 border-organic-200 dark:border-slate-700 rounded-bl-lg -z-10"></div>}
+      {feedMeta.isSub && <div className="absolute left-2 top-0 bottom-1/2 w-2 border-l border-b border-flat-300 dark:border-slate-700 -z-10"></div>}
       <motion.button
         onClick={handleClick}
-        className={`flex items-center gap-3 w-full p-2.5 rounded-organic-md text-left pr-8 relative overflow-hidden transition-all duration-300 ${isSelected ? 'bg-organic-100 text-organic-800 shadow-soft-md ring-1 ring-organic-200 dark:bg-stone-800/50 dark:text-stone-200 dark:ring-stone-700' : 'text-slate-600 hover:bg-organic-50/80 dark:text-slate-300'}`}
-        whileHover={{ 
-          x: 4,
-          transition: { duration: 0.2, ease: easeStandard }
-        }}
-        whileTap={{ 
-          scale: 0.98,
-          transition: { duration: 0.1, ease: easeStandard }
-        }}
+        className={`flex items-center gap-3 w-full p-2 rounded-none text-left pr-8 relative transition-colors duration-200 ${isSelected ? 'bg-accent text-white' : 'text-flat-700 hover:bg-flat-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}
       >
-        {/* 波纹效果 */}
-        {ripples.map(ripple => (
-          <motion.span
-            key={ripple.id}
-            className="absolute rounded-full pointer-events-none z-10"
-            style={{
-              left: ripple.x - ripple.size / 2,
-              top: ripple.y - ripple.size / 2,
-              width: ripple.size,
-              height: ripple.size,
-              backgroundColor: isSelected ? 'rgba(198, 154, 114, 0.3)' : 'rgba(212, 182, 147, 0.2)',
-            }}
-            initial={{ scale: 0, opacity: 0.6 }}
-            animate={{ scale: 1, opacity: 0 }}
-            transition={{ duration: 0.6, ease: easeDecelerate }}
-          />
-        ))}
-        {/* 头像：有内容时显示真实图片，无内容时显示骨架 */}
         {feedContent ? (
-          <motion.img 
+          <img 
             src={getMediaUrl(feedContent.image) || fallbackAvatar} 
             alt="" 
-            className="w-9 h-9 rounded-organic-md object-cover bg-organic-100 shrink-0 border border-white/40" 
+            className={`w-8 h-8 rounded-none object-cover shrink-0 border ${isSelected ? 'border-white/20' : 'border-flat-200 dark:border-slate-700'}`} 
             onError={(e) => { (e.target as HTMLImageElement).src = fallbackAvatar; }}
-            whileHover={{ scale: 1.1, rotate: 3 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
           />
         ) : (
-          <div className="w-9 h-9 rounded-organic-md bg-organic-200 dark:bg-slate-700 shrink-0 animate-pulse" />
+          <div className="w-8 h-8 bg-flat-200 dark:bg-slate-700 shrink-0" />
         )}
         <div className="flex-1 overflow-hidden">
-          <p className={`font-bold text-sm truncate ${isSelected ? 'text-organic-900 dark:text-stone-200' : 'text-slate-700 dark:text-slate-300'}`}>{displayTitle}</p>
-          {/* 文章数：有内容时显示真实数量，无内容时显示骨架 */}
+          <p className={`font-semibold text-sm truncate ${isSelected ? 'text-white' : 'text-flat-900 dark:text-stone-200'}`}>{displayTitle}</p>
           {feedContent ? (
-            <p className="text-[10px] text-organic-600 truncate font-medium">{feedContent.items.length} 条更新</p>
+            <p className={`text-[10px] truncate ${isSelected ? 'text-white/80' : 'text-flat-500'}`}>{feedContent.items.length} Articles</p>
           ) : (
-            <div className="h-3 w-16 bg-organic-100 dark:bg-slate-700 rounded animate-pulse mt-1" />
+            <div className="h-2 w-12 bg-flat-100 dark:bg-slate-700 mt-1" />
           )}
         </div>
-        {/* Loading spinner when this feed is being loaded */}
         {isLoading && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-organic-500"></div>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className={`h-3 w-3 border-2 ${isSelected ? 'border-white' : 'border-accent'} border-t-transparent animate-spin`}></div>
           </div>
         )}
       </motion.button>
     </motion.div>
   );
-};
+});
 
 // --- Filter Bar Component ---
 interface FilterBarProps {
   activeFilters: string[]; onToggleFilter: (filter: string) => void; onReset: () => void;
   onAnalyze: () => void; isAnalyzing: boolean; analysisSuccess: boolean; selectedDate: Date | null;
 }
-const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, onReset, onAnalyze, isAnalyzing, analysisSuccess, selectedDate }) => {
+const FilterBar: React.FC<FilterBarProps> = React.memo(({ activeFilters, onToggleFilter, onReset, onAnalyze, isAnalyzing, analysisSuccess, selectedDate }) => {
   const filters = [ArticleCategory.OFFICIAL, ArticleCategory.MEDIA, ArticleCategory.EVENT, ArticleCategory.COMMUNITY, ArticleCategory.RETWEET,];
   return (
-    <div className="flex justify-center sticky top-0 z-20 py-4 pointer-events-none">
-      <motion.div 
-        className="flex items-center gap-2 py-2 px-3 glass-card rounded-full pointer-events-auto shadow-soft-lg mx-4"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: easeOutBack }}
-      >
-        <motion.button 
+    <div className="flex justify-center sticky top-0 z-20 py-2 pointer-events-none">
+      <div className="flex items-center gap-0 bg-white dark:bg-slate-800 border border-flat-200 dark:border-slate-700 pointer-events-auto mx-4 overflow-hidden">
+        <button 
           onClick={onAnalyze} 
           disabled={isAnalyzing || !selectedDate} 
-          className={`shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${isAnalyzing ? 'bg-organic-100 text-organic-700 cursor-wait' : analysisSuccess ? 'bg-green-100 text-green-700' : !selectedDate ? 'bg-organic-200 text-organic-600 cursor-not-allowed' : 'bg-organic-800 text-white hover:bg-organic-900 shadow-soft-md'}`}
-          whileHover={isAnalyzing || !selectedDate ? {} : { scale: 1.05, y: -1 }}
-          whileTap={isAnalyzing || !selectedDate ? {} : { scale: 0.95 }}
-          title={!selectedDate ? "请先选择日期" : undefined}
+          className={`shrink-0 flex items-center gap-2 px-4 py-2 text-xs font-bold transition-colors ${isAnalyzing ? 'bg-flat-100 text-flat-400 cursor-wait' : analysisSuccess ? 'bg-green-500 text-white' : !selectedDate ? 'bg-flat-100 text-flat-300 cursor-not-allowed' : 'bg-accent text-white hover:bg-accent-dark'}`}
+          title={!selectedDate ? "Please select a date first" : undefined}
         >
           {isAnalyzing ? (
             <>
-              <motion.svg 
-                className="-ml-1 mr-1 h-3 w-3 text-organic-600" 
-                xmlns="http://www.w3.org/2000/svg" 
-                fill="none" 
-                viewBox="0 0 24 24"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              >
+              <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </motion.svg>
-              <span>分析中...</span>
+              </svg>
+              <span>Analyzing...</span>
             </>
           ) : analysisSuccess ? (
-            <>
-              <motion.svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 24 24" 
-                fill="currentColor" 
-                className="w-3 h-3"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-              >
-                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-              </motion.svg>
-              <span>完成</span>
-            </>
+            <span>Success</span>
           ) : (
-            <>
-              <motion.svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                className="w-3 h-3"
-                animate={{ rotate: [0, 15, -15, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              >
-                <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 19L13 11" />
-                  <path d="M7 21L15 13" />
-                  <path d="M13 9.5L14.2 8.3L15.4 9.5L14.2 10.7Z" />
-                  <path d="M18 4L18 6" />
-                  <path d="M18 9L18 11" />
-                  <path d="M17 8L19 8" />
-                </g>
-              </motion.svg>
-              <span>AI 分析</span>
-            </>
+            <span>AI Analysis</span>
           )}
-        </motion.button>
-        <div className="w-px h-4 bg-organic-200 mx-1 shrink-0"></div>
-        <motion.button 
+        </button>
+        <div className="w-px h-8 bg-flat-200 dark:bg-slate-700 shrink-0"></div>
+        <button 
           onClick={onReset} 
-          className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeFilters.length === 0 ? 'bg-organic-100 text-organic-800 shadow-inner-light' : 'text-organic-600 hover:bg-organic-50'}`}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          layout
+          className={`shrink-0 px-4 py-2 text-xs font-bold transition-colors ${activeFilters.length === 0 ? 'bg-flat-100 text-accent' : 'text-flat-600 hover:bg-flat-50 dark:text-slate-300 dark:hover:bg-slate-700'}`}
         >
-          全部
-        </motion.button>
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {filters.map((filter, index) => (
-            <motion.button 
+          All
+        </button>
+        <div className="flex items-center gap-0 overflow-x-auto scrollbar-hide">
+          {filters.map((filter) => (
+            <button 
               key={filter} 
               onClick={() => onToggleFilter(filter)} 
               disabled={isAnalyzing && !activeFilters.includes(filter)} 
-              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeFilters.includes(filter) ? 'bg-organic-200 text-organic-800' : 'text-organic-600 hover:bg-organic-50'} ${isAnalyzing ? 'opacity-50' : ''}`}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.05, ease: easeDecelerate }}
-              whileHover={isAnalyzing ? {} : { scale: 1.05 }}
-              whileTap={isAnalyzing ? {} : { scale: 0.95 }}
-              layout
+              className={`shrink-0 px-4 py-2 text-xs font-bold whitespace-nowrap border-l border-flat-200 dark:border-slate-700 transition-colors ${activeFilters.includes(filter) ? 'bg-flat-200 text-flat-900' : 'text-flat-600 hover:bg-flat-50 dark:text-slate-300 dark:hover:bg-slate-700'} ${isAnalyzing ? 'opacity-50' : ''}`}
             >
               {filter}
-            </motion.button>
+            </button>
           ))}
         </div>
-      </motion.div>
+      </div>
+    </div>
+  );
+});
+
+interface CategoryNode {
+  name: string;
+  path: string;
+  feeds: FeedMeta[];
+  children: Map<string, CategoryNode>;
+  depth: number;
+}
+
+const getNodeByPath = (groupedFeeds: Map<string, CategoryNode>, path: string): CategoryNode | null => {
+  const parts = path.split('/').filter(Boolean);
+  let current: Map<string, CategoryNode> = groupedFeeds;
+  let node: CategoryNode | null = null;
+  for (const part of parts) {
+    node = current.get(part) || null;
+    if (!node) return null;
+    current = node.children;
+  }
+  return node;
+};
+
+const getFolderPreviews = (node: CategoryNode, feedContentCache: Record<string, Feed>): string[] => {
+  const previews: string[] = [];
+  for (const meta of node.feeds) {
+    if (previews.length >= 4) break;
+    const content = feedContentCache[meta.id];
+    previews.push(getMediaUrl(content?.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(meta.customTitle || meta.id)}&background=3b82f6&color=fff&size=64`);
+  }
+  if (previews.length < 4) {
+    for (const child of node.children.values()) {
+      const childPreviews = getFolderPreviews(child, feedContentCache);
+      for (const preview of childPreviews) {
+        if (previews.length >= 4) break;
+        previews.push(preview);
+      }
+      if (previews.length >= 4) break;
+    }
+  }
+  return previews;
+};
+
+const countAllFeeds = (node: CategoryNode): number => {
+  let count = node.feeds.length;
+  node.children.forEach(child => { count += countAllFeeds(child); });
+  return count;
+};
+
+const renderSubfolder = (
+  node: CategoryNode,
+  setOpenFolderPath: React.Dispatch<React.SetStateAction<string | null>>
+): React.ReactElement => {
+  const totalCount = countAllFeeds(node);
+  return (
+    <button
+      key={node.path}
+      onClick={() => setOpenFolderPath(node.path)}
+      className="relative aspect-square border border-flat-200 dark:border-slate-700 bg-flat-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-1 hover:bg-flat-200 transition-colors"
+    >
+      <div className="w-10 h-10 bg-accent flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="white" className="w-6 h-6">
+          <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z" />
+        </svg>
+      </div>
+      <span className="text-[10px] font-bold text-flat-700 dark:text-slate-300 truncate w-full text-center px-1 uppercase tracking-tighter">{node.name}</span>
+      <span className="text-[9px] text-flat-400 dark:text-slate-500 font-bold">{totalCount}</span>
+    </button>
+  );
+};
+
+const renderFolder = (
+  node: CategoryNode,
+  setOpenFolderPath: React.Dispatch<React.SetStateAction<string | null>>,
+  feedContentCache: Record<string, Feed>
+): React.ReactElement => {
+  const previews = getFolderPreviews(node, feedContentCache);
+  const totalCount = countAllFeeds(node);
+  return (
+    <div key={node.path} className="w-full">
+      <button
+        onClick={() => setOpenFolderPath(node.path)}
+        className="w-full p-2 bg-white dark:bg-slate-800 border border-flat-200 dark:border-slate-700 hover:bg-flat-50 transition-colors"
+      >
+        <div className="grid grid-cols-2 gap-1 mb-2 grayscale opacity-70">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="aspect-square bg-flat-100 dark:bg-slate-900">
+              {previews[i] ? <img src={proxyImageUrl(previews[i])} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full" />}
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold text-flat-900 dark:text-slate-200 truncate uppercase tracking-widest">{node.name}</span>
+          <span className="text-[9px] text-flat-400 dark:text-slate-500 font-bold">{totalCount}</span>
+        </div>
+      </button>
+    </div>
+  );
+};
+
+const countFeeds = (node: CategoryNode): number => {
+  let count = node.feeds.length;
+  node.children.forEach((child) => { count += countFeeds(child); });
+  return count;
+};
+
+const renderCategoryNode = (
+  node: CategoryNode,
+  isFirst: boolean,
+  collapsedCategories: Set<string>,
+  toggleCategoryCollapse: (path: string) => void,
+  feedContentCache: Record<string, Feed>,
+  selectedFeedMeta: FeedMeta | null,
+  loadingFeedId: string | null,
+  handleFeedSelect: (feed: FeedMeta) => void
+): React.ReactNode => {
+  const isCollapsed = collapsedCategories.has(node.path);
+  const hasChildren = node.children.size > 0 || node.feeds.length > 0;
+  const childrenArray = Array.from(node.children.values());
+  const totalFeeds = countFeeds(node);
+
+  return (
+    <div key={node.path} className="w-full">
+      {node.name && (
+        <button
+          onClick={() => toggleCategoryCollapse(node.path)}
+          className={`w-full flex items-center gap-2 px-4 py-2 border-b border-flat-200 dark:border-slate-800 hover:bg-flat-100 dark:hover:bg-slate-800 transition-colors ${isFirst ? '' : ''}`}
+          style={{ paddingLeft: `${(node.depth) * 8 + 16}px` }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className={`w-3.5 h-3.5 text-flat-400 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+          >
+            <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clipRule="evenodd" />
+          </svg>
+          <span className="text-[10px] font-black text-flat-600 dark:text-slate-400 uppercase tracking-widest truncate flex-1 text-left">
+            {node.name}
+          </span>
+          <span className="text-[9px] text-flat-400 dark:text-slate-500 font-bold">
+            {totalFeeds}
+          </span>
+        </button>
+      )}
+
+      {(!node.name || !isCollapsed) && hasChildren && (
+        <div className="overflow-hidden">
+          {node.feeds.map((meta) => {
+            const content = feedContentCache[meta.id] || null;
+            return (
+              <div key={meta.id} style={{ paddingLeft: `${(node.depth + (node.name ? 1 : 0)) * 8}px` }}>
+                <FeedItem
+                  feedMeta={meta}
+                  feedContent={content}
+                  mode="list"
+                  isSelected={selectedFeedMeta?.id === meta.id}
+                  isLoading={loadingFeedId === meta.id}
+                  onSelect={handleFeedSelect}
+                />
+              </div>
+            );
+          })}
+
+          {childrenArray.map((child, idx) => renderCategoryNode(child, idx === 0 && node.feeds.length === 0, collapsedCategories, toggleCategoryCollapse, feedContentCache, selectedFeedMeta, loadingFeedId, handleFeedSelect))}
+        </div>
+      )}
     </div>
   );
 };
 
 const App: React.FC = () => {
+
+
   // --- 本地缓存工具函数 ---
   const FEED_CACHE_KEY = 'rss_feed_content_cache';
   const FEED_CACHE_TTL = 10 * 60 * 1000; // 10 分钟缓存有效期
@@ -674,6 +715,14 @@ const App: React.FC = () => {
     const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
     return filteredArticles.slice(startIndex, startIndex + ARTICLES_PER_PAGE);
   }, [filteredArticles, currentPage, ARTICLES_PER_PAGE]);
+
+  const paginatedArticlesWithCategory = useMemo(() => {
+    return paginatedArticles.map(article => ({
+      ...article,
+      aiCategory: articleClassifications[article.guid]
+    }));
+  }, [paginatedArticles, articleClassifications]);
+
 
   const selectedFeedHistoryStatus = selectedFeedMeta ? historyStatus[selectedFeedMeta.id] : undefined;
   const canLoadMoreHistory = !!(
@@ -1231,175 +1280,49 @@ const App: React.FC = () => {
   }, [helpContent]);
 
   return (
-    <div className="flex h-screen bg-organic-50 font-sans text-slate-900 overflow-hidden relative dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
-      {/* Organic Breathing Background Blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-soft-purple/30 rounded-blob blur-3xl animate-blob-morph" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-soft-pink/30 rounded-blob blur-3xl animate-blob-morph" style={{ animationDelay: '-2s' }} />
-        <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-soft-cyan/30 rounded-blob blur-3xl animate-blob-morph" style={{ animationDelay: '-4s' }} />
-        <div className="absolute bottom-[20%] left-[10%] w-[30%] h-[30%] bg-soft-sage/30 rounded-blob blur-3xl animate-blob-morph" style={{ animationDelay: '-6s' }} />
-      </div>
-
-      <div className={`fixed inset-0 bg-black/20 backdrop-blur-xs z-30 lg:hidden ${isSidebarOpen ? 'block' : 'hidden'}`} onClick={() => setIsSidebarOpen(false)} />
-      <div className={`fixed inset-y-0 left-0 z-40 w-80 flex flex-col glass-panel m-4 rounded-organic-lg transition-transform duration-300 ease-in-out dark:bg-slate-900/80 dark:border-slate-700 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${!isSidebarOpen && 'lg:hidden'} shrink-0`}>
-        <div className="p-6 border-b border-white/20">
-          <div className="flex items-center justify-between mb-2">
-            <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2 group">
-              <div className="bg-organic-600 text-white p-2 rounded-organic-md flex items-center justify-center text-lg shadow-soft-md group-hover:scale-110 transition-transform">
-                🌸
+    <div className="flex h-screen bg-white font-sans text-slate-900 overflow-hidden relative dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200">
+      <div className={`fixed inset-0 bg-black/40 z-30 lg:hidden ${isSidebarOpen ? 'block' : 'hidden'}`} onClick={() => setIsSidebarOpen(false)} />
+      <div className={`fixed inset-y-0 left-0 z-40 w-72 flex flex-col bg-flat-50 border-r border-flat-200 transition-transform duration-200 dark:bg-slate-900 dark:border-slate-800 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${!isSidebarOpen && 'lg:hidden'} shrink-0`}>
+        <div className="p-4 border-b border-flat-200 dark:border-slate-800">
+          <div className="flex items-center justify-between mb-1">
+            <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2">
+              <div className="bg-accent text-white w-8 h-8 flex items-center justify-center text-sm font-bold">
+                NS
               </div>
-              <h1 className="text-xl font-extrabold text-organic-900 dark:text-slate-100">NSYC订阅站</h1>
+              <h1 className="text-lg font-bold text-flat-900 dark:text-slate-100">RSS Reader</h1>
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-slate-400 hover:text-organic-600 rounded-organic-md transition-colors dark:hover:bg-slate-800" title="收起侧边栏"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 lg:hidden"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 hidden lg:block"><path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg></button>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-1 text-flat-400 hover:text-accent transition-colors lg:hidden"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
           </div>
-          <p className="text-xs text-organic-500 font-medium px-1">Make Josei Seiyu Great Again</p>
-          {errorMsg && <p className="text-xs text-red-500 mt-2 px-1">{errorMsg}</p>}
-          {proxyInfoMsg && !errorMsg && (
-            <p className="text-xs text-amber-500 mt-2 px-1">{proxyInfoMsg}</p>
-          )}
+          <p className="text-[10px] text-flat-400 font-semibold uppercase tracking-wider">Information Hub</p>
+          {errorMsg && <p className="text-[10px] text-red-500 mt-1 font-medium">{errorMsg}</p>}
         </div>
-        <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em]">订阅源</span>
-          <div className="flex bg-organic-100 rounded-full p-1 gap-1 dark:bg-slate-800">
+        <div className="flex items-center justify-between px-4 py-3 bg-flat-100 dark:bg-slate-800/50">
+          <span className="text-[10px] font-bold text-flat-500 uppercase tracking-widest">Feeds</span>
+          <div className="flex border border-flat-200 dark:border-slate-700 overflow-hidden">
             <button
               onClick={() => setSidebarMode('list')}
-              className={`p-1.5 rounded-full transition-all ${sidebarMode === 'list' ? 'bg-white text-organic-700 shadow-soft-md dark:bg-slate-700' : 'text-organic-600 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
+              className={`p-1.5 transition-colors ${sidebarMode === 'list' ? 'bg-accent text-white' : 'bg-white text-flat-500 hover:bg-flat-50 dark:bg-slate-800 dark:text-slate-400'}`}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-4 h-4"
-              >
-                <circle cx="5" cy="7" r="1.25" />
-                <circle cx="5" cy="12" r="1.25" />
-                <circle cx="5" cy="17" r="1.25" />
-                <rect x="8" y="5.5" width="11" height="3" rx="1.5" />
-                <rect x="8" y="10.5" width="11" height="3" rx="1.5" />
-                <rect x="8" y="15.5" width="11" height="3" rx="1.5" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
             <button
               onClick={() => setSidebarMode('grid')}
-              className={`p-1.5 rounded-full transition-all ${sidebarMode === 'grid' ? 'bg-white text-organic-700 shadow-soft-md dark:bg-slate-700' : 'text-organic-600 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
+              className={`p-1.5 border-l border-flat-200 dark:border-slate-700 transition-colors ${sidebarMode === 'grid' ? 'bg-accent text-white' : 'bg-white text-flat-500 hover:bg-flat-50 dark:bg-slate-800 dark:text-slate-400'}`}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                className="w-4 h-4"
-              >
-                <rect x="4" y="4" width="7" height="7" rx="2" />
-                <rect x="13" y="4" width="7" height="7" rx="2" />
-                <rect x="4" y="13" width="7" height="7" rx="2" />
-                <rect x="13" y="13" width="7" height="7" rx="2" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>
             </button>
           </div>
         </div>
+
         <div className="flex-1 overflow-y-auto px-4 pb-4 custom-scrollbar">
           <div className={`${sidebarMode === 'grid' ? 'flex flex-col gap-3' : 'flex flex-col gap-2'}`}>
             {sidebarMode === 'grid' ? (
               // Grid 模式：iOS文件夹风格
               (() => {
-                // 辅助函数：获取指定路径的节点
-                const getNodeByPath = (path: string): { name: string; path: string; feeds: FeedMeta[]; children: Map<string, any>; depth: number } | null => {
-                  const parts = path.split('/').filter(Boolean);
-                  let current: Map<string, any> = groupedFeeds;
-                  let node = null;
-                  for (const part of parts) {
-                    node = current.get(part);
-                    if (!node) return null;
-                    current = node.children;
-                  }
-                  return node;
-                };
-
-                // 辅助函数：获取前4个订阅源缩略图用于文件夹预览
-                const getFolderPreviews = (node: { feeds: FeedMeta[]; children: Map<string, any> }): string[] => {
-                  const previews: string[] = [];
-                  for (const meta of node.feeds) {
-                    if (previews.length >= 4) break;
-                    const content = feedContentCache[meta.id];
-                    previews.push(getMediaUrl(content?.image) || `https://ui-avatars.com/api/?name=${encodeURIComponent(meta.customTitle || meta.id)}&background=3b82f6&color=fff&size=64`);
-                  }
-                  if (previews.length < 4) {
-                    for (const child of node.children.values()) {
-                      const childPreviews = getFolderPreviews(child);
-                      for (const p of childPreviews) {
-                        if (previews.length >= 4) break;
-                        previews.push(p);
-                      }
-                      if (previews.length >= 4) break;
-                    }
-                  }
-                  return previews;
-                };
-
-                // 辅助函数：计算订阅源总数
-                const countAllFeeds = (node: { feeds: FeedMeta[]; children: Map<string, any> }): number => {
-                  let count = node.feeds.length;
-                  node.children.forEach(child => { count += countAllFeeds(child); });
-                  return count;
-                };
-
-                // 渲染子文件夹图标（用于进入下级分类）
-                const renderSubfolder = (node: { name: string; path: string; feeds: FeedMeta[]; children: Map<string, any>; depth: number }) => {
-                  const totalCount = countAllFeeds(node);
-                  return (
-                    <motion.button
-                      key={node.path}
-                      onClick={() => setOpenFolderPath(node.path)}
-                      className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex flex-col items-center justify-center gap-1 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-md">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="white" className="w-6 h-6">
-                          <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z" />
-                        </svg>
-                      </div>
-                      <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 truncate w-full text-center px-1">{node.name}</span>
-                      <span className="text-[9px] text-slate-400 dark:text-slate-500">{totalCount}</span>
-                    </motion.button>
-                  );
-                };
-
-                // 渲染一级文件夹（带2x2预览缩略图）
-                const renderFolder = (node: { name: string; path: string; feeds: FeedMeta[]; children: Map<string, any>; depth: number }) => {
-                  const previews = getFolderPreviews(node);
-                  const totalCount = countAllFeeds(node);
-                  return (
-                    <motion.div key={node.path} className="w-full" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                      <button
-                        onClick={() => setOpenFolderPath(node.path)}
-                        className="w-full p-3 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 border border-slate-200 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 transition-all hover:shadow-lg"
-                      >
-                        <div className="grid grid-cols-2 gap-1.5 mb-2">
-                          {[0, 1, 2, 3].map(i => (
-                            <div key={i} className="aspect-square rounded-lg overflow-hidden bg-slate-300 dark:bg-slate-600">
-                              {previews[i] ? <img src={proxyImageUrl(previews[i])} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full" />}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{node.name}</span>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{totalCount}</span>
-                        </div>
-                      </button>
-                    </motion.div>
-                  );
-                };
-
                 // 当前在某个文件夹内
+
                 if (openFolderPath) {
-                  const currentNode = getNodeByPath(openFolderPath);
+                  const currentNode = getNodeByPath(groupedFeeds, openFolderPath);
                   if (!currentNode) {
                     setOpenFolderPath(null);
                     return null;
@@ -1426,7 +1349,8 @@ const App: React.FC = () => {
                           const content = feedContentCache[meta.id] || null;
                           return <FeedItem key={meta.id} feedMeta={meta} feedContent={content} mode="grid" isSelected={selectedFeedMeta?.id === meta.id} isLoading={loadingFeedId === meta.id} onSelect={handleFeedSelect} />;
                         })}
-                        {childrenArray.map(child => renderSubfolder(child))}
+                        {childrenArray.map(child => renderSubfolder(child, setOpenFolderPath))}
+
                       </div>
                     </motion.div>
                   );
@@ -1450,7 +1374,8 @@ const App: React.FC = () => {
                     )}
                     {/* 一级分类显示为文件夹 */}
                     <div className="grid grid-cols-2 gap-3">
-                      {categories.map(([, node]) => renderFolder(node))}
+                      {categories.map(([, node]) => renderFolder(node, setOpenFolderPath, feedContentCache))}
+
                     </div>
                   </>
                 );
@@ -1458,84 +1383,8 @@ const App: React.FC = () => {
             ) : (
               // List 模式：层级分组显示
               (() => {
-                const renderCategoryNode = (node: { name: string; path: string; feeds: FeedMeta[]; children: Map<string, { name: string; path: string; feeds: FeedMeta[]; children: Map<string, any>; depth: number }>; depth: number }, isFirst: boolean = false): React.ReactNode => {
-                  const isCollapsed = collapsedCategories.has(node.path);
-                  const hasChildren = node.children.size > 0 || node.feeds.length > 0;
-                  const childrenArray = Array.from(node.children.values());
-                  
-                  // 计算该分类下的总订阅源数量（递归）
-                  const countFeeds = (n: typeof node): number => {
-                    let count = n.feeds.length;
-                    n.children.forEach(child => { count += countFeeds(child); });
-                    return count;
-                  };
-                  const totalFeeds = countFeeds(node);
-                  
-                  return (
-                    <div key={node.path} className="w-full">
-                      {/* 分类标题 */}
-                      {node.name && (
-                        <button
-                          onClick={() => toggleCategoryCollapse(node.path)}
-                          className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group ${isFirst ? '' : 'mt-2'}`}
-                          style={{ paddingLeft: `${(node.depth) * 12 + 8}px` }}
-                        >
-                          <motion.svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            className="w-3.5 h-3.5 text-slate-400 shrink-0"
-                            animate={{ rotate: isCollapsed ? -90 : 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clipRule="evenodd" />
-                          </motion.svg>
-                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate flex-1 text-left">
-                            {node.name}
-                          </span>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                            {totalFeeds}
-                          </span>
-                        </button>
-                      )}
-                      
-                      {/* 子内容（带动画） */}
-                      <AnimatePresence initial={false}>
-                        {(!node.name || !isCollapsed) && hasChildren && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2, ease: easeStandard }}
-                            className="overflow-hidden"
-                          >
-                            {/* 该分类直属的订阅源 */}
-                            {node.feeds.map(meta => {
-                              const content = feedContentCache[meta.id] || null;
-                              return (
-                                <div key={meta.id} style={{ paddingLeft: `${(node.depth + (node.name ? 1 : 0)) * 12}px` }}>
-                                  <FeedItem
-                                    feedMeta={meta}
-                                    feedContent={content}
-                                    mode="list"
-                                    isSelected={selectedFeedMeta?.id === meta.id}
-                                    isLoading={loadingFeedId === meta.id}
-                                    onSelect={handleFeedSelect}
-                                  />
-                                </div>
-                              );
-                            })}
-                            
-                            {/* 递归渲染子分类 */}
-                            {childrenArray.map((child, idx) => renderCategoryNode(child, idx === 0 && node.feeds.length === 0))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                };
-                
-                const rootNodes = Array.from(groupedFeeds.entries());
+                 const rootNodes = Array.from(groupedFeeds.entries());
+
                 return rootNodes.map(([key, node], idx) => {
                   if (key === '__uncategorized__') {
                     // 无分类的源直接渲染
@@ -1554,87 +1403,82 @@ const App: React.FC = () => {
                       );
                     });
                   }
-                  return renderCategoryNode(node, idx === 0);
+                  return renderCategoryNode(node, idx === 0, collapsedCategories, toggleCategoryCollapse, feedContentCache, selectedFeedMeta, loadingFeedId, handleFeedSelect);
+
                 });
               })()
             )}
             {loading && <div className="flex justify-center p-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div></div>}
           </div>
         </div>
-        <div className="p-4 border-t border-slate-100 bg-slate-50 mt-auto flex gap-3 dark:bg-slate-900 dark:border-slate-800">
-          <button onClick={() => setShowSettings(true)} className="flex-1 flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl font-semibold dark:text-slate-400 dark:hover:bg-slate-800">
+        <div className="p-2 border-t border-flat-200 bg-flat-100 mt-auto flex gap-2 dark:bg-slate-900 dark:border-slate-800">
+          <button onClick={() => setShowSettings(true)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-flat-600 hover:text-accent hover:bg-flat-200 transition-colors dark:text-slate-400 dark:hover:bg-slate-800">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-5 h-5"
+              className="w-4 h-4"
             >
               <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.89 3.31.877 2.42 2.42a1.724 1.724 0 001.067 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.067 2.572c.89 1.543-.877 3.31-2.42 2.42a1.724 1.724 0 00-2.572 1.067c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.067c-1.543.89-3.31-.877-2.42-2.42a1.724 1.724 0 00-1.067-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.067-2.572c-.89-1.543.877-3.31 2.42-2.42a1.724 1.724 0 002.573-1.066z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            <span className="text-sm">设置</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Settings</span>
           </button>
-          <button onClick={openHelp} className="p-2 aspect-square flex items-center justify-center text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl dark:text-slate-400 dark:hover:bg-slate-800" title="查看使用说明">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-            </svg>
-          </button>
-          <button onClick={() => setDarkMode(!darkMode)} className="p-2 aspect-square flex items-center justify-center text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl dark:text-slate-400 dark:hover:bg-slate-800" title={darkMode ? "切换到浅色模式" : "切换到深色模式"}>
+          <button onClick={() => setDarkMode(!darkMode)} className="p-2 aspect-square flex items-center justify-center text-flat-600 hover:text-accent hover:bg-flat-200 transition-colors dark:text-slate-400 dark:hover:bg-slate-800" title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
             {darkMode ? (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
               </svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
               </svg>
             )}
           </button>
         </div>
       </div>
+
       <div className="flex-1 flex flex-col h-full bg-transparent relative overflow-hidden min-w-0">
         {!selectedFeed && (
-          <div className="h-full overflow-y-auto p-4 md:p-12 animate-fade-in custom-scrollbar">
+          <div className="h-full overflow-y-auto p-4 md:p-12 custom-scrollbar bg-flat-50 dark:bg-slate-950">
             <div className="max-w-5xl mx-auto">
               <header className="mb-10 flex items-center gap-4">
                 {!isSidebarOpen && (
-                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-organic-500 hover:text-organic-700 rounded-organic-md transition-colors" title="展开侧边栏">
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-flat-500 hover:text-accent transition-colors" title="Expand Sidebar">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
                   </button>
                 )}
-                <div><h2 className="text-3xl font-extrabold text-organic-900 dark:text-white">仪表盘</h2><p className="text-organic-500 dark:text-slate-300 font-medium">您的多媒体企划新闻生态系统概览。</p></div>
+                <div><h2 className="text-3xl font-black text-flat-900 dark:text-white tracking-tight">Dashboard</h2><p className="text-flat-500 dark:text-slate-400 font-bold uppercase text-[10px] tracking-widest">News Ecosystem Overview</p></div>
               </header>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div className="glass-card p-6 rounded-organic-lg flex items-center gap-6">
-                  <div className="bg-soft-purple p-4 organic-shape text-organic-700 shadow-soft-md">
+                <div className="bg-white border border-flat-200 p-6 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
+                  <div className="bg-flat-100 border border-flat-200 p-4 text-flat-700">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em]">文章总数</p>
-                    <h3 className="text-2xl font-black text-organic-900 dark:text-white">{feeds.reduce((acc, f) => acc + f.items.length, 0)}</h3>
+                    <p className="text-[10px] font-bold text-flat-500 uppercase tracking-widest">Total Articles</p>
+                    <h3 className="text-2xl font-black text-flat-900 dark:text-white">{feeds.reduce((acc, f) => acc + f.items.length, 0)}</h3>
                   </div>
                 </div>
-                <div className="glass-card p-6 rounded-organic-lg flex items-center gap-6">
-                  <div className="bg-soft-sage p-4 organic-shape text-organic-700 shadow-soft-md">
+                <div className="bg-white border border-flat-200 p-6 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
+                  <div className="bg-flat-100 border border-flat-200 p-4 text-flat-700">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 19.5v-.75a7.5 7.5 0 00-7.5-7.5H4.5m0-6.75h.75c7.87 0 14.25 6.38 14.25 14.25v.75M6 18.75a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em]">活跃订阅源</p>
-                    <h3 className="text-2xl font-black text-organic-900 dark:text-white">{feeds.length}</h3>
+                    <p className="text-[10px] font-bold text-flat-500 uppercase tracking-widest">Active Feeds</p>
+                    <h3 className="text-2xl font-black text-flat-900 dark:text-white">{feeds.length}</h3>
                   </div>
                 </div>
               </div>
-              <div className="glass-card p-8 rounded-organic-lg overflow-hidden">
+              <div className="bg-white border border-flat-200 p-8 dark:bg-slate-800 dark:border-slate-700">
                 <StatsChart feeds={feeds} isDarkMode={darkMode} />
               </div>
             </div>
@@ -1642,31 +1486,28 @@ const App: React.FC = () => {
         )}
         {selectedFeed && !activeArticle && (
           <div className="h-full flex flex-col animate-fade-in">
-            <div className="h-20 px-4 md:px-8 flex items-center justify-between bg-white/40 backdrop-blur-md border-b border-white/20 sticky top-0 z-20 shrink-0 dark:bg-slate-900/60 dark:border-slate-800">
+            <div className="h-16 px-4 md:px-8 flex items-center justify-between bg-white border-b border-flat-200 sticky top-0 z-20 shrink-0 dark:bg-slate-900 dark:border-slate-800">
               <div className="flex items-center gap-3 overflow-hidden">
                 {!isSidebarOpen && (
-                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-organic-500 hover:text-organic-700 rounded-organic-md transition-colors" title="展开侧边栏">
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-flat-500 hover:text-accent transition-colors" title="Expand Sidebar">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
                   </button>
                 )}
-                <img src={getMediaUrl(selectedFeed.image)} className="w-10 h-10 object-contain rounded-organic-md border border-white/40 bg-white/50 hidden sm:block shadow-soft-md dark:bg-slate-800 dark:border-slate-700" alt="" />
                 <div className="overflow-hidden">
-                  <h2 className="text-lg md:text-xl font-black text-organic-900 truncate dark:text-slate-100">{selectedFeed.title}</h2>
-                  <p className="text-[10px] text-organic-600 font-bold uppercase tracking-[0.2em] hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
+                  <h2 className="text-lg font-black text-flat-900 truncate dark:text-slate-100 uppercase tracking-tight">{selectedFeed.title}</h2>
+                  <p className="text-[10px] text-flat-400 font-bold uppercase tracking-widest hidden sm:block">{selectedDate ? `Filtered: ${selectedDate.toLocaleDateString()}` : 'Latest Content'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-organic-md transition-all shadow-soft-md ${isRightSidebarOpen ? 'bg-organic-600 text-white' : 'glass-card text-organic-500 hover:text-organic-700'}`} title="切换右侧边栏">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                  </svg>
+                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors border ${isRightSidebarOpen ? 'bg-accent text-white border-accent' : 'bg-white text-flat-600 border-flat-200 hover:bg-flat-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}`} title="Toggle Right Sidebar">
+                  {isRightSidebarOpen ? 'Close Filters' : 'Open Filters'}
                 </button>
               </div>
             </div>
             <FilterBar activeFilters={activeFilters} onToggleFilter={handleFilterToggle} onReset={() => setActiveFilters([])} onAnalyze={handleRunAnalysis} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess} selectedDate={selectedDate} />
-            <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+            <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-flat-50 dark:bg-slate-950">
               {/* Pull-to-refresh indicator (mobile only) */}
               <div
                 className="lg:hidden flex items-center justify-center text-xs text-organic-600 overflow-hidden transition-all duration-200 ease-out"
@@ -1700,10 +1541,10 @@ const App: React.FC = () => {
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-                {paginatedArticles.map(article => (
+                {paginatedArticlesWithCategory.map(article => (
                   <ArticleCard
                     key={article.guid || article.link}
-                    article={{ ...article, aiCategory: articleClassifications[article.guid] }}
+                    article={article}
                     isSelected={false}
                     isRead={readArticleIds.has(article.guid || article.link)}
                     onClick={() => handleArticleSelect(article)}
@@ -1794,157 +1635,96 @@ const App: React.FC = () => {
         )}
         {activeArticle && (
           <div className="h-full flex flex-col bg-transparent animate-slide-in">
-            <div className="h-16 border-b border-white/20 flex items-center justify-between px-2 md:px-6 bg-white/60 backdrop-blur-md sticky top-0 z-20 shadow-soft-md dark:bg-slate-900/80 dark:border-slate-800">
+            <div className="h-16 border-b border-flat-200 flex items-center justify-between px-2 md:px-6 bg-white sticky top-0 z-20 dark:bg-slate-900 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 {!isSidebarOpen && (
-                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-organic-500 hover:text-organic-700 rounded-organic-md transition-colors mr-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                  <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-flat-500 hover:text-accent transition-colors mr-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                     </svg>
                   </button>
                 )}
-                <button onClick={handleBackToArticles} className="flex items-center gap-2 text-organic-600 hover:text-organic-800 px-3 py-1.5 rounded-full hover:bg-white/50 transition-all font-bold text-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                <button onClick={handleBackToArticles} className="flex items-center gap-2 text-flat-600 hover:text-accent px-3 py-1.5 transition-colors font-bold text-[10px] uppercase tracking-widest border border-flat-200 dark:border-slate-700 dark:text-slate-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                   </svg>
-                  <span className="hidden sm:inline">返回列表</span>
+                  <span className="hidden sm:inline">Back</span>
                 </button>
               </div>
-              <div className="flex items-center gap-1 md:gap-3">
-                <div className="flex items-center gap-2 mr-2">
-                  <select value={targetLang} onChange={(e) => setTargetLang(e.target.value as Language)} className="px-3 py-1.5 glass-card rounded-full text-xs font-bold text-organic-700 focus:outline-none focus:ring-2 focus:ring-organic-500 cursor-pointer truncate max-w-[5rem] md:max-w-none">{Object.values(Language).map(lang => <option key={lang} value={lang}>{lang}</option>)}</select>
-                </div>
-                <button onClick={handleTranslateToggle} disabled={isTranslating} className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-soft-md ${isTranslating ? 'bg-organic-200 text-organic-600 cursor-wait dark:bg-slate-800 dark:text-slate-400' : showTranslation ? 'bg-white text-organic-800 hover:bg-organic-50 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600' : 'bg-organic-800 text-white hover:bg-organic-900'}`}>
-                  {isTranslating ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span className="hidden md:inline">翻译中...</span>
-                    </>
-                  ) : showTranslation ? (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                      </svg>
-                      <span className="hidden md:inline">查看原文</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" />
-                      </svg>
-                      <span className="hidden md:inline">AI 翻译</span>
-                    </>
-                  )}
+              <div className="flex items-center gap-2">
+                <select value={targetLang} onChange={(e) => setTargetLang(e.target.value as Language)} className="px-3 py-1.5 bg-flat-50 border border-flat-200 text-[10px] font-bold text-flat-700 focus:outline-none focus:border-accent cursor-pointer truncate max-w-[5rem] md:max-w-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300">{Object.values(Language).map(lang => <option key={lang} value={lang}>{lang}</option>)}</select>
+                <button onClick={handleTranslateToggle} disabled={isTranslating} className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors border ${isTranslating ? 'bg-flat-100 text-flat-400 cursor-wait dark:bg-slate-800 dark:text-slate-600' : showTranslation ? 'bg-accent text-white border-accent' : 'bg-white text-accent border-accent hover:bg-flat-50 dark:bg-slate-900'}`}>
+                  {isTranslating ? 'Translating...' : showTranslation ? 'Show Original' : 'AI Translate'}
                 </button>
-                <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-organic-600 hover:text-organic-800 rounded-full hover:bg-white/50 transition-colors" title="打开原文链接">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                  </svg>
-                </a>
-                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 rounded-full transition-all shadow-soft-md ml-2 ${isRightSidebarOpen ? 'bg-organic-600 text-white' : 'glass-card text-organic-500 hover:text-organic-700'}`} title="切换右侧边栏">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                <button onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)} className={`p-2 border transition-colors ml-2 ${isRightSidebarOpen ? 'bg-accent text-white border-accent' : 'bg-white text-flat-500 border-flat-200 hover:bg-flat-50 dark:bg-slate-800 dark:border-slate-700'}`} title="Toggle Right Sidebar">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                   </svg>
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-8 md:px-10 custom-scrollbar">
-              <div className="max-w-4xl mx-auto pb-20 glass-card p-8 md:p-12 rounded-organic-lg shadow-soft-lg">
-                <h1 className="text-3xl md:text-5xl font-black text-organic-950 mb-8 leading-tight dark:text-white">{activeArticle.title}</h1>
-                <div className="flex items-center gap-4 text-sm text-organic-500 mb-10 pb-8 border-b border-organic-100">
-                  <img src={readingViewAvatar} alt="" className="w-12 h-12 rounded-organic-md object-cover ring-4 ring-white shadow-soft-md bg-organic-50" onError={(e) => { (e.target as HTMLImageElement).src = proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFeed?.title || 'A')}`); }} />
+            <div className="flex-1 overflow-y-auto px-4 py-8 md:px-10 custom-scrollbar bg-white dark:bg-slate-950">
+              <div className="max-w-3xl mx-auto pb-20">
+                <h1 className="text-3xl md:text-4xl font-black text-flat-900 mb-6 leading-tight dark:text-white tracking-tight">{activeArticle.title}</h1>
+                <div className="flex items-center gap-4 text-[10px] text-flat-500 mb-8 pb-4 border-b border-flat-100 dark:border-slate-800">
                   <div className="flex flex-col">
-                    <span className="font-bold text-organic-900 text-base dark:text-slate-200">{activeArticle.author || activeArticle.feedTitle}</span>
-                    <span className="font-medium">{new Date(activeArticle.pubDate).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}</span>
+                    <span className="font-bold text-flat-900 uppercase tracking-widest dark:text-slate-200">{activeArticle.author || activeArticle.feedTitle}</span>
+                    <span className="font-semibold">{new Date(activeArticle.pubDate).toLocaleString().replace(',', '')}</span>
                   </div>
                 </div>
 
-                {/* Translation Disclaimer / Header */}
                 {showTranslation && translatedContent && (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-organic-600 mb-8 px-5 py-4 bg-organic-50 rounded-organic-md border-l-4 border-organic-500 shadow-soft-sm dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-organic-500">
-                      <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 12.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm-1.5-6.5a.75.75 0 100 1.5.75.75 0 000-1.5z" />
-                    </svg>
-                    <span>由 <span className="text-organic-900">{getTranslatorName()}</span> 翻译</span>
-                    <span className="text-organic-200 mx-1">|</span>
-                    <div className="flex items-center gap-1">
-                      <span>目标语言</span>
-                      <select
-                        value={targetLang}
-                        onChange={(e) => handleLanguageSwitch(e.target.value as Language)}
-                        className="bg-transparent font-black text-organic-800 outline-none cursor-pointer hover:text-organic-950 py-0 pr-6 border-none focus:ring-0 text-xs"
-                      >
-                        {Object.values(Language).map(l => <option key={l} value={l}>{l}</option>)}
-                      </select>
-                    </div>
+                  <div className="text-[10px] font-bold text-flat-600 mb-8 px-4 py-2 bg-flat-50 border-l-2 border-accent dark:bg-slate-800/50 dark:text-slate-400">
+                    TRANSLATED BY {getTranslatorName().toUpperCase()}
                   </div>
                 )}
 
-                {/* Content Area (Switches between Translation and Original) */}
                 <div
-                  className={`prose prose-slate prose-lg max-w-none prose-img:rounded-organic-md prose-img:shadow-soft-lg dark:prose-invert selection:bg-soft-purple selection:text-organic-900`}
+                  className={`prose prose-slate max-w-none dark:prose-invert prose-img:rounded-none selection:bg-accent selection:text-white`}
                   dangerouslySetInnerHTML={{ __html: showTranslation && translatedContent ? translatedContent : proxiedArticleContent }}
                 />
-
               </div>
             </div>
           </div>
         )}
       </div>
       {selectedFeed && (
-        <div className={`fixed inset-y-0 right-0 z-30 w-80 glass-panel m-4 rounded-organic-lg transform transition-transform duration-300 ${isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:translate-x-0 lg:shadow-soft-lg dark:bg-slate-900/80 dark:border-slate-700 ${!isRightSidebarOpen && 'lg:hidden'}`}>
-          <div className="flex flex-col h-full p-6 gap-6 overflow-y-auto custom-scrollbar">
+        <div className={`fixed inset-y-0 right-0 z-30 w-72 bg-white border-l border-flat-200 transform transition-transform duration-200 ${isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:translate-x-0 dark:bg-slate-900 dark:border-slate-800 ${!isRightSidebarOpen && 'lg:hidden'}`}>
+          <div className="flex flex-col h-full p-4 gap-6 overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between">
-              <h3 className="font-black text-organic-900 text-sm tracking-wider uppercase dark:text-slate-300">筛选与 AI</h3>
-              <button onClick={() => setIsRightSidebarOpen(false)} className="p-2 text-organic-600 hover:text-organic-800 rounded-full transition-colors dark:hover:bg-slate-800">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+              <h3 className="font-bold text-flat-900 text-[10px] tracking-widest uppercase dark:text-slate-300">Filters & AI</h3>
+              <button onClick={() => setIsRightSidebarOpen(false)} className="p-1 text-flat-400 hover:text-accent transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div>
-              <h4 className="text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em] mb-4">按日期筛选</h4>
-              <div className="glass-card rounded-organic-md p-1">
+              <h4 className="text-[10px] font-bold text-flat-400 uppercase tracking-widest mb-3">Calendar</h4>
+              <div className="border border-flat-100 p-1 dark:border-slate-800">
                 <CalendarWidget selectedDate={selectedDate} onDateSelect={handleDateSelect} />
               </div>
             </div>
-            <div className="flex-1 flex flex-col min-h-0 glass-card rounded-organic-lg overflow-hidden border-none shadow-soft-lg">
-              <div className="p-5 bg-gradient-to-r from-soft-purple/20 to-soft-pink/20 border-b border-white/20 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black text-organic-900 text-xs tracking-wider uppercase dark:text-slate-200">AI 每日摘要</h3>
-                </div>
-                {!selectedDate && <span className="text-[9px] font-bold text-organic-500 bg-white/50 px-3 py-1 rounded-full shadow-soft-sm dark:bg-slate-800 dark:text-slate-400">请选择日期</span>}
+            <div className="flex-1 flex flex-col min-h-0 border border-flat-200 dark:border-slate-800">
+              <div className="p-3 bg-flat-50 border-b border-flat-200 flex items-center justify-between dark:bg-slate-800/50 dark:border-slate-700">
+                <h3 className="font-bold text-flat-900 text-[10px] tracking-widest uppercase dark:text-slate-200">Daily Summary</h3>
+                {!selectedDate && <span className="text-[8px] font-bold text-flat-400 uppercase">Select Date</span>}
               </div>
-              <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+              <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
                 {!selectedDate ? (
                   <div className="h-full flex flex-col items-center justify-center text-center">
-                    <div className="w-16 h-16 bg-soft-purple/20 rounded-blob mb-4 flex items-center justify-center text-2xl">✨</div>
-                    <p className="text-organic-600 text-xs font-bold leading-relaxed px-4">请在上方日历中选择一个具体日期以生成摘要。</p>
+                    <p className="text-flat-400 text-[10px] font-bold uppercase leading-relaxed px-4 tracking-tighter">Choose a date to generate summary</p>
                   </div>
                 ) : baseArticles.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center">
-                    <div className="w-16 h-16 bg-organic-100 rounded-blob mb-4 flex items-center justify-center text-2xl">📭</div>
-                    <p className="text-organic-600 text-xs font-bold">该日期下没有文章。</p>
+                    <p className="text-flat-400 text-[10px] font-bold uppercase tracking-widest">No articles</p>
                   </div>
                 ) : dailySummary ? (
-                  <div className="text-xs text-organic-800 leading-relaxed whitespace-pre-wrap animate-fade-in font-medium dark:text-slate-300">{dailySummary}</div>
+                  <div className="text-xs text-flat-700 leading-relaxed whitespace-pre-wrap font-medium dark:text-slate-300">{dailySummary}</div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center">
-                    <button onClick={handleRunAnalysis} disabled={isAnalyzing} className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 font-bold text-white transition-all duration-300 bg-organic-800 rounded-full hover:bg-organic-950 hover:scale-105 shadow-soft-lg disabled:opacity-50 disabled:cursor-wait">
-                      {isAnalyzing ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span className="text-xs">分析中...</span>
-                        </>
-                      ) : (
-                        <span className="text-xs">总结 {baseArticles.length} 篇文章</span>
-                      )}
+                    <button onClick={handleRunAnalysis} disabled={isAnalyzing} className="px-4 py-2 text-[10px] font-bold text-white uppercase tracking-widest transition-colors bg-accent hover:bg-accent-dark disabled:opacity-50 disabled:cursor-wait">
+                      {isAnalyzing ? 'Analyzing...' : `Summarize ${baseArticles.length} items`}
                     </button>
                   </div>
                 )}

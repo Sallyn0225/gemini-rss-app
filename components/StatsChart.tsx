@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Feed } from '../types';
 
@@ -10,12 +10,12 @@ interface StatsChartProps {
 // Organic Palette: #c69a72 (500), #b88057 (600), #d4b693 (400), #E0D4FC (soft-purple), #FCE4EC (soft-pink)
 const COLORS = ['#c69a72', '#b88057', '#d4b693', '#E0D4FC', '#FCE4EC', '#996646', '#e3d2b8'];
 
-export const StatsChart: React.FC<StatsChartProps> = ({ feeds, isDarkMode }) => {
-  const data = feeds.map((feed) => ({
+export const StatsChart: React.FC<StatsChartProps> = React.memo(({ feeds, isDarkMode }) => {
+  const data = useMemo(() => feeds.map((feed) => ({
     name: feed.title.length > 15 ? feed.title.substring(0, 15) + '...' : feed.title,
     count: feed.items.length,
     fullTitle: feed.title
-  }));
+  })), [feeds]);
 
   if (data.length === 0) return null;
 
@@ -59,4 +59,4 @@ export const StatsChart: React.FC<StatsChartProps> = ({ feeds, isDarkMode }) => 
       </div>
     </div>
   );
-};
+});
