@@ -57,6 +57,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
   handleRunAnalysis,
   isAnalyzing,
   analysisSuccess,
+  isAiConfigured,
   paginatedArticlesWithCategory,
   readArticleIds,
   handleArticleSelect,
