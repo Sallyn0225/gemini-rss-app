@@ -82,6 +82,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [readArticleIds, setReadArticleIds] = useState<Set<string>>(new Set());
 
+  // Sync imageProxyMode to global variable on mount
+  // This ensures the module-level variable in rssService is in sync with React state
+  useEffect(() => {
+    setGlobalImageProxyMode(imageProxyMode);
+  }, [imageProxyMode]);
+
   // Load read articles from IndexedDB on mount
   useEffect(() => {
     get('read_articles').then(stored => {

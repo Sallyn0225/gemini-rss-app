@@ -339,7 +339,7 @@ const App: React.FC = () => {
             handleLanguageSwitch={setTargetLang} showTranslation={showTranslation}
             handleTranslateToggle={handleTranslateToggle} isTranslating={isTranslating}
             translatedContent={translatedContent} getTranslatorName={() => "AI"}
-            proxiedArticleContent={activeArticle.content} readingViewAvatar=""
+            proxiedArticleContent={activeArticle.content} readingViewAvatar={getMediaUrl(selectedFeed?.image)}
           />
         )}
       </main>
