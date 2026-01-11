@@ -16,11 +16,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const action = req.query.action as string | undefined;
+    console.log(`[API Feeds] Method: ${req.method}, Action: ${action}, URL: ${req.url}`);
 
     // ============================================
     // GET: List feeds (public or admin)
     // ============================================
-    if (req.method === 'GET') {
+    if (req.method === 'GET' || (req.method === 'POST' && action === 'admin')) {
       // Admin list (requires secret via query param check - POST preferred for admin)
       if (action === 'admin') {
         if (!validateAdminSecret(req.headers)) {
@@ -55,12 +56,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!validateAdminSecret(req.headers)) {
         return res.status(401).json({ error: 'Unauthorized: Invalid Admin Secret' });
-      }
-
-      // Admin list via POST (more secure)
-      if (action === 'admin') {
-        const allFeeds = await db.select().from(feeds).orderBy(feeds.displayOrder);
-        return res.status(200).json(allFeeds);
       }
 
       // Add or Update Feed

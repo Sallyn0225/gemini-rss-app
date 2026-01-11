@@ -28,19 +28,19 @@
   "rewrites": [
     {
       "source": "/api/feeds/:action(add|delete|reorder|update|admin)",
-      "destination": "/api/feeds.ts?action=:action"
+      "destination": "/api/feeds?action=:action"
     },
     {
       "source": "/api/feeds/list/admin",
-      "destination": "/api/feeds.ts?action=admin"
+      "destination": "/api/feeds?action=admin"
     },
     {
       "source": "/api/feeds/list",
-      "destination": "/api/feeds.ts"
+      "destination": "/api/feeds"
     },
     {
       "source": "/api/history/:action(get|upsert)",
-      "destination": "/api/history.ts?action=:action"
+      "destination": "/api/history?action=:action"
     },
     {
       "source": "/((?!api/).*)",
