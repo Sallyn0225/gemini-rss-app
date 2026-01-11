@@ -25,27 +25,26 @@
       ]
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/feeds/(add|delete|reorder|update|admin)",
-      "dest": "/api/feeds.ts?action=$1"
+      "source": "/api/feeds/:action(add|delete|reorder|update|admin)",
+      "destination": "/api/feeds.ts?action=:action"
     },
     {
-      "src": "/api/feeds/list/admin",
-      "dest": "/api/feeds.ts?action=admin"
+      "source": "/api/feeds/list/admin",
+      "destination": "/api/feeds.ts?action=admin"
     },
     {
-      "src": "/api/feeds/list",
-      "dest": "/api/feeds.ts"
+      "source": "/api/feeds/list",
+      "destination": "/api/feeds.ts"
     },
     {
-      "src": "/api/history/(get|upsert)",
-      "dest": "/api/history.ts?action=$1"
+      "source": "/api/history/:action(get|upsert)",
+      "destination": "/api/history.ts?action=:action"
     },
-    { "handle": "filesystem" },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ],
   "env": {
