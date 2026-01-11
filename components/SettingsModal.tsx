@@ -54,7 +54,7 @@ const DraggableNestedFeedItem = React.memo<{
       value={feed}
       dragListener={false}
       dragControls={dragControls}
-      className="flex items-center gap-4 p-4 rounded-2xl bg-white/60 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800 hover:border-stone-200 dark:hover:border-stone-700 transition-all list-none shadow-soft-sm"
+      className="flex items-center gap-4 p-4 rounded-2xl bg-white/60 dark:bg-stone-800/60 border border-stone-100 dark:border-stone-800 hover:border-stone-200 dark:hover:border-stone-700 transition-all list-none shadow-soft-sm"
       whileDrag={{ 
         scale: 1.02, 
         rotate: 1,
@@ -1413,7 +1413,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                   </motion.svg>
                                   <span className="font-black text-sm text-stone-400 uppercase tracking-widest">未分组</span>
                                 </div>
-                                <span className="text-[10px] font-black text-stone-400 bg-white/60 px-3 py-1 rounded-full border border-stone-100/50">
+                                 <span className="text-[10px] font-black text-stone-400 bg-white/60 dark:bg-stone-800/60 px-3 py-1 rounded-full border border-stone-100/50 dark:border-stone-800/50">
                                   {groupTree.ungrouped.length}
                                 </span>
                               </button>

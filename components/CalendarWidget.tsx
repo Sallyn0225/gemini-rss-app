@@ -73,7 +73,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
             ${isSelected 
               ? 'bg-organic-500 text-white shadow-soft-md scale-105' 
               : isToday 
-                ? 'text-organic-600 font-bold bg-organic-50 border border-organic-200 dark:bg-organic-900/30 dark:border-organic-800 dark:text-organic-300' 
+                ? 'text-organic-600 font-bold bg-organic-50 border border-organic-200 dark:bg-stone-800/50 dark:border-stone-700 dark:text-stone-200' 
                 : 'text-slate-700 hover:bg-organic-100/50 dark:text-slate-300 dark:hover:bg-slate-700'}
           `}
         >
@@ -115,7 +115,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
             setViewDate(newDate);
             setViewMode('month');
           }}
-          className={`p-2 text-sm rounded-lg ${y === viewDate.getFullYear() ? 'bg-organic-50 text-organic-600 font-bold dark:bg-organic-900/30 dark:text-organic-300' : 'text-slate-700 hover:bg-organic-100/50 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+          className={`p-2 text-sm rounded-lg ${y === viewDate.getFullYear() ? 'bg-organic-50 text-organic-600 font-bold dark:bg-stone-800/50 dark:text-stone-200' : 'text-slate-700 hover:bg-organic-100/50 dark:text-slate-300 dark:hover:bg-slate-700'}`}
         >
           {y}
         </button>
@@ -131,7 +131,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
         <button onClick={handlePrev} className="p-1 hover:bg-organic-100/50 rounded-full text-slate-400 hover:text-organic-600 transition-colors dark:hover:bg-slate-700 dark:hover:text-slate-300">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <button onClick={handleHeaderClick} className="text-sm font-bold text-slate-800 hover:text-organic-600 transition-colors dark:text-slate-100 dark:hover:text-organic-400">
+        <button onClick={handleHeaderClick} className="text-sm font-bold text-slate-800 hover:text-organic-600 transition-colors dark:text-slate-100 dark:hover:text-organic-300">
           {viewMode === 'day' && `${viewDate.getFullYear()}年 ${MONTHS[viewDate.getMonth()]}`}
           {viewMode === 'month' && `${viewDate.getFullYear()}`}
           {viewMode === 'year' && `${Math.floor(viewDate.getFullYear() / 10) * 10} - ${Math.floor(viewDate.getFullYear() / 10) * 10 + 9}`}

@@ -21,7 +21,7 @@ export const StatsChart: React.FC<StatsChartProps> = ({ feeds, isDarkMode }) => 
 
   return (
     <div className="glass-panel backdrop-blur-md bg-white/80 p-4 rounded-organic-lg border border-white/50 h-64 flex flex-col dark:bg-slate-800/80 dark:border-slate-700 shadow-soft-lg">
-      <h3 className="text-[10px] font-bold text-organic-800/60 mb-4 uppercase tracking-[0.2em] dark:text-organic-300/60">订阅源活跃度</h3>
+      <h3 className="text-[10px] font-bold text-organic-800/60 mb-4 uppercase tracking-[0.2em] dark:text-stone-400/60">订阅源活跃度</h3>
       <div className="flex-1 w-full min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>

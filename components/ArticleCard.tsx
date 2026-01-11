@@ -58,7 +58,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
     <motion.div 
       onClick={handleClick}
       className={`
-        flex flex-col glass-card cursor-pointer border-white/50 overflow-hidden group relative
+        flex flex-col glass-card cursor-pointer border-white/50 dark:border-slate-800 overflow-hidden group relative
         ${isSelected 
           ? 'ring-2 ring-organic-300 border-transparent shadow-soft-lg' 
           : 'shadow-soft-md'}
@@ -118,7 +118,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-soft-sage via-organic-100 to-soft-purple text-organic-400 relative overflow-hidden px-4">
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-soft-sage via-organic-100 to-soft-purple text-organic-600 relative overflow-hidden px-4">
                {/* Abstract Pattern for placeholder */}
                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
                {/* Display truncated title as visual anchor */}
@@ -128,21 +128,21 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
             </div>
           )}
           
-          <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
-               <span className="bg-white/80 backdrop-blur-md text-organic-800 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md uppercase tracking-widest border border-white/50">
-                 {article.feedTitle}
-               </span>
-               {isRetweet && (
-                  <span className="bg-organic-600/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md tracking-widest border border-white/20">
-                    {ArticleCategory.RETWEET}
-                  </span>
-               )}
-               {article.aiCategory && article.aiCategory !== ArticleCategory.RETWEET && (
-                  <span className="bg-soft-purple/90 backdrop-blur-md text-organic-900 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md tracking-widest border border-white/30">
-                    {article.aiCategory}
-                  </span>
-               )}
-          </div>
+           <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
+                <span className="bg-white/80 backdrop-blur-md text-organic-800 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md uppercase tracking-widest border border-white/50 dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-300">
+                  {article.feedTitle}
+                </span>
+                {isRetweet && (
+                   <span className="bg-organic-600/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md tracking-widest border border-white/20">
+                     {ArticleCategory.RETWEET}
+                   </span>
+                )}
+                {article.aiCategory && article.aiCategory !== ArticleCategory.RETWEET && (
+                   <span className="bg-soft-purple/90 backdrop-blur-md text-organic-900 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md tracking-widest border border-white/30 dark:bg-slate-800/90 dark:border-slate-700 dark:text-slate-300">
+                     {article.aiCategory}
+                   </span>
+                )}
+           </div>
           {/* Subtle Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-tr from-organic-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10"></div>
         </div>
@@ -153,7 +153,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
           {article.title}
         </h3>
         
-        <p className={`text-sm text-slate-600 leading-relaxed mb-5 flex-1 ${hasValidThumbnail ? 'line-clamp-3' : 'line-clamp-5'}`}>
+        <p className={`text-sm text-slate-700 leading-relaxed mb-5 flex-1 ${hasValidThumbnail ? 'line-clamp-3' : 'line-clamp-5'}`}>
           {preview}
         </p>
         

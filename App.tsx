@@ -162,7 +162,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
           )}
           {/* Loading indicator */}
           {isLoading && (
-            <div className="absolute inset-0 bg-white/40 backdrop-blur-xs flex items-center justify-center">
+            <div className="absolute inset-0 bg-white/40 dark:bg-slate-950/40 backdrop-blur-xs flex items-center justify-center">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-organic-600"></div>
             </div>
           )}
@@ -181,7 +181,7 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
       {feedMeta.isSub && <div className="absolute left-3 top-0 bottom-1/2 w-3 border-l-2 border-b-2 border-organic-200 dark:border-slate-700 rounded-bl-lg -z-10"></div>}
       <motion.button
         onClick={handleClick}
-        className={`flex items-center gap-3 w-full p-2.5 rounded-organic-md text-left pr-8 relative overflow-hidden transition-all duration-300 ${isSelected ? 'bg-organic-100 text-organic-800 shadow-soft-md ring-1 ring-organic-200 dark:bg-organic-900/30 dark:text-organic-300 dark:ring-organic-800' : 'text-slate-600 hover:bg-organic-50/80 dark:text-slate-400'}`}
+        className={`flex items-center gap-3 w-full p-2.5 rounded-organic-md text-left pr-8 relative overflow-hidden transition-all duration-300 ${isSelected ? 'bg-organic-100 text-organic-800 shadow-soft-md ring-1 ring-organic-200 dark:bg-stone-800/50 dark:text-stone-200 dark:ring-stone-700' : 'text-slate-600 hover:bg-organic-50/80 dark:text-slate-300'}`}
         whileHover={{ 
           x: 4,
           transition: { duration: 0.2, ease: easeStandard }
@@ -222,10 +222,10 @@ const FeedItem: React.FC<FeedItemProps> = ({ feedMeta, feedContent, mode, isSele
           <div className="w-9 h-9 rounded-organic-md bg-organic-200 dark:bg-slate-700 shrink-0 animate-pulse" />
         )}
         <div className="flex-1 overflow-hidden">
-          <p className={`font-bold text-sm truncate ${isSelected ? 'text-organic-900 dark:text-organic-300' : 'text-slate-700 dark:text-slate-300'}`}>{displayTitle}</p>
+          <p className={`font-bold text-sm truncate ${isSelected ? 'text-organic-900 dark:text-stone-200' : 'text-slate-700 dark:text-slate-300'}`}>{displayTitle}</p>
           {/* 文章数：有内容时显示真实数量，无内容时显示骨架 */}
           {feedContent ? (
-            <p className="text-[10px] text-organic-400 truncate font-medium">{feedContent.items.length} 条更新</p>
+            <p className="text-[10px] text-organic-600 truncate font-medium">{feedContent.items.length} 条更新</p>
           ) : (
             <div className="h-3 w-16 bg-organic-100 dark:bg-slate-700 rounded animate-pulse mt-1" />
           )}
@@ -259,7 +259,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ activeFilters, onToggleFilter, on
         <motion.button 
           onClick={onAnalyze} 
           disabled={isAnalyzing || !selectedDate} 
-          className={`shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${isAnalyzing ? 'bg-organic-100 text-organic-700 cursor-wait' : analysisSuccess ? 'bg-green-100 text-green-700' : !selectedDate ? 'bg-organic-200 text-organic-400 cursor-not-allowed' : 'bg-organic-800 text-white hover:bg-organic-900 shadow-soft-md'}`}
+          className={`shrink-0 flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${isAnalyzing ? 'bg-organic-100 text-organic-700 cursor-wait' : analysisSuccess ? 'bg-green-100 text-green-700' : !selectedDate ? 'bg-organic-200 text-organic-600 cursor-not-allowed' : 'bg-organic-800 text-white hover:bg-organic-900 shadow-soft-md'}`}
           whileHover={isAnalyzing || !selectedDate ? {} : { scale: 1.05, y: -1 }}
           whileTap={isAnalyzing || !selectedDate ? {} : { scale: 0.95 }}
           title={!selectedDate ? "请先选择日期" : undefined}
@@ -1231,7 +1231,7 @@ const App: React.FC = () => {
   }, [helpContent]);
 
   return (
-    <div className="flex h-screen bg-organic-50 font-sans text-slate-900 overflow-hidden relative dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
+    <div className="flex h-screen bg-organic-50 font-sans text-slate-900 overflow-hidden relative dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
       {/* Organic Breathing Background Blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-soft-purple/30 rounded-blob blur-3xl animate-blob-morph" />
@@ -1241,7 +1241,7 @@ const App: React.FC = () => {
       </div>
 
       <div className={`fixed inset-0 bg-black/20 backdrop-blur-xs z-30 lg:hidden ${isSidebarOpen ? 'block' : 'hidden'}`} onClick={() => setIsSidebarOpen(false)} />
-      <div className={`fixed inset-y-0 left-0 z-40 w-80 flex flex-col glass-panel m-4 rounded-organic-lg transition-transform duration-300 ease-in-out dark:bg-slate-900/80 dark:border-slate-800 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${!isSidebarOpen && 'lg:hidden'} shrink-0`}>
+      <div className={`fixed inset-y-0 left-0 z-40 w-80 flex flex-col glass-panel m-4 rounded-organic-lg transition-transform duration-300 ease-in-out dark:bg-slate-900/80 dark:border-slate-700 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${!isSidebarOpen && 'lg:hidden'} shrink-0`}>
         <div className="p-6 border-b border-white/20">
           <div className="flex items-center justify-between mb-2">
             <div onClick={handleBackToDashboard} className="cursor-pointer flex items-center gap-2 group">
@@ -1259,11 +1259,11 @@ const App: React.FC = () => {
           )}
         </div>
         <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em]">订阅源</span>
+          <span className="text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em]">订阅源</span>
           <div className="flex bg-organic-100 rounded-full p-1 gap-1 dark:bg-slate-800">
             <button
               onClick={() => setSidebarMode('list')}
-              className={`p-1.5 rounded-full transition-all ${sidebarMode === 'list' ? 'bg-white text-organic-700 shadow-soft-md dark:bg-slate-700' : 'text-organic-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
+              className={`p-1.5 rounded-full transition-all ${sidebarMode === 'list' ? 'bg-white text-organic-700 shadow-soft-md dark:bg-slate-700' : 'text-organic-600 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1285,7 +1285,7 @@ const App: React.FC = () => {
             </button>
             <button
               onClick={() => setSidebarMode('grid')}
-              className={`p-1.5 rounded-full transition-all ${sidebarMode === 'grid' ? 'bg-white text-organic-700 shadow-soft-md dark:bg-slate-700' : 'text-organic-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
+              className={`p-1.5 rounded-full transition-all ${sidebarMode === 'grid' ? 'bg-white text-organic-700 shadow-soft-md dark:bg-slate-700' : 'text-organic-600 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1608,7 +1608,7 @@ const App: React.FC = () => {
                     </svg>
                   </button>
                 )}
-                <div><h2 className="text-3xl font-extrabold text-organic-900 dark:text-white">仪表盘</h2><p className="text-organic-500 dark:text-slate-400 font-medium">您的多媒体企划新闻生态系统概览。</p></div>
+                <div><h2 className="text-3xl font-extrabold text-organic-900 dark:text-white">仪表盘</h2><p className="text-organic-500 dark:text-slate-300 font-medium">您的多媒体企划新闻生态系统概览。</p></div>
               </header>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div className="glass-card p-6 rounded-organic-lg flex items-center gap-6">
@@ -1618,7 +1618,7 @@ const App: React.FC = () => {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em]">文章总数</p>
+                    <p className="text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em]">文章总数</p>
                     <h3 className="text-2xl font-black text-organic-900 dark:text-white">{feeds.reduce((acc, f) => acc + f.items.length, 0)}</h3>
                   </div>
                 </div>
@@ -1629,7 +1629,7 @@ const App: React.FC = () => {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em]">活跃订阅源</p>
+                    <p className="text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em]">活跃订阅源</p>
                     <h3 className="text-2xl font-black text-organic-900 dark:text-white">{feeds.length}</h3>
                   </div>
                 </div>
@@ -1642,7 +1642,7 @@ const App: React.FC = () => {
         )}
         {selectedFeed && !activeArticle && (
           <div className="h-full flex flex-col animate-fade-in">
-            <div className="h-20 px-4 md:px-8 flex items-center justify-between bg-white/40 backdrop-blur-md border-b border-white/20 sticky top-0 z-20 shrink-0">
+            <div className="h-20 px-4 md:px-8 flex items-center justify-between bg-white/40 backdrop-blur-md border-b border-white/20 sticky top-0 z-20 shrink-0 dark:bg-slate-900/60 dark:border-slate-800">
               <div className="flex items-center gap-3 overflow-hidden">
                 {!isSidebarOpen && (
                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-organic-500 hover:text-organic-700 rounded-organic-md transition-colors" title="展开侧边栏">
@@ -1651,10 +1651,10 @@ const App: React.FC = () => {
                     </svg>
                   </button>
                 )}
-                <img src={getMediaUrl(selectedFeed.image)} className="w-10 h-10 object-contain rounded-organic-md border border-white/40 bg-white/50 hidden sm:block shadow-soft-md" alt="" />
+                <img src={getMediaUrl(selectedFeed.image)} className="w-10 h-10 object-contain rounded-organic-md border border-white/40 bg-white/50 hidden sm:block shadow-soft-md dark:bg-slate-800 dark:border-slate-700" alt="" />
                 <div className="overflow-hidden">
                   <h2 className="text-lg md:text-xl font-black text-organic-900 truncate dark:text-slate-100">{selectedFeed.title}</h2>
-                  <p className="text-[10px] text-organic-400 font-bold uppercase tracking-[0.2em] hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
+                  <p className="text-[10px] text-organic-600 font-bold uppercase tracking-[0.2em] hidden sm:block">{selectedDate ? `已筛选: ${selectedDate.toLocaleDateString('zh-CN')}` : '最新文章'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1669,7 +1669,7 @@ const App: React.FC = () => {
             <div ref={articleListRef} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
               {/* Pull-to-refresh indicator (mobile only) */}
               <div
-                className="lg:hidden flex items-center justify-center text-xs text-organic-400 overflow-hidden transition-all duration-200 ease-out"
+                className="lg:hidden flex items-center justify-center text-xs text-organic-600 overflow-hidden transition-all duration-200 ease-out"
                 style={{
                   height: pullDistance > 0 || isRefreshing ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0,
                   opacity: pullDistance > 0 || isRefreshing ? 1 : 0,
@@ -1717,15 +1717,15 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-6 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
+                      className="px-6 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200"
                     >
                       上一页
                     </button>
-                    <div className="flex items-center gap-1 glass-card p-1 rounded-full">
+                    <div className="flex items-center gap-1 glass-card p-1 rounded-full dark:bg-slate-800 dark:border-slate-700">
                       {visiblePageTokens.map(token => {
                         if (typeof token === 'string') {
                           return (
-                            <span key={token} className="w-8 h-8 inline-flex items-center justify-center text-xs font-bold text-organic-400">
+                            <span key={token} className="w-8 h-8 inline-flex items-center justify-center text-xs font-bold text-organic-600 dark:text-slate-400">
                               ···
                             </span>
                           );
@@ -1734,7 +1734,7 @@ const App: React.FC = () => {
                           <button
                             key={`page-${token}`}
                             onClick={() => setCurrentPage(token)}
-                            className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${currentPage === token ? 'bg-organic-800 text-white shadow-soft-md' : 'hover:bg-white/50 text-organic-600'}`}
+                            className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${currentPage === token ? 'bg-organic-800 text-white shadow-soft-md dark:bg-slate-200 dark:text-slate-900' : 'hover:bg-white/50 text-organic-600 dark:text-slate-400 dark:hover:bg-slate-700'}`}
                           >
                             {token}
                           </button>
@@ -1744,7 +1744,7 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-6 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700"
+                      className="px-6 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 dark:text-slate-200"
                     >
                       下一页
                     </button>
@@ -1754,17 +1754,17 @@ const App: React.FC = () => {
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
+                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                     >
                       上一页
                     </button>
-                    <div className="glass-card px-4 py-2 rounded-full text-[10px] font-bold text-organic-600 whitespace-nowrap">
+                    <div className="glass-card px-4 py-2 rounded-full text-[10px] font-bold text-organic-600 whitespace-nowrap dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
                       {currentPage} / {totalPages}
                     </div>
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700"
+                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold transition-all glass-card hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                     >
                       下一页
                     </button>
@@ -1772,12 +1772,12 @@ const App: React.FC = () => {
                 </div>
               )}
               {(isLoadingMoreHistory || canLoadMoreHistory) && (
-                <div className="py-8 text-center text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em]">
+                <div className="py-8 text-center text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em]">
                   {isLoadingMoreHistory ? '正在加载更早的内容…' : '滑动到底部以加载更早的内容'}
                 </div>
               )}
             </div>
-            <p className="text-center text-[10px] font-bold text-organic-400 pb-4 uppercase tracking-widest">
+            <p className="text-center text-[10px] font-bold text-organic-600 pb-4 uppercase tracking-widest">
               共 {filteredArticles.length} 篇文章 • 第 {currentPage} / {totalPages || 1} 页
             </p>
             <button
@@ -1794,7 +1794,7 @@ const App: React.FC = () => {
         )}
         {activeArticle && (
           <div className="h-full flex flex-col bg-transparent animate-slide-in">
-            <div className="h-16 border-b border-white/20 flex items-center justify-between px-2 md:px-6 bg-white/60 backdrop-blur-md sticky top-0 z-20 shadow-soft-md">
+            <div className="h-16 border-b border-white/20 flex items-center justify-between px-2 md:px-6 bg-white/60 backdrop-blur-md sticky top-0 z-20 shadow-soft-md dark:bg-slate-900/80 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 {!isSidebarOpen && (
                   <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-organic-500 hover:text-organic-700 rounded-organic-md transition-colors mr-2">
@@ -1814,7 +1814,7 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-2 mr-2">
                   <select value={targetLang} onChange={(e) => setTargetLang(e.target.value as Language)} className="px-3 py-1.5 glass-card rounded-full text-xs font-bold text-organic-700 focus:outline-none focus:ring-2 focus:ring-organic-500 cursor-pointer truncate max-w-[5rem] md:max-w-none">{Object.values(Language).map(lang => <option key={lang} value={lang}>{lang}</option>)}</select>
                 </div>
-                <button onClick={handleTranslateToggle} disabled={isTranslating} className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-soft-md ${isTranslating ? 'bg-organic-200 text-organic-400 cursor-wait' : showTranslation ? 'bg-white text-organic-800 hover:bg-organic-50' : 'bg-organic-800 text-white hover:bg-organic-900'}`}>
+                <button onClick={handleTranslateToggle} disabled={isTranslating} className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all shadow-soft-md ${isTranslating ? 'bg-organic-200 text-organic-600 cursor-wait dark:bg-slate-800 dark:text-slate-400' : showTranslation ? 'bg-white text-organic-800 hover:bg-organic-50 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600' : 'bg-organic-800 text-white hover:bg-organic-900'}`}>
                   {isTranslating ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1839,7 +1839,7 @@ const App: React.FC = () => {
                     </>
                   )}
                 </button>
-                <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-organic-400 hover:text-organic-600 rounded-full hover:bg-white/50 transition-colors" title="打开原文链接">
+                <a href={activeArticle.link} target="_blank" rel="noreferrer" className="p-2 text-organic-600 hover:text-organic-800 rounded-full hover:bg-white/50 transition-colors" title="打开原文链接">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                   </svg>
@@ -1864,7 +1864,7 @@ const App: React.FC = () => {
 
                 {/* Translation Disclaimer / Header */}
                 {showTranslation && translatedContent && (
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-organic-600 mb-8 px-5 py-4 bg-organic-50 rounded-organic-md border-l-4 border-organic-500 shadow-soft-sm">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-bold text-organic-600 mb-8 px-5 py-4 bg-organic-50 rounded-organic-md border-l-4 border-organic-500 shadow-soft-sm dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-600">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-organic-500">
                       <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 12.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm-1.5-6.5a.75.75 0 100 1.5.75.75 0 000-1.5z" />
                     </svg>
@@ -1895,18 +1895,18 @@ const App: React.FC = () => {
         )}
       </div>
       {selectedFeed && (
-        <div className={`fixed inset-y-0 right-0 z-30 w-80 glass-panel m-4 rounded-organic-lg transform transition-transform duration-300 ${isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:translate-x-0 lg:shadow-soft-lg dark:bg-slate-900/80 dark:border-slate-800 ${!isRightSidebarOpen && 'lg:hidden'}`}>
+        <div className={`fixed inset-y-0 right-0 z-30 w-80 glass-panel m-4 rounded-organic-lg transform transition-transform duration-300 ${isRightSidebarOpen ? 'translate-x-0' : 'translate-x-full'} lg:relative lg:translate-x-0 lg:shadow-soft-lg dark:bg-slate-900/80 dark:border-slate-700 ${!isRightSidebarOpen && 'lg:hidden'}`}>
           <div className="flex flex-col h-full p-6 gap-6 overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between">
               <h3 className="font-black text-organic-900 text-sm tracking-wider uppercase dark:text-slate-300">筛选与 AI</h3>
-              <button onClick={() => setIsRightSidebarOpen(false)} className="p-2 text-organic-400 hover:text-organic-600 rounded-full transition-colors dark:hover:bg-slate-800">
+              <button onClick={() => setIsRightSidebarOpen(false)} className="p-2 text-organic-600 hover:text-organic-800 rounded-full transition-colors dark:hover:bg-slate-800">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div>
-              <h4 className="text-[10px] font-bold text-organic-400 uppercase tracking-[0.2em] mb-4">按日期筛选</h4>
+              <h4 className="text-[10px] font-bold text-organic-600 uppercase tracking-[0.2em] mb-4">按日期筛选</h4>
               <div className="glass-card rounded-organic-md p-1">
                 <CalendarWidget selectedDate={selectedDate} onDateSelect={handleDateSelect} />
               </div>
@@ -1916,18 +1916,18 @@ const App: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-organic-900 text-xs tracking-wider uppercase dark:text-slate-200">AI 每日摘要</h3>
                 </div>
-                {!selectedDate && <span className="text-[9px] font-bold text-organic-500 bg-white/50 px-3 py-1 rounded-full shadow-soft-sm">请选择日期</span>}
+                {!selectedDate && <span className="text-[9px] font-bold text-organic-500 bg-white/50 px-3 py-1 rounded-full shadow-soft-sm dark:bg-slate-800 dark:text-slate-400">请选择日期</span>}
               </div>
               <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
                 {!selectedDate ? (
                   <div className="h-full flex flex-col items-center justify-center text-center">
                     <div className="w-16 h-16 bg-soft-purple/20 rounded-blob mb-4 flex items-center justify-center text-2xl">✨</div>
-                    <p className="text-organic-400 text-xs font-bold leading-relaxed px-4">请在上方日历中选择一个具体日期以生成摘要。</p>
+                    <p className="text-organic-600 text-xs font-bold leading-relaxed px-4">请在上方日历中选择一个具体日期以生成摘要。</p>
                   </div>
                 ) : baseArticles.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center">
                     <div className="w-16 h-16 bg-organic-100 rounded-blob mb-4 flex items-center justify-center text-2xl">📭</div>
-                    <p className="text-organic-400 text-xs font-bold">该日期下没有文章。</p>
+                    <p className="text-organic-600 text-xs font-bold">该日期下没有文章。</p>
                   </div>
                 ) : dailySummary ? (
                   <div className="text-xs text-organic-800 leading-relaxed whitespace-pre-wrap animate-fade-in font-medium dark:text-slate-300">{dailySummary}</div>
@@ -1987,14 +1987,14 @@ const App: React.FC = () => {
                 className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
               >
                 <div className="font-semibold text-slate-800 dark:text-white">代理图片</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">所有图片通过服务器代理加载。适合无法直接访问 Twitter 等平台的用户。</div>
+                <div className="text-sm text-slate-500 dark:text-slate-300 mt-1">所有图片通过服务器代理加载。适合无法直接访问 Twitter 等平台的用户。</div>
               </button>
               <button
                 onClick={() => handleImageProxyModeChange('none')}
                 className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
               >
                 <div className="font-semibold text-slate-800 dark:text-white">直接加载</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">所有图片直接加载，不消耗服务器流量。适合可以直接访问所有图片源的用户。</div>
+                <div className="text-sm text-slate-500 dark:text-slate-300 mt-1">所有图片直接加载，不消耗服务器流量。适合可以直接访问所有图片源的用户。</div>
               </button>
             </div>
           </div>
