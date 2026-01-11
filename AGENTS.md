@@ -133,7 +133,7 @@ See `db/schema.ts` for the canonical schema.
 ## 🧩 Common Development Patterns
 
 ### 🔄 Dual Media URL Handling
-Always use the `MediaUrl` interface for images and videos. The system supports three proxy modes (`all`, `media_only`, `none`).
+Always use the `MediaUrl` interface for images and videos. The system supports two proxy modes (`all`, `none`).
 ```typescript
 // Example usage in components
 const imageUrl = selectMediaUrl(article.thumbnail, userSettings.imageProxyMode);

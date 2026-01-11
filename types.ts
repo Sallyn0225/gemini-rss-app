@@ -97,10 +97,9 @@ export interface AISettings {
 
 // --- Image Proxy Settings ---
 // 代理模式：
-// - 'all': 全部代理（RSS内容 + 媒体都通过服务器加载）
-// - 'media_only': 仅代理媒体（RSS内容直连，图片/视频通过服务器加载）
-// - 'none': 不代理（全部从用户浏览器直连，不消耗服务器流量）
-export type ImageProxyMode = 'all' | 'media_only' | 'none';
+// - 'all': 全部代理（媒体通过服务器加载，适合无法直接访问图片源的用户）
+// - 'none': 不代理（媒体从用户浏览器直连，不消耗服务器流量）
+export type ImageProxyMode = 'all' | 'none';
 
 export interface UserSettings {
   imageProxyMode: ImageProxyMode;
@@ -126,7 +125,7 @@ export const selectMediaUrl = (
   if (proxyMode === 'none') {
     return media.original;  // 用户直连，不消耗服务器流量
   } else {
-    return media.proxied;   // 'all' 或 'media_only' 都走代理
+    return media.proxied;   // 'all' 走代理
   }
 };
 

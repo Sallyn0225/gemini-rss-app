@@ -11,9 +11,8 @@ const THING_PROXY = 'https://thingproxy.freeboard.io/fetch/';
 
 // --- Image Proxy Mode Management ---
 // 代理模式：
-// - 'all': 全部代理（RSS内容 + 媒体都通过服务器加载）
-// - 'media_only': 仅代理媒体（RSS内容直连，图片/视频通过服务器加载）
-// - 'none': 不代理（全部从用户浏览器直连，不消耗服务器流量）
+// - 'all': 全部代理（媒体通过服务器加载，适合无法直接访问图片源的用户）
+// - 'none': 不代理（媒体从用户浏览器直连，不消耗服务器流量）
 let currentImageProxyMode: ImageProxyMode = 'all';
 let currentFeedCanProxyImages: boolean = true;
 

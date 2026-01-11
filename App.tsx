@@ -473,13 +473,13 @@ const App: React.FC = () => {
   // --- Image Proxy Mode & First Visit Modal ---
   const [imageProxyMode, setImageProxyModeState] = useState<ImageProxyMode>(() => {
     const stored = localStorage.getItem('image_proxy_mode');
-    // 兼容旧版 'twitter-only' 模式，自动迁移为 'media_only'
-    if (stored === 'twitter-only') {
-      localStorage.setItem('image_proxy_mode', 'media_only');
-      setImageProxyMode('media_only');
-      return 'media_only';
+    // 兼容旧版 'twitter-only' 和 'media_only' 模式，自动迁移为 'all'
+    if (stored === 'twitter-only' || stored === 'media_only') {
+      localStorage.setItem('image_proxy_mode', 'all');
+      setImageProxyMode('all');
+      return 'all';
     }
-    if (stored && ['all', 'none', 'media_only'].includes(stored)) {
+    if (stored && ['all', 'none'].includes(stored)) {
       setImageProxyMode(stored as ImageProxyMode);
       return stored as ImageProxyMode;
     }
@@ -1971,22 +1971,15 @@ const App: React.FC = () => {
                 onClick={() => handleImageProxyModeChange('all')}
                 className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
               >
-                <div className="font-semibold text-slate-800 dark:text-white">全部代理</div>
+                <div className="font-semibold text-slate-800 dark:text-white">代理图片</div>
                 <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">所有图片通过服务器代理加载。适合无法直接访问 Twitter 等平台的用户。</div>
-              </button>
-              <button
-                onClick={() => handleImageProxyModeChange('media_only')}
-                className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
-              >
-                <div className="font-semibold text-slate-800 dark:text-white">仅代理媒体</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">RSS 内容直连，图片/视频通过服务器代理加载。节省部分服务器流量。</div>
               </button>
               <button
                 onClick={() => handleImageProxyModeChange('none')}
                 className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-blue-900/20 transition-all text-left"
               >
-                <div className="font-semibold text-slate-800 dark:text-white">不代理图片</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">所有图片直接加载。适合可以直接访问所有图片源的用户。</div>
+                <div className="font-semibold text-slate-800 dark:text-white">直接加载</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">所有图片直接加载，不消耗服务器流量。适合可以直接访问所有图片源的用户。</div>
               </button>
             </div>
           </div>
