@@ -12,10 +12,19 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        // Fix: `__dirname` is not available in all module contexts. Using `process.cwd()`
-        // is a reliable alternative to get the project root directory.
         '@': path.resolve(process.cwd(), '.'),
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom'],
+            'ui-vendor': ['framer-motion', 'lucide-react', 'recharts'],
+          }
+        }
+      },
+      chunkSizeWarningLimit: 1000,
     }
   };
 });

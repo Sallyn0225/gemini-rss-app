@@ -35,7 +35,7 @@ Gemini RSS Translator: A React 19 + Vercel Serverless application for RSS aggreg
 - **Flat Source**: Frontend source files (`App.tsx`, `index.tsx`) live in the root, not `/src`.
 - **Media Architecture**: Use `MediaUrl` interface; backend provides dual (original/proxied) URLs.
 - **Localization**: UI text is primarily **Simplified Chinese**.
-- **State Management**: Local state/Context + `localStorage` cache; no Redux/Zustand.
+- **State Management**: Local state/Context + `IndexedDB` (via `idb-keyval`) for large data; no Redux/Zustand.
 
 ## ANTI-PATTERNS (THIS PROJECT)
 - **DO NOT** use `any` in TypeScript; strictly follow `tsconfig.json`.
@@ -61,3 +61,7 @@ npx drizzle-kit push # Sync DB schema to Neon
 - **SSRF Shield**: `api/feed.ts` and `api/media/proxy.ts` use `resolveAndValidateHost` to block internal network access.
 - **DB Transactions**: `neon-http` does not support transactions; multi-write operations are sequential.
 - **Cache Policy**: RSS feeds use `s-maxage` (10m) edge caching.
+- **Performance**:
+  - High-frequency UI states (e.g., `pullDistance`) are localized to sub-components.
+  - Large data (e.g., `read_articles`) is stored in IndexedDB to avoid main-thread blocking.
+  - Core dependencies are bundled locally to optimize LCP.

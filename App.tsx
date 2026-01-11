@@ -93,13 +93,11 @@ const App: React.FC = () => {
   const [showTranslation, setShowTranslation] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [pendingArticleId, setPendingArticleId] = useState<string | null>(null);
 
   const articleListRef = useRef<HTMLDivElement>(null);
-  const touchStartRef = useRef<number>(0);
 
   const isAiConfigured = useMemo(() => {
     const { providers, tasks } = aiSettings;
@@ -186,7 +184,6 @@ const App: React.FC = () => {
   const handleRefresh = useCallback(async () => {
     if (!selectedFeedMeta || isRefreshing) return;
     setIsRefreshing(true);
-    setPullDistance(0);
     try {
       const fetchedFeed = await fetchRSS(selectedFeedMeta.id);
       setFeedContentCache(prev => ({ ...prev, [selectedFeedMeta.id]: fetchedFeed }));
@@ -198,39 +195,6 @@ const App: React.FC = () => {
       setIsRefreshing(false);
     }
   }, [selectedFeedMeta, isRefreshing, setFeedContentCache]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (articleListRef.current?.scrollTop === 0) {
-      touchStartRef.current = e.touches[0].clientY;
-    } else {
-      touchStartRef.current = 0;
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartRef.current === 0 || isRefreshing) return;
-    const touchY = e.touches[0].clientY;
-    const distance = touchY - touchStartRef.current;
-    if (distance > 0 && articleListRef.current?.scrollTop === 0) {
-      // Apply resistance
-      const pull = Math.min(distance * 0.4, 100);
-      setPullDistance(pull);
-      if (pull > 5) {
-        if (e.cancelable) e.preventDefault();
-      }
-    } else {
-      setPullDistance(0);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (pullDistance >= 60) {
-      handleRefresh();
-    } else {
-      setPullDistance(0);
-    }
-    touchStartRef.current = 0;
-  };
 
   const handleArticleSelect = (article: Article) => {
     setActiveArticle(article);
@@ -309,8 +273,7 @@ const App: React.FC = () => {
             }}
             handleRunAnalysis={() => {}} isAnalyzing={isAnalyzing} analysisSuccess={analysisSuccess}
             paginatedArticlesWithCategory={paginatedArticlesWithCategory} readArticleIds={readArticleIds}
-            handleArticleSelect={handleArticleSelect} pullDistance={pullDistance} isRefreshing={isRefreshing}
-            handleTouchStart={handleTouchStart} handleTouchMove={handleTouchMove} handleTouchEnd={handleTouchEnd}
+            handleArticleSelect={handleArticleSelect} onRefresh={handleRefresh} isRefreshing={isRefreshing}
             currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages}
             filteredArticlesCount={filteredArticles.length} isLoadingMoreHistory={false} canLoadMoreHistory={false}
             showScrollToTop={showScrollToTop} handleScrollToTop={() => {}}

@@ -30,7 +30,7 @@ interface ArticleListProps {
   paginatedArticlesWithCategory: any[];
   readArticleIds: Set<string>;
   handleArticleSelect: (article: Article) => void;
-  pullDistance: number;
+  onRefresh: () => Promise<void>;
   isRefreshing: boolean;
   currentPage: number;
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
@@ -42,9 +42,6 @@ interface ArticleListProps {
   handleScrollToTop: () => void;
   articleListRef: React.RefObject<HTMLDivElement>;
   visiblePageTokens: (number | string)[];
-  handleTouchStart?: (e: React.TouchEvent) => void;
-  handleTouchMove?: (e: React.TouchEvent) => void;
-  handleTouchEnd?: () => void;
 }
 
 export const ArticleList: React.FC<ArticleListProps> = ({
@@ -62,7 +59,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
   paginatedArticlesWithCategory,
   readArticleIds,
   handleArticleSelect,
-  pullDistance,
+  onRefresh,
   isRefreshing,
   currentPage,
   setCurrentPage,
@@ -73,11 +70,53 @@ export const ArticleList: React.FC<ArticleListProps> = ({
   showScrollToTop,
   handleScrollToTop,
   articleListRef,
-  visiblePageTokens,
-  handleTouchStart,
-  handleTouchMove,
-  handleTouchEnd
+  visiblePageTokens
 }) => {
+  const [pullDistance, setPullDistance] = React.useState(0);
+  const touchStartRef = React.useRef<number>(0);
+  const rafRef = React.useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (articleListRef.current?.scrollTop === 0) {
+      touchStartRef.current = e.touches[0].clientY;
+    } else {
+      touchStartRef.current = 0;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartRef.current === 0 || isRefreshing) return;
+    const touchY = e.touches[0].clientY;
+    const distance = touchY - touchStartRef.current;
+
+    if (distance > 0 && articleListRef.current?.scrollTop === 0) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      
+      rafRef.current = requestAnimationFrame(() => {
+        const pull = Math.min(distance * 0.4, 100);
+        setPullDistance(pull);
+      });
+
+      if (distance > 5 && e.cancelable) {
+        e.preventDefault();
+      }
+    } else {
+      if (pullDistance !== 0) setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance >= 60) {
+      onRefresh().finally(() => {
+        setPullDistance(0);
+      });
+    } else {
+      setPullDistance(0);
+    }
+    touchStartRef.current = 0;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  };
+
   return (
     <div
       className="h-full flex flex-col animate-in fade-in duration-500"
@@ -127,9 +166,9 @@ export const ArticleList: React.FC<ArticleListProps> = ({
           {/* Pull-to-refresh indicator */}
           <div
             className="lg:hidden flex items-center justify-center text-xs text-primary overflow-hidden transition-all duration-300 ease-out"
-            style={{ 
-              height: pullDistance > 0 || isRefreshing ? Math.max(pullDistance, isRefreshing ? 40 : 0) : 0, 
-              opacity: pullDistance > 0 || isRefreshing ? 1 : 0 
+            style={{
+              height: isRefreshing ? 40 : pullDistance,
+              opacity: isRefreshing || pullDistance > 0 ? 1 : 0
             }}
           >
             {isRefreshing ? (

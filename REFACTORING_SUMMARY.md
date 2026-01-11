@@ -48,6 +48,19 @@ Added packages:
 - `@vercel/node`: Vercel Functions TypeScript types
 - `drizzle-orm`: Lightweight ORM
 - `drizzle-kit`: Database schema management
+- `idb-keyval`: Lightweight IndexedDB helper for async storage
+
+## 7. Performance Audit & Optimization (Jan 2026)
+- **LCP Optimization**:
+  - Localized React/React-DOM dependencies (removed external importmaps).
+  - Implemented `manualChunks` in Vite for better vendor caching.
+- **INP & Interaction Optimization**:
+  - Refactored `App.tsx` to decentralize UI state.
+  - Offloaded high-frequency touch events to `requestAnimationFrame`.
+  - Implemented component-level state isolation for "Pull-to-refresh".
+- **Storage Optimization**:
+  - Migrated `read_articles` from `localStorage` to **IndexedDB**.
+  - Implemented async non-blocking I/O for reading progress.
 
 ## 🏗️ Architecture Changes
 

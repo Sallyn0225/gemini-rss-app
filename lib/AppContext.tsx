@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  Feed, 
+import { get, set } from 'idb-keyval';
+import {
+  Feed,
   Article, 
   Language, 
   AISettings, 
@@ -78,12 +79,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (stored === 'all' || stored === 'none') ? stored : 'all';
   });
 
-  const [readArticleIds, setReadArticleIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('read_articles');
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch { return new Set(); }
-  });
+  const [readArticleIds, setReadArticleIds] = useState<Set<string>>(new Set());
+
+  // Load read articles from IndexedDB on mount
+  useEffect(() => {
+    get('read_articles').then(stored => {
+      if (stored && Array.isArray(stored)) {
+        setReadArticleIds(new Set(stored));
+      }
+    }).catch(err => console.error('Failed to load read articles from IDB:', err));
+  }, []);
 
   const setImageProxyMode = useCallback((mode: ImageProxyMode) => {
     setImageProxyModeState(mode);
@@ -96,7 +101,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (prev.has(id)) return prev;
       const next = new Set(prev);
       next.add(id);
-      localStorage.setItem('read_articles', JSON.stringify(Array.from(next)));
+      set('read_articles', Array.from(next)).catch(err => console.error('Failed to save read articles to IDB:', err));
       return next;
     });
   }, []);
