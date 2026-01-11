@@ -58,22 +58,30 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
     <motion.div 
       onClick={handleClick}
       className={`
-        flex flex-col bg-white rounded-2xl cursor-pointer border overflow-hidden group dark:bg-slate-800 relative
+        flex flex-col glass-card cursor-pointer border-white/50 overflow-hidden group relative
         ${isSelected 
-          ? 'ring-2 ring-blue-500 border-transparent shadow-xl' 
-          : 'border-slate-100 dark:border-slate-700'}
+          ? 'ring-2 ring-organic-300 border-transparent shadow-soft-lg' 
+          : 'shadow-soft-md'}
+        rounded-organic-lg
       `}
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-      transition={{ duration: 0.35, ease: easeDecelerate }}
+      exit={{ opacity: 0, y: -20, scale: 0.9 }}
+      transition={{ 
+        type: 'spring',
+        stiffness: 260,
+        damping: 20
+      }}
       whileHover={{ 
-        y: -6,
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
-        transition: { duration: 0.25, ease: easeStandard }
+        y: -8,
+        scale: 1.02,
+        rotate: -1,
+        boxShadow: '0 30px 60px -12px rgba(0, 0, 0, 0.1)',
+        transition: { duration: 0.3, ease: easeStandard }
       }}
       whileTap={{ 
         scale: 0.98,
+        rotate: 0,
         transition: { duration: 0.1, ease: easeStandard }
       }}
     >
@@ -87,76 +95,87 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick, isSe
             top: ripple.y - ripple.size / 2,
             width: ripple.size,
             height: ripple.size,
-            backgroundColor: 'rgba(59, 130, 246, 0.3)',
+            backgroundColor: 'rgba(198, 154, 114, 0.2)', // organic-500 with opacity
           }}
           initial={{ scale: 0, opacity: 0.6 }}
           animate={{ scale: 1, opacity: 0 }}
-          transition={{ duration: 0.6, ease: easeDecelerate }}
+          transition={{ duration: 0.8, ease: easeDecelerate }}
         />
       ))}
       {/* Thumbnail - conditional height based on image availability */}
-      <div className={`${hasValidThumbnail ? 'h-48' : 'h-28'} w-full overflow-hidden bg-slate-100 relative dark:bg-slate-900 transition-all duration-300`}>
-        {hasValidThumbnail ? (
-          <img 
-            src={getMediaUrl(article.thumbnail)} 
-            alt="" 
-            loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 text-slate-400 relative overflow-hidden dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 dark:text-slate-500 px-4">
-             {/* Abstract Pattern for placeholder */}
-             <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '20px 20px' }}></div>
-             {/* Display truncated title as visual anchor */}
-             <span className="text-base font-semibold relative z-10 opacity-50 select-none text-center line-clamp-2 leading-snug">
-               {article.title.length > 30 ? article.title.substring(0, 30) + '...' : article.title}
-             </span>
+      <div className={`p-4 pb-0`}>
+        <div className={`
+          ${hasValidThumbnail ? 'h-48' : 'h-28'} 
+          w-full overflow-hidden bg-organic-100 relative transition-all duration-500
+          rounded-blob group-hover:rounded-blob-hover
+        `}>
+          {hasValidThumbnail ? (
+            <img 
+              src={getMediaUrl(article.thumbnail)} 
+              alt="" 
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-soft-sage via-organic-100 to-soft-purple text-organic-400 relative overflow-hidden px-4">
+               {/* Abstract Pattern for placeholder */}
+               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
+               {/* Display truncated title as visual anchor */}
+               <span className="text-base font-medium relative z-10 opacity-60 select-none text-center line-clamp-2 leading-snug italic">
+                 {article.title.length > 30 ? article.title.substring(0, 30) + '...' : article.title}
+               </span>
+            </div>
+          )}
+          
+          <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 items-start">
+               <span className="bg-white/80 backdrop-blur-md text-organic-800 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md uppercase tracking-widest border border-white/50">
+                 {article.feedTitle}
+               </span>
+               {isRetweet && (
+                  <span className="bg-organic-600/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md tracking-widest border border-white/20">
+                    {ArticleCategory.RETWEET}
+                  </span>
+               )}
+               {article.aiCategory && article.aiCategory !== ArticleCategory.RETWEET && (
+                  <span className="bg-soft-purple/90 backdrop-blur-md text-organic-900 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-soft-md tracking-widest border border-white/30">
+                    {article.aiCategory}
+                  </span>
+               )}
           </div>
-        )}
-        <div className="absolute top-3 left-3 z-20 flex flex-col gap-1 items-start">
-             <span className="bg-white/90 backdrop-blur-md text-slate-800 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm uppercase tracking-wider border border-slate-100 dark:bg-slate-900/90 dark:text-slate-200 dark:border-slate-800">
-               {article.feedTitle}
-             </span>
-             {isRetweet && (
-                <span className="bg-slate-600/90 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm tracking-wider border border-slate-500/20">
-                  {ArticleCategory.RETWEET}
-                </span>
-             )}
-             {article.aiCategory && article.aiCategory !== ArticleCategory.RETWEET && (
-                <span className="bg-indigo-500/90 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm tracking-wider border border-indigo-400/20">
-                  {article.aiCategory}
-                </span>
-             )}
+          {/* Subtle Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-organic-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10"></div>
         </div>
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
       </div>
 
-      <div className="p-5 flex flex-col flex-1 relative">
-        <h3 className="font-bold text-lg text-slate-800 mb-2 leading-snug line-clamp-2 group-hover:text-blue-600 transition-colors dark:text-slate-100 dark:group-hover:text-blue-400">
+      <div className="p-6 flex flex-col flex-1 relative">
+        <h3 className="font-bold text-xl text-slate-800 mb-3 leading-tight line-clamp-2 group-hover:text-organic-600 transition-colors">
           {article.title}
         </h3>
         
-        <p className={`text-sm text-slate-500 leading-relaxed mb-4 flex-1 dark:text-slate-400 ${hasValidThumbnail ? 'line-clamp-3' : 'line-clamp-4'}`}>
+        <p className={`text-sm text-slate-600 leading-relaxed mb-5 flex-1 ${hasValidThumbnail ? 'line-clamp-3' : 'line-clamp-5'}`}>
           {preview}
         </p>
         
-        <div className="flex items-center justify-between text-xs text-slate-400 mt-auto pt-4 border-t border-slate-50 dark:border-slate-700">
-          <div className="flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <time>{formattedDateTime}</time>
-          </div>
+        <div className="flex items-center justify-between text-xs text-slate-400 mt-auto pt-5 border-t border-organic-100/50">
           <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-organic-100 flex items-center justify-center text-organic-500">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <time className="font-medium text-slate-500">{formattedDateTime}</time>
+          </div>
+          <div className="flex items-center gap-3">
             {!isRead && (
-               <span className="flex h-3 w-3 relative">
-                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                 <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+               <span className="flex h-2.5 w-2.5 relative">
+                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-organic-400 opacity-75"></span>
+                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-organic-500"></span>
                </span>
             )}
-            <span className="font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 dark:text-blue-400">阅读 &rarr;</span>
+            <span className="font-bold text-organic-600 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0 flex items-center gap-1">
+              阅读 <span className="text-lg">→</span>
+            </span>
           </div>
         </div>
       </div>

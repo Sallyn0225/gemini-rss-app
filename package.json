@@ -14,7 +14,6 @@
     "@neondatabase/serverless": "^0.10.4",
     "@vercel/node": "^3.2.29",
     "dompurify": "^3.1.7",
-
     "drizzle-orm": "^0.36.4",
     "framer-motion": "^12.23.24",
     "react": "^19.2.0",
@@ -23,12 +22,14 @@
     "recharts": "^3.5.0",
     "remark-gfm": "^4.0.1",
     "undici": "^6.21.0"
-
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.23",
     "drizzle-kit": "^0.28.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

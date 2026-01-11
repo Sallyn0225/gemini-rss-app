@@ -3,7 +3,8 @@ import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion
 import { AISettings, AIProvider, AIModelConfig, AIProviderType, ImageProxyMode } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, reorderSystemFeeds, FullSystemFeedConfig } from '../services/rssService';
 import { fetchProviderModels } from '../services/geminiService';
-import { easeStandard, easeDecelerate, easeAccelerate, modalOverlay, modalContent } from './animations';
+import { easeStandard, easeDecelerate, easeAccelerate, modalOverlay, modalContent, organicContent } from './animations';
+
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -53,31 +54,32 @@ const DraggableNestedFeedItem = React.memo<{
       value={feed}
       dragListener={false}
       dragControls={dragControls}
-      className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors list-none shadow-sm"
+      className="flex items-center gap-4 p-4 rounded-2xl bg-white/60 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800 hover:border-stone-200 dark:hover:border-stone-700 transition-all list-none shadow-soft-sm"
       whileDrag={{ 
         scale: 1.02, 
-        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        rotate: 1,
+        boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)",
         zIndex: 50
       }}
     >
       {/* Drag Handle */}
       <div 
-        className="text-slate-400 shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 hover:text-blue-500 transition-colors"
+        className="text-stone-300 shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 hover:text-stone-500 transition-colors"
         onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
       >
         <DragHandleIcon />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-sm truncate text-slate-800 dark:text-slate-200" title={feed.customTitle || feed.id}>
+        <p className="font-black text-sm truncate text-stone-800 dark:text-stone-200" title={feed.customTitle || feed.id}>
           {feed.customTitle || feed.id}
         </p>
-        <p className="text-xs text-slate-400 font-mono truncate">{feed.url}</p>
+        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-tighter truncate opacity-60 mt-0.5">{feed.url}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => onEdit(feed)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg dark:hover:bg-blue-900/30" title="编辑">
+        <button onClick={() => onEdit(feed)} className="p-2 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-xl dark:hover:bg-stone-700 dark:hover:text-stone-200 transition-all" title="编辑">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg>
         </button>
-        <button onClick={() => onDelete(feed.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg dark:hover:bg-red-900/30" title="删除">
+        <button onClick={() => onDelete(feed.id)} className="p-2 text-stone-300 hover:text-red-500 hover:bg-red-50 rounded-xl dark:hover:bg-red-900/30 transition-all" title="删除">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg>
         </button>
       </div>
@@ -131,20 +133,20 @@ const NestedGroupItem: React.FC<{
 
 
   return (
-    <div className={`border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden ${depth > 0 ? 'ml-4' : ''}`}>
+    <div className={`border border-stone-100 dark:border-stone-800 rounded-[32px] overflow-hidden ${depth > 0 ? 'ml-6' : ''}`}>
       {/* Group Header */}
       <div
-        className={`w-full flex items-center justify-between px-3 py-2.5 transition-colors ${
+        className={`w-full flex items-center justify-between px-5 py-4 transition-all ${
           depth === 0 
-            ? 'bg-slate-100 dark:bg-slate-700/80 hover:bg-slate-200 dark:hover:bg-slate-700' 
-            : 'bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700'
+            ? 'bg-stone-50/80 dark:bg-stone-800/80 hover:bg-stone-100 dark:hover:bg-stone-800' 
+            : 'bg-stone-50/40 dark:bg-stone-800/40 hover:bg-stone-100/50 dark:hover:bg-stone-800/60'
         }`}
       >
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-3 flex-1">
           {/* Drag Handle for Group */}
           {dragControls && (
             <div 
-              className="text-slate-400 cursor-grab active:cursor-grabbing touch-none"
+              className="text-stone-300 cursor-grab active:cursor-grabbing touch-none"
               onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
             >
               <DragHandleIcon />
@@ -152,30 +154,31 @@ const NestedGroupItem: React.FC<{
           )}
           <button
             onClick={() => toggleGroupCollapse(node.fullPath)}
-            className="flex items-center gap-2 flex-1"
+            className="flex items-center gap-3 flex-1"
           >
             <motion.svg 
               xmlns="http://www.w3.org/2000/svg" 
               viewBox="0 0 20 20" 
               fill="currentColor" 
-              className="w-4 h-4 text-slate-500"
+              className="w-4 h-4 text-stone-400"
               animate={{ rotate: isCollapsed ? 0 : 90 }}
               transition={{ duration: 0.2 }}
             >
               <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
             </motion.svg>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 ${depth === 0 ? 'text-blue-500' : 'text-blue-400'}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${depth === 0 ? 'text-stone-700 dark:text-stone-300' : 'text-stone-400'}`}>
               <path d="M3.75 3A1.75 1.75 0 002 4.75v3.26a3.235 3.235 0 011.75-.51h12.5c.644 0 1.245.188 1.75.51V6.75A1.75 1.75 0 0016.25 5h-4.836a.25.25 0 01-.177-.073L9.823 3.513A1.75 1.75 0 008.586 3H3.75zM3.75 9A1.75 1.75 0 002 10.75v4.5c0 .966.784 1.75 1.75 1.75h12.5A1.75 1.75 0 0018 15.25v-4.5A1.75 1.75 0 0016.25 9H3.75z" />
             </svg>
-            <span className={`font-semibold text-sm ${depth === 0 ? 'text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-300'}`}>
+            <span className={`font-black text-sm tracking-tight ${depth === 0 ? 'text-stone-800 dark:text-stone-100' : 'text-stone-600 dark:text-stone-400'}`}>
               {node.name}
             </span>
           </button>
         </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">
+        <span className="text-[10px] font-black text-stone-400 dark:text-stone-500 bg-white/60 dark:bg-stone-900/40 px-3 py-1 rounded-full border border-stone-100/50 dark:border-stone-800/50">
           {totalCount}
         </span>
       </div>
+
       
       {/* Group Content with Animation */}
       <AnimatePresence initial={false}>
@@ -876,8 +879,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   // Common Styles
-  const inputClass = "w-full bg-white text-slate-900 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-400 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:placeholder-slate-500";
-  const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-1.5 tracking-wide dark:text-slate-400";
+  const inputClass = "w-full bg-stone-100/50 text-stone-900 border border-transparent rounded-2xl px-5 py-3 text-sm focus:bg-white focus:ring-4 focus:ring-stone-200/50 outline-none transition-all shadow-inner placeholder:text-stone-400 dark:bg-stone-800/50 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:bg-stone-800";
+  const labelClass = "block text-[11px] font-bold text-stone-400 uppercase mb-2 ml-1 tracking-widest dark:text-stone-500";
+
 
   return (
     <AnimatePresence>
@@ -890,79 +894,87 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         onClick={onClose}
       >
         <motion.div 
-          className="bg-white w-full max-w-4xl h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col dark:bg-slate-800 dark:shadow-black/50"
-          variants={modalContent}
+          className="bg-white/80 backdrop-blur-xl w-full max-w-4xl h-[85vh] rounded-[40px] shadow-soft-2xl overflow-hidden flex flex-col dark:bg-stone-900/90 dark:shadow-black/20 border border-white/40 dark:border-stone-800/50"
+          variants={organicContent}
           initial="initial"
           animate="animate"
           exit="exit"
           onClick={(e) => e.stopPropagation()}
         >
 
+
           {/* Header */}
-          <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 dark:bg-slate-900 dark:border-slate-700 shrink-0">
+          <div className="px-8 py-6 flex justify-between items-center shrink-0">
             <motion.h2 
-              className="text-xl font-bold text-slate-800 dark:text-white"
+              className="text-2xl font-black text-stone-800 dark:text-stone-100 tracking-tight"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1, duration: 0.3, ease: easeDecelerate }}
             >
-              设置
+              Preferences
             </motion.h2>
             <motion.button 
               onClick={onClose} 
-              className="p-2 hover:bg-slate-200 rounded-full text-slate-500 dark:hover:bg-slate-700 dark:text-slate-400"
-              whileHover={{ scale: 1.1, rotate: 90 }}
+              className="p-3 bg-stone-100 hover:bg-stone-200 rounded-full text-stone-500 dark:bg-stone-800 dark:hover:bg-stone-700 dark:text-stone-400 transition-colors"
+              whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              transition={{ duration: 0.2, ease: easeStandard }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </motion.button>
           </div>
+
 
           {/* Content Container */}
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
 
             {/* Navigation Tabs (Top on mobile, Sidebar on desktop) */}
-            <div className="w-full md:w-48 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-2 md:p-4 flex flex-row md:flex-col gap-2 shrink-0 dark:bg-slate-900 dark:border-slate-700 overflow-x-auto">
+            <div className="w-full md:w-56 p-4 flex flex-row md:flex-col gap-1.5 shrink-0 overflow-x-auto">
               {(['providers', 'models', 'display', 'feeds'] as const).map((tab, index) => (
                 <motion.button 
                   key={tab}
                   onClick={() => setActiveTab(tab)} 
-                  className={`text-center md:text-left px-4 py-3 rounded-lg font-medium text-sm flex-1 md:flex-none whitespace-nowrap ${activeTab === tab ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`}
+                  className={`px-5 py-3.5 rounded-2xl font-bold text-sm flex-1 md:flex-none whitespace-nowrap transition-all ${
+                    activeTab === tab 
+                      ? 'bg-stone-800 text-stone-100 shadow-lg dark:bg-stone-100 dark:text-stone-900' 
+                      : 'text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800'
+                  }`}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 + index * 0.05, duration: 0.3, ease: easeDecelerate }}
-                  whileHover={{ x: 4, backgroundColor: activeTab === tab ? undefined : 'rgba(241, 245, 249, 1)' }}
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={{ scale: 0.96 }}
                 >
                   {tab === 'providers' ? 'API 提供商' : tab === 'models' ? '模型配置' : tab === 'display' ? '显示设置' : '订阅源管理'}
                 </motion.button>
               ))}
             </div>
 
+
           {/* Main Panel */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-slate-50/30 dark:bg-slate-950/30">
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+
 
             {/* --- PROVIDERS TAB --- */}
             {activeTab === 'providers' && (
               <div className="space-y-6 max-w-3xl mx-auto">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">API 提供商管理</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">添加 OpenAI 或 Gemini 格式的 API 接入点。</p>
+                    <h3 className="text-xl font-black text-stone-800 dark:text-stone-100">API 提供商</h3>
+                    <p className="text-sm text-stone-400 font-medium">配置您的 AI 连接点</p>
                   </div>
-                  <button onClick={() => startEditProvider()} className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 flex justify-center items-center gap-2 shadow-md hover:shadow-lg transition-all dark:bg-blue-600 dark:hover:bg-blue-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /></svg>
+                  <button onClick={() => startEditProvider()} className="w-full sm:w-auto px-6 py-3 bg-stone-800 text-stone-100 rounded-2xl text-sm font-bold hover:bg-stone-700 flex justify-center items-center gap-2 shadow-xl shadow-stone-200/50 dark:bg-stone-100 dark:text-stone-900 dark:shadow-none transition-all hover:-translate-y-0.5 active:translate-y-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" /></svg>
                     添加提供商
                   </button>
                 </div>
 
                 {isEditingProvider && (
-                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md mb-6 animate-slide-in dark:bg-slate-800 dark:border-slate-700">
-                    <h4 className="font-bold text-slate-800 mb-6 border-b border-slate-100 pb-3 dark:text-white dark:border-slate-700">{editingProviderId ? '编辑提供商' : '新建提供商'}</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                  <div className="bg-white/50 p-8 rounded-[32px] border border-stone-100 shadow-soft-xl mb-10 animate-slide-in dark:bg-stone-800/30 dark:border-stone-700">
+                    <h4 className="font-black text-stone-800 mb-8 text-lg dark:text-stone-100">
+                      {editingProviderId ? '编辑提供商' : '新建提供商'}
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                       <div>
-                        <label className={labelClass}>名称 (备注)</label>
+                        <label className={labelClass}>名称</label>
                         <input type="text" className={inputClass} placeholder="例如: Official OpenAI" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
                       </div>
                       <div>
@@ -972,69 +984,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                             <option value="openai">OpenAI 兼容</option>
                             <option value="gemini">Gemini API</option>
                           </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                          <div className="pointer-events-none absolute inset-y-0 right-5 flex items-center text-stone-400"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg></div>
                         </div>
                       </div>
                       <div className="md:col-span-2">
-                        <label className={labelClass}>接入点地址 (Base URL)</label>
+                        <label className={labelClass}>接入点地址</label>
                         <input type="text" className={`${inputClass} font-mono`} placeholder={editForm.type === 'openai' ? 'https://api.openai.com/v1' : 'https://generativelanguage.googleapis.com'} value={editForm.baseUrl} onChange={e => setEditForm({ ...editForm, baseUrl: e.target.value })} />
-                        <p className="text-[10px] text-slate-400 mt-1.5 ml-1 dark:text-slate-500">{editForm.type === 'openai' ? '通常以 /v1 结尾' : 'Gemini 官方地址通常无需修改，除非使用反代'}</p>
                       </div>
                       <div className="md:col-span-2">
                         <label className={labelClass}>API Key</label>
                         <input type="password" className={`${inputClass} font-mono tracking-widest`} placeholder="sk-..." value={editForm.apiKey} onChange={e => setEditForm({ ...editForm, apiKey: e.target.value })} />
                       </div>
                     </div>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-                      <button onClick={() => setIsEditingProvider(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors dark:text-slate-300 dark:hover:bg-slate-700">取消</button>
-                      <button onClick={handleSaveProvider} className="px-5 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md">保存</button>
+                    <div className="flex justify-end gap-4 pt-6">
+                      <button onClick={() => setIsEditingProvider(false)} className="px-6 py-3 text-stone-500 hover:bg-stone-100 rounded-2xl text-sm font-bold transition-all dark:hover:bg-stone-800">取消</button>
+                      <button onClick={handleSaveProvider} className="px-8 py-3 bg-stone-800 text-white hover:bg-black rounded-2xl text-sm font-bold shadow-xl shadow-stone-200/50 dark:bg-stone-100 dark:text-stone-900 dark:shadow-none transition-all">保存提供商</button>
                     </div>
                   </div>
                 )}
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-4">
                   {localSettings.providers.length === 0 ? (
-                    <div className="text-center py-16 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-800/50 dark:border-slate-700">
-                      <p>暂无提供商</p><p className="text-xs mt-1">请点击右上方按钮添加</p>
+                    <div className="text-center py-20 text-stone-400 border-4 border-dashed border-stone-100 rounded-[40px] bg-stone-50/50 dark:bg-stone-800/20 dark:border-stone-800">
+                      <p className="font-bold">暂无提供商</p>
+                      <p className="text-xs mt-2 opacity-60">添加一个提供商以开始使用 AI 功能</p>
                     </div>
                   ) : (
                     localSettings.providers.map(provider => (
-                      <div key={provider.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all gap-4 dark:bg-slate-800 dark:border-slate-700">
-                        <div className="flex items-center gap-4"><div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-inner shrink-0 ${provider.type === 'gemini' ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-400 to-teal-600'}`}>{provider.type === 'gemini' ? 'GEM' : 'GPT'}</div>
-                          <div className="min-w-0"><h4 className="font-bold text-slate-800 text-base dark:text-white truncate">{provider.name}</h4><p className="text-xs text-slate-400 font-mono truncate max-w-[200px] bg-slate-100 px-1.5 py-0.5 rounded inline-block mt-1 dark:bg-slate-700 dark:text-slate-300">{provider.baseUrl}</p></div>
+                      <div key={provider.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-white/50 border border-stone-100 rounded-[32px] hover:shadow-soft-lg hover:bg-white transition-all gap-6 dark:bg-stone-800/30 dark:border-stone-700 dark:hover:bg-stone-800/50">
+                        <div className="flex items-center gap-5">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-xl rotate-3 group-hover:rotate-0 transition-transform ${provider.type === 'gemini' ? 'bg-indigo-500' : 'bg-emerald-500'}`}>
+                            {provider.type === 'gemini' ? 'GEM' : 'GPT'}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="font-black text-stone-800 text-lg dark:text-stone-100 truncate">{provider.name}</h4>
+                            <p className="text-xs text-stone-400 font-bold mt-1 uppercase tracking-tight truncate max-w-[240px]">{provider.baseUrl}</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 justify-end sm:justify-start">
-                          <button onClick={() => startEditProvider(provider)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:hover:bg-blue-900/30 dark:hover:text-blue-300" title="编辑"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg></button>
-                          <button onClick={() => handleDeleteProvider(provider.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:hover:bg-red-900/30 dark:hover:text-red-300" title="删除"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEditProvider(provider)} className="p-3 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-full dark:hover:bg-stone-700 dark:hover:text-stone-100 transition-all"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg></button>
+                          <button onClick={() => handleDeleteProvider(provider.id)} className="p-3 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
+
               </div>
             )}
 
             {/* --- MODELS TAB --- */}
             {activeTab === 'models' && (
-              <div className="space-y-10 max-w-4xl mx-auto">
+              <div className="space-y-12 max-w-4xl mx-auto pb-10">
 
                 {/* 1. SELECT ENABLED MODELS SECTION */}
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">启用模型管理</h3>
-                  <p className="text-sm text-slate-500 mb-4 dark:text-slate-400">选择提供商并获取可用模型列表，勾选您希望在任务配置中使用的模型。</p>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-xl font-black text-stone-800 dark:text-stone-100">模型管理</h3>
+                    <p className="text-sm text-stone-400 font-medium">挑选并启用您需要的 AI 模型</p>
+                  </div>
 
                   {localSettings.providers.length === 0 ? (
-                    <div className="p-4 bg-yellow-50 text-yellow-800 rounded-lg text-sm dark:bg-yellow-900/30 dark:text-yellow-400">请先在“API 提供商”页面添加提供商。</div>
+                    <div className="p-6 bg-stone-100/50 text-stone-500 rounded-[32px] text-sm font-bold dark:bg-stone-800/30">请先在“API 提供商”页面添加提供商。</div>
                   ) : (
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden dark:bg-slate-800 dark:border-slate-700">
+                    <div className="bg-white/40 rounded-[40px] border border-stone-100 shadow-soft-xl overflow-hidden dark:bg-stone-800/20 dark:border-stone-800">
                       {/* Provider Tabs */}
-                      <div className="flex overflow-x-auto border-b border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700 p-2 gap-2">
+                      <div className="flex overflow-x-auto bg-stone-50/50 dark:bg-stone-900/50 p-3 gap-2">
                         {localSettings.providers.map(p => (
                           <button
                             key={p.id}
                             onClick={() => { setActiveProviderForModels(p.id); setAvailableModels([]); setFetchError(null); setModelSearchQuery(''); }}
-                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeProviderForModels === p.id ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-200/50 dark:text-slate-400 dark:hover:bg-slate-800'}`}
+                            className={`px-6 py-3 rounded-2xl text-sm font-bold transition-all whitespace-nowrap flex items-center gap-3 ${activeProviderForModels === p.id ? 'bg-white text-stone-800 shadow-soft-md dark:bg-stone-800 dark:text-stone-100' : 'text-stone-400 hover:text-stone-600 dark:text-stone-500'}`}
                           >
-                            <span className={`w-2 h-2 rounded-full ${p.type === 'gemini' ? 'bg-purple-500' : 'bg-emerald-500'}`}></span>
+                            <span className={`w-2.5 h-2.5 rounded-full ${p.type === 'gemini' ? 'bg-indigo-500' : 'bg-emerald-500'}`}></span>
                             {p.name}
                           </button>
                         ))}
@@ -1042,98 +1063,83 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
                       {/* Active Provider Config Area */}
                       {activeProviderForModels && (
-                        <div className="p-6">
-                          {/* Improved Mobile Layout */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                            <h4 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                              <span className="text-sm px-2 py-0.5 bg-slate-100 rounded text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-                                {localSettings.providers.find(p => p.id === activeProviderForModels)?.type === 'gemini' ? 'Gemini API' : 'OpenAI 兼容'}
+                        <div className="p-8">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+                            <h4 className="font-black text-stone-700 dark:text-stone-200 flex items-center gap-3">
+                              <span className="text-xs px-3 py-1 bg-stone-100 rounded-full text-stone-500 dark:bg-stone-800 dark:text-stone-400 uppercase tracking-widest font-bold">
+                                {localSettings.providers.find(p => p.id === activeProviderForModels)?.type === 'gemini' ? 'Gemini API' : 'OpenAI'}
                               </span>
                             </h4>
                             <button
                               onClick={handleFetchModels}
                               disabled={isFetchingModels}
-                              className="w-full sm:w-auto px-4 py-2 bg-indigo-50 text-indigo-600 text-sm font-bold rounded-lg hover:bg-indigo-100 transition-colors disabled:opacity-50 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50 whitespace-nowrap"
+                              className="w-full sm:w-auto px-6 py-3 bg-stone-800 text-stone-100 text-sm font-bold rounded-2xl hover:bg-black transition-all disabled:opacity-50 dark:bg-stone-100 dark:text-stone-900 shadow-lg shadow-stone-200/50 dark:shadow-none"
                             >
-                              {isFetchingModels ? '获取中...' : '获取所有可用模型'}
+                              {isFetchingModels ? '正在获取...' : '刷新可用模型'}
                             </button>
                           </div>
 
                           {/* Search Box */}
-                          <div className="relative mb-4">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <div className="relative mb-8">
+                            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                               </svg>
                             </div>
                             <input
                               type="text"
-                              className={`${inputClass} pl-10`}
-                              placeholder="搜索模型..."
+                              className={`${inputClass} pl-14`}
+                              placeholder="搜索模型名称..."
                               value={modelSearchQuery}
                               onChange={(e) => setModelSearchQuery(e.target.value)}
                             />
                           </div>
 
                           {fetchError && (
-                            <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg dark:bg-red-900/30 dark:text-red-300">
-                              <strong>获取失败:</strong> {fetchError}
+                            <div className="mb-6 p-4 bg-red-50 text-red-600 text-sm font-bold rounded-2xl dark:bg-red-900/20 dark:text-red-400">
+                              获取失败: {fetchError}
                             </div>
                           )}
 
-                          {/* Render Available Models (if fetched) OR Currently Enabled Models */}
-                          <div className="space-y-2">
-                            {(availableModels.length > 0 || getEnabledModelsForProvider(activeProviderForModels).length > 0) && (
-                              <div className="mb-2 p-2 bg-blue-50 text-blue-700 text-xs rounded-lg dark:bg-blue-900/30 dark:text-blue-300 flex justify-between items-center">
-                                <span>请勾选您想启用的模型。未列出的模型可手动输入。</span>
-                              </div>
-                            )}
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto custom-scrollbar p-1">
+                          {/* Render Available Models */}
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-80 overflow-y-auto custom-scrollbar p-1">
                               {Array.from(new Set([...availableModels, ...getEnabledModelsForProvider(activeProviderForModels)]))
                                 .filter(m => m.toLowerCase().includes(modelSearchQuery.toLowerCase()))
                                 .sort()
                                 .map(modelId => {
                                   const isEnabled = getEnabledModelsForProvider(activeProviderForModels).includes(modelId);
                                   return (
-                                    <label key={modelId} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isEnabled ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' : 'bg-white border-slate-200 hover:border-blue-200 dark:bg-slate-800 dark:border-slate-700'}`}>
-                                      <input
-                                        type="checkbox"
-                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                                        checked={isEnabled}
-                                        onChange={() => toggleEnabledModel(activeProviderForModels, modelId)}
-                                      />
-                                      <span className={`text-sm truncate ${isEnabled ? 'font-bold text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'}`} title={modelId}>
+                                    <label key={modelId} className={`group flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all ${isEnabled ? 'bg-stone-800 border-stone-800 dark:bg-stone-100 dark:border-stone-100' : 'bg-stone-50/50 border-transparent hover:border-stone-200 dark:bg-stone-800/50 dark:hover:border-stone-700'}`}>
+                                      <div className="relative flex items-center justify-center">
+                                        <input
+                                          type="checkbox"
+                                          className="peer hidden"
+                                          checked={isEnabled}
+                                          onChange={() => toggleEnabledModel(activeProviderForModels, modelId)}
+                                        />
+                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isEnabled ? 'bg-white border-white dark:bg-stone-900 dark:border-stone-900' : 'border-stone-200 bg-white dark:bg-stone-800 dark:border-stone-700'}`}>
+                                          {isEnabled && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 ${isEnabled ? 'text-stone-800 dark:text-stone-100' : ''}`}><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                                        </div>
+                                      </div>
+                                      <span className={`text-sm font-bold truncate ${isEnabled ? 'text-white dark:text-stone-900' : 'text-stone-600 dark:text-stone-400'}`} title={modelId}>
                                         {modelId}
                                       </span>
                                     </label>
                                   );
                                 })}
-                              {availableModels.length === 0 && getEnabledModelsForProvider(activeProviderForModels).length === 0 && (
-                                <div className="col-span-full text-center py-8 text-slate-400 italic">
-                                  暂无模型数据，请点击“获取所有可用模型”按钮。
-                                </div>
-                              )}
-                              {availableModels.length > 0 && Array.from(new Set([...availableModels, ...getEnabledModelsForProvider(activeProviderForModels)])).filter(m => m.toLowerCase().includes(modelSearchQuery.toLowerCase())).length === 0 && (
-                                <div className="col-span-full text-center py-4 text-slate-400">
-                                  未找到匹配的模型。
-                                </div>
-                              )}
                             </div>
 
-                            {/* Save/Confirm Selection Guidance Button */}
-                            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
-                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                            <div className="mt-8 pt-6 border-t border-stone-100 dark:border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-6">
+                              <span className="text-xs font-black text-stone-400 uppercase tracking-widest">
                                 已启用 {getEnabledModelsForProvider(activeProviderForModels).length} 个模型
                               </span>
                               <button
                                 onClick={() => taskConfigRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                                className="px-4 py-2 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-700 transition-colors dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center gap-2 shadow-sm whitespace-nowrap"
+                                className="px-6 py-3 bg-stone-100 text-stone-800 text-sm font-bold rounded-2xl hover:bg-stone-200 transition-all dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700 flex items-center gap-3"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-green-400">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                                确认选择并配置任务
+                                下一步：配置具体任务
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v4.59L7.28 9.28a.75.75 0 00-1.06 1.06l3.25 3.25a.75.75 0 001.06 0l3.25-3.25a.75.75 0 10-1.06-1.06l-1.97 1.97V6.75z" clipRule="evenodd" /></svg>
                               </button>
                             </div>
                           </div>
@@ -1144,33 +1150,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 </div>
 
                 {/* 2. TASK CONFIGURATION SECTION */}
-                <div className="space-y-6" ref={taskConfigRef}>
+                <div className="space-y-8" ref={taskConfigRef}>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">模型任务配置</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">为不同的任务指定使用的模型。若特定任务未配置，将默认使用「总模型」。</p>
+                    <h3 className="text-xl font-black text-stone-800 dark:text-stone-100">任务场景配置</h3>
+                    <p className="text-sm text-stone-400 font-medium">为不同功能指定最优模型</p>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-6">
+                  <div className="grid grid-cols-1 gap-8">
                     {/* General Model Config */}
-                    <div className="bg-white p-6 rounded-xl border-l-4 border-blue-500 shadow-md dark:bg-slate-800 dark:shadow-none">
-                      <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4 dark:border-slate-700">
-                        <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-blue-900 dark:text-blue-300">默认</span>
-                        <h4 className="font-bold text-slate-900 text-lg dark:text-white">总模型</h4><span className="text-xs text-red-500 font-medium ml-auto">* 必填</span>
+                    <div className="bg-white/60 p-8 rounded-[40px] border border-stone-100 shadow-soft-xl dark:bg-stone-800/20 dark:border-stone-800 relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-2 h-full bg-stone-800 dark:bg-stone-100"></div>
+                      <div className="flex items-center gap-3 mb-10">
+                        <span className="bg-stone-800 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest dark:bg-white dark:text-stone-900">Default</span>
+                        <h4 className="font-black text-stone-900 text-xl dark:text-stone-100">核心总模型</h4>
+                        <span className="text-[10px] text-red-500 font-black uppercase tracking-widest ml-auto">Required</span>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div>
-                          <label className={labelClass}>选择提供商</label>
+                          <label className={labelClass}>提供商</label>
                           <div className="relative">
                             <select className={`${inputClass} appearance-none cursor-pointer`} value={localSettings.tasks.general?.providerId || ''} onChange={e => handleModelChange('general', 'providerId', e.target.value)}>
                               <option value="">请选择...</option>
                               {localSettings.providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                            <div className="pointer-events-none absolute inset-y-0 right-5 flex items-center text-stone-400"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg></div>
                           </div>
                         </div>
                         <div>
                           <label className={labelClass}>模型 ID</label>
-                          {/* Intelligent Dropdown Logic */}
                           {localSettings.tasks.general?.providerId ? (
                             getEnabledModelsForProvider(localSettings.tasks.general.providerId).length > 0 ? (
                               <div className="relative">
@@ -1184,42 +1191,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                     <option key={m} value={m}>{m}</option>
                                   ))}
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                                <div className="pointer-events-none absolute inset-y-0 right-5 flex items-center text-stone-400"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg></div>
                               </div>
                             ) : (
-                              <input type="text" className={inputClass} placeholder="未启用模型，请手动输入 ID" value={localSettings.tasks.general.modelId || ''} onChange={e => handleModelChange('general', 'modelId', e.target.value)} />
+                              <input type="text" className={inputClass} placeholder="手动输入 ID" value={localSettings.tasks.general.modelId || ''} onChange={e => handleModelChange('general', 'modelId', e.target.value)} />
                             )
                           ) : (
-                            <input type="text" className={inputClass} disabled placeholder="请先选择提供商" />
+                            <input type="text" className={inputClass} disabled placeholder="先选择提供商" />
                           )}
                         </div>
                         <div>
-                          <label className={labelClass}>备注名称</label>
-                          <input type="text" className={inputClass} placeholder="给个好记的名字（留空则显示模型 ID）" value={localSettings.tasks.general?.modelName || ''} onChange={e => handleModelChange('general', 'modelName', e.target.value)} />
+                          <label className={labelClass}>别名 (选填)</label>
+                          <input type="text" className={inputClass} placeholder="例如: 主力模型" value={localSettings.tasks.general?.modelName || ''} onChange={e => handleModelChange('general', 'modelName', e.target.value)} />
                         </div>
                       </div>
                     </div>
 
                     {/* Specific Task Configs */}
-                    {[{ key: 'translation', label: 'AI 翻译', hint: '建议使用速度快、成本低的小模型 (e.g. gemini-flash, gpt-4o-mini)' }, { key: 'summary', label: 'AI 总结', hint: '用于生成简单的摘要' }, { key: 'analysis', label: 'AI 分析', hint: '用于复杂的分类和深度分析任务' },].map(task => {
+                    {[{ key: 'translation', label: 'AI 翻译', hint: '建议使用响应极快的小型模型' }, { key: 'summary', label: 'AI 总结', hint: '用于每日精华摘要生成' }, { key: 'analysis', label: 'AI 分析', hint: '执行复杂的分类与推理任务' },].map(task => {
                       const taskKey = task.key as keyof AISettings['tasks'];
                       const config = localSettings.tasks[taskKey];
                       const activeProviderId = config?.providerId || '';
                       const enabledModels = activeProviderId ? getEnabledModelsForProvider(activeProviderId) : [];
 
                       return (
-                        <div key={taskKey} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-all hover:shadow-md dark:bg-slate-800 dark:border-slate-700">
-                          <div className="flex items-center gap-2 mb-2"><span className="bg-slate-100 text-slate-500 px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider dark:bg-slate-700 dark:text-slate-300">可选</span><h4 className="font-bold text-slate-800 text-lg dark:text-white">{task.label}</h4></div>
-                          <p className="text-xs text-slate-400 mb-6 dark:text-slate-500">{task.hint}</p>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        <div key={taskKey} className="group bg-white/40 p-8 rounded-[40px] border border-stone-100 hover:shadow-soft-lg transition-all dark:bg-stone-800/10 dark:border-stone-800">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="bg-stone-100 text-stone-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest dark:bg-stone-800 dark:text-stone-500">Optional</span>
+                            <h4 className="font-black text-stone-800 text-lg dark:text-stone-100">{task.label}</h4>
+                          </div>
+                          <p className="text-xs text-stone-400 font-medium mb-8 ml-1">{task.hint}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             <div>
-                              <label className={labelClass}>选择提供商</label>
+                              <label className={labelClass}>提供商</label>
                               <div className="relative">
                                 <select className={`${inputClass} appearance-none cursor-pointer`} value={config?.providerId || ''} onChange={e => handleModelChange(taskKey, 'providerId', e.target.value)}>
-                                  <option value="">默认（使用总模型）</option>
+                                  <option value="">继承总模型</option>
                                   {localSettings.providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                                <div className="pointer-events-none absolute inset-y-0 right-5 flex items-center text-stone-400"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg></div>
                               </div>
                             </div>
                             <div>
@@ -1232,23 +1242,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                       value={config?.modelId || ''}
                                       onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)}
                                     >
-                                      <option value="">默认（使用总模型）</option>
+                                      <option value="">请选择...</option>
                                       {enabledModels.map(m => (
                                         <option key={m} value={m}>{m}</option>
                                       ))}
                                     </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                                    <div className="pointer-events-none absolute inset-y-0 right-5 flex items-center text-stone-400"><svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path></svg></div>
                                   </div>
                                 ) : (
-                                  <input type="text" className={inputClass} placeholder="未启用模型，请手动输入 ID" value={config?.modelId || ''} onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)} disabled={!activeProviderId} />
+                                  <input type="text" className={inputClass} placeholder="手动输入 ID" value={config?.modelId || ''} onChange={e => handleModelChange(taskKey, 'modelId', e.target.value)} />
                                 )
                               ) : (
-                                <input type="text" className={inputClass} disabled placeholder="请先选择提供商" />
+                                <input type="text" className={inputClass} disabled placeholder="继承自总模型" />
                               )}
                             </div>
                             <div>
-                              <label className={labelClass}>备注名称</label>
-                              <input type="text" className={inputClass} placeholder="选填，方便记忆" value={config?.modelName || ''} onChange={e => handleModelChange(taskKey, 'modelName', e.target.value)} disabled={!activeProviderId} />
+                              <label className={labelClass}>别名</label>
+                              <input type="text" className={inputClass} placeholder="选填" value={config?.modelName || ''} onChange={e => handleModelChange(taskKey, 'modelName', e.target.value)} disabled={!activeProviderId} />
                             </div>
                           </div>
                         </div>
@@ -1259,43 +1269,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
               </div>
             )}
 
+
             {/* --- DISPLAY TAB --- */}
             {activeTab === 'display' && (
-              <div className="space-y-6 max-w-3xl mx-auto">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">显示设置</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">配置图片加载和显示相关选项。</p>
+              <div className="space-y-10 max-w-3xl mx-auto">
+                <div>
+                  <h3 className="text-xl font-black text-stone-800 dark:text-stone-100">显示与偏好</h3>
+                  <p className="text-sm text-stone-400 font-medium">个性化您的阅读环境</p>
+                </div>
 
                 {/* Image Proxy Mode */}
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
-                  <h4 className="font-semibold text-slate-800 dark:text-white mb-2">图片加载模式</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">选择图片的加载方式。代理模式可以帮助访问被限制的图片源，但会增加服务器流量。</p>
-                  <div className="space-y-3">
-                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${imageProxyMode === 'all' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'}`}>
-                      <input
-                        type="radio"
-                        name="imageProxyMode"
-                        value="all"
-                        checked={imageProxyMode === 'all'}
-                        onChange={() => onImageProxyModeChange?.('all')}
-                        className="mt-1"
-                      />
+                <div className="bg-white/40 p-8 rounded-[40px] border border-stone-100 shadow-soft-xl dark:bg-stone-800/20 dark:border-stone-800">
+                  <h4 className="font-black text-stone-800 dark:text-stone-100 mb-2">媒体代理策略</h4>
+                  <p className="text-xs text-stone-400 font-medium mb-8">如何加载受限地区的图片资源</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className={`flex flex-col gap-3 p-6 rounded-[32px] border-2 cursor-pointer transition-all ${imageProxyMode === 'all' ? 'border-stone-800 bg-stone-50 dark:border-stone-100 dark:bg-stone-800' : 'border-transparent bg-stone-100/50 hover:border-stone-200 dark:bg-stone-800/30'}`}>
+                      <div className="flex justify-between items-center">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${imageProxyMode === 'all' ? 'bg-stone-800 text-white dark:bg-white dark:text-stone-900' : 'bg-white text-stone-300 dark:bg-stone-700'}`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
+                        </div>
+                        <input
+                          type="radio"
+                          name="imageProxyMode"
+                          value="all"
+                          checked={imageProxyMode === 'all'}
+                          onChange={() => onImageProxyModeChange?.('all')}
+                          className="peer hidden"
+                        />
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${imageProxyMode === 'all' ? 'border-stone-800 bg-stone-800 dark:border-stone-100 dark:bg-stone-100' : 'border-stone-200'}`}>
+                          {imageProxyMode === 'all' && <div className="w-2 h-2 rounded-full bg-white dark:bg-stone-900" />}
+                        </div>
+                      </div>
                       <div>
-                        <div className="font-semibold text-slate-800 dark:text-white">代理图片</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">所有图片通过服务器代理加载。适合无法直接访问 Twitter 等平台的用户。</div>
+                        <div className={`font-black text-sm ${imageProxyMode === 'all' ? 'text-stone-800 dark:text-stone-100' : 'text-stone-500'}`}>全面代理</div>
+                        <div className="text-[11px] font-medium text-stone-400 mt-1 leading-relaxed">通过服务器中转所有图片，解决网络连通性问题。</div>
                       </div>
                     </label>
-                    <label className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all ${imageProxyMode === 'none' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'}`}>
-                      <input
-                        type="radio"
-                        name="imageProxyMode"
-                        value="none"
-                        checked={imageProxyMode === 'none'}
-                        onChange={() => onImageProxyModeChange?.('none')}
-                        className="mt-1"
-                      />
+                    <label className={`flex flex-col gap-3 p-6 rounded-[32px] border-2 cursor-pointer transition-all ${imageProxyMode === 'none' ? 'border-stone-800 bg-stone-50 dark:border-stone-100 dark:bg-stone-800' : 'border-transparent bg-stone-100/50 hover:border-stone-200 dark:bg-stone-800/30'}`}>
+                      <div className="flex justify-between items-center">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${imageProxyMode === 'none' ? 'bg-stone-800 text-white dark:bg-white dark:text-stone-900' : 'bg-white text-stone-300 dark:bg-stone-700'}`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M13.5 4.938a7 7 0 11-9.006 1.737c.202-.257.59-.218.793.039.278.351.603.674.97.962.233.183.268.526.048.746l-.74.74c-.218.218-.544.21-.735-.02a5 5 0 106.275-4.417c.098.348.02.694-.228.942l-.741.741c-.22.22-.563.255-.746.048a3.501 3.501 0 01-.962-.97c-.257-.203-.296-.59-.039-.793a7 7 0 011.737-9.006zM10 10a1 1 0 011 1v4a1 1 0 11-2 0v-4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                        </div>
+                        <input
+                          type="radio"
+                          name="imageProxyMode"
+                          value="none"
+                          checked={imageProxyMode === 'none'}
+                          onChange={() => onImageProxyModeChange?.('none')}
+                          className="peer hidden"
+                        />
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${imageProxyMode === 'none' ? 'border-stone-800 bg-stone-800 dark:border-stone-100 dark:bg-stone-100' : 'border-stone-200'}`}>
+                          {imageProxyMode === 'none' && <div className="w-2 h-2 rounded-full bg-white dark:bg-stone-900" />}
+                        </div>
+                      </div>
                       <div>
-                        <div className="font-semibold text-slate-800 dark:text-white">直接加载</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">所有图片直接加载，不消耗服务器流量。适合可以直接访问所有图片源的用户。</div>
+                        <div className={`font-black text-sm ${imageProxyMode === 'none' ? 'text-stone-800 dark:text-stone-100' : 'text-stone-500'}`}>直接加载</div>
+                        <div className="text-[11px] font-medium text-stone-400 mt-1 leading-relaxed">原图直链，不占用服务器带宽。适合网络环境优良的用户。</div>
                       </div>
                     </label>
                   </div>
@@ -1303,40 +1332,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
               </div>
             )}
 
+
             {/* --- FEEDS TAB --- */}
             {activeTab === 'feeds' && (
-              <div className="space-y-6 max-w-3xl mx-auto">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">订阅源管理</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">管理系统的 RSS 订阅源。此操作需要管理员密钥。</p>
+              <div className="space-y-10 max-w-3xl mx-auto pb-10">
+                <div>
+                  <h3 className="text-xl font-black text-stone-800 dark:text-stone-100">订阅源管理</h3>
+                  <p className="text-sm text-stone-400 font-medium">配置与排序系统订阅源</p>
+                </div>
 
                 {!verifiedSecret ? (
-                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
+                  <div className="bg-white/40 p-10 rounded-[40px] border border-stone-100 shadow-soft-xl dark:bg-stone-800/20 dark:border-stone-800">
                     <label className={labelClass}>管理员密钥</label>
-                    <div className="flex gap-2">
-                      <input type="password" className={inputClass} value={adminSecret} onChange={e => setAdminSecret(e.target.value)} placeholder="输入密钥以解锁管理" onKeyDown={e => e.key === 'Enter' && handleLoadFeeds(adminSecret)} />
-                      <button onClick={() => handleLoadFeeds(adminSecret)} disabled={isVerifying || !adminSecret} className="px-5 py-2.5 bg-slate-700 text-white hover:bg-slate-800 rounded-lg text-sm font-bold shadow-md disabled:opacity-50">{isVerifying ? '验证中...' : '验证'}</button>
+                    <div className="flex gap-4">
+                      <input type="password" className={inputClass} value={adminSecret} onChange={e => setAdminSecret(e.target.value)} placeholder="键入密钥以解锁" onKeyDown={e => e.key === 'Enter' && handleLoadFeeds(adminSecret)} />
+                      <button onClick={() => handleLoadFeeds(adminSecret)} disabled={isVerifying || !adminSecret} className="px-8 py-3.5 bg-stone-800 text-white hover:bg-black rounded-2xl text-sm font-black shadow-xl shadow-stone-200/50 disabled:opacity-50 transition-all">{isVerifying ? '验证中...' : '解锁'}</button>
                     </div>
-                    {feedStatus.type === 'error' && <p className="text-xs text-red-500 mt-2">{feedStatus.msg}</p>}
+                    {feedStatus.type === 'error' && <p className="text-xs font-bold text-red-500 mt-4 ml-1">{feedStatus.msg}</p>}
                   </div>
                 ) : (
                   <>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
-                      <div className="flex items-center justify-between px-2 mb-3">
-                        <h4 className="font-bold text-slate-800 dark:text-white">当前订阅源列表</h4>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-slate-400">{fullFeedList.length} 个订阅源</span>
-                          <span className="text-xs text-slate-400">拖拽排序</span>
+                    <div className="bg-white/40 p-8 rounded-[40px] border border-stone-100 shadow-soft-xl dark:bg-stone-800/20 dark:border-stone-800">
+                      <div className="flex items-center justify-between px-4 mb-8">
+                        <h4 className="font-black text-stone-800 dark:text-stone-100">订阅清单</h4>
+                        <div className="flex items-center gap-6">
+                          <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{fullFeedList.length} Total</span>
+                          <span className="text-[10px] font-black text-stone-300 uppercase tracking-widest hidden sm:inline">Drag to sort</span>
                         </div>
                       </div>
                       
                       {fullFeedList.length === 0 ? (
-                        <p className="text-center text-slate-400 py-8 text-sm">暂无订阅源</p>
+                        <p className="text-center text-stone-300 py-16 font-bold text-sm">空空如也</p>
                       ) : (
                         <Reorder.Group 
                           axis="y" 
                           values={sortedGroupNames} 
                           onReorder={handleTopLevelGroupReorder}
-                          className="space-y-3 list-none p-0 m-0"
+                          className="space-y-6 list-none p-0 m-0"
                         >
 
                         {/* Grouped Feeds using NestedGroupItem */}
@@ -1362,29 +1394,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                           
                           {/* Ungrouped Feeds */}
                           {groupTree.ungrouped.length > 0 && (
-                            <div className="border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
+                            <div className="border border-stone-100 dark:border-stone-800 rounded-[32px] overflow-hidden">
                               {/* Ungrouped Header */}
                               <button
                                 onClick={() => toggleGroupCollapse('__ungrouped__')}
-                                className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                className="w-full flex items-center justify-between px-5 py-4 bg-stone-50/50 dark:bg-stone-800/20 hover:bg-stone-100/50 transition-all"
                               >
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                   <motion.svg 
                                     xmlns="http://www.w3.org/2000/svg" 
                                     viewBox="0 0 20 20" 
                                     fill="currentColor" 
-                                    className="w-4 h-4 text-slate-500"
+                                    className="w-4 h-4 text-stone-300"
                                     animate={{ rotate: collapsedGroups.has('__ungrouped__') ? 0 : 90 }}
                                     transition={{ duration: 0.2 }}
                                   >
                                     <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
                                   </motion.svg>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-400">
-                                    <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
-                                  </svg>
-                                  <span className="font-semibold text-sm text-slate-500 dark:text-slate-400">未分组</span>
+                                  <span className="font-black text-sm text-stone-400 uppercase tracking-widest">未分组</span>
                                 </div>
-                                <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">
+                                <span className="text-[10px] font-black text-stone-400 bg-white/60 px-3 py-1 rounded-full border border-stone-100/50">
                                   {groupTree.ungrouped.length}
                                 </span>
                               </button>
@@ -1403,7 +1432,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                         axis="y" 
                                         values={groupTree.ungrouped} 
                                         onReorder={handleUngroupedOrderChange}
-                                        className="p-2 space-y-1 list-none m-0"
+                                        className="p-4 space-y-2 list-none m-0"
                                       >
 
                                       {groupTree.ungrouped.map((feed) => (
@@ -1423,17 +1452,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         </Reorder.Group>
                       )}
                     </div>
-                    <div ref={feedFormRef} className="bg-white p-6 rounded-xl border border-slate-200 shadow-md animate-slide-in dark:bg-slate-800 dark:border-slate-700">
-                      <h4 className="font-bold text-slate-800 mb-6 border-b border-slate-100 pb-3 dark:text-white dark:border-slate-700">{isEditingFeed ? '编辑订阅源' : '添加订阅源'}</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                        <div><label className={labelClass}>ID (唯一标识)</label><input type="text" className={inputClass} placeholder="例如: bang_dream_mygo" value={feedForm.id} onChange={e => setFeedForm({ ...feedForm, id: e.target.value })} disabled={isEditingFeed} /></div>
+                    <div ref={feedFormRef} className="bg-white/60 p-10 rounded-[40px] border border-stone-100 shadow-soft-xl animate-slide-in dark:bg-stone-800/20 dark:border-stone-800">
+                      <h4 className="font-black text-stone-800 mb-10 text-xl dark:text-stone-100">{isEditingFeed ? '编辑订阅源' : '添加订阅源'}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                        <div><label className={labelClass}>ID</label><input type="text" className={inputClass} placeholder="例如: bang_dream_mygo" value={feedForm.id} onChange={e => setFeedForm({ ...feedForm, id: e.target.value })} disabled={isEditingFeed} /></div>
                         <div ref={categoryDropdownRef} className="relative">
-                          <label className={labelClass}>分类路径</label>
+                          <label className={labelClass}>分类</label>
                           <div className="relative">
                             <input 
                               type="text" 
                               className={inputClass} 
-                              placeholder="选择或输入分类..." 
+                              placeholder="选择或键入..." 
                               value={feedForm.category} 
                               onChange={e => setFeedForm({ ...feedForm, category: e.target.value })}
                               onFocus={() => setShowCategoryDropdown(true)}
@@ -1441,7 +1470,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                             <button 
                               type="button"
                               onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                              className="absolute right-5 top-1/2 -translate-y-1/2 p-1 text-stone-300 hover:text-stone-500"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`}>
                                 <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clipRule="evenodd" />
@@ -1451,14 +1480,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                           
                           {/* Category Dropdown */}
                           {showCategoryDropdown && (
-                            <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg dark:bg-slate-700 dark:border-slate-600 max-h-60 overflow-hidden">
+                            <div className="absolute z-20 mt-3 w-full bg-white/95 backdrop-blur-xl border border-stone-100 rounded-[32px] shadow-soft-2xl dark:bg-stone-800/95 dark:border-stone-700 max-h-72 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                               {/* New Category Input */}
-                              <div className="p-2 border-b border-slate-100 dark:border-slate-600">
+                              <div className="p-4 border-b border-stone-50 dark:border-stone-800">
                                 <div className="flex gap-2">
                                   <input
                                     type="text"
-                                    className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-md dark:bg-slate-600 dark:border-slate-500 dark:text-white"
-                                    placeholder="新建分类..."
+                                    className="flex-1 px-4 py-2 text-sm bg-stone-100/50 border-transparent rounded-xl focus:bg-white transition-all dark:bg-stone-900/50 dark:text-stone-100"
+                                    placeholder="新建..."
                                     value={newCategoryInput}
                                     onChange={e => setNewCategoryInput(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleAddNewCategory()}
@@ -1467,64 +1496,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                     type="button"
                                     onClick={handleAddNewCategory}
                                     disabled={!newCategoryInput.trim()}
-                                    className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="px-4 py-2 text-xs font-black bg-stone-800 text-white rounded-xl hover:bg-black disabled:opacity-30 transition-all"
                                   >
-                                    添加
+                                    OK
                                   </button>
                                 </div>
                               </div>
                               
                               {/* Existing Categories */}
-                              <div className="max-h-40 overflow-y-auto">
+                              <div className="max-h-48 overflow-y-auto p-2 custom-scrollbar">
                                 {existingCategories.length > 0 ? (
                                   existingCategories.map(cat => (
                                     <button
                                       key={cat}
                                       type="button"
                                       onClick={() => handleCategorySelect(cat)}
-                                      className={`w-full px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center gap-2 ${feedForm.category === cat ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'}`}
+                                      className={`w-full px-4 py-3 text-left text-sm rounded-2xl transition-all flex items-center gap-3 ${feedForm.category === cat ? 'bg-stone-800 text-white dark:bg-stone-100 dark:text-stone-900' : 'text-stone-600 hover:bg-stone-50 dark:text-stone-300 dark:hover:bg-stone-800/50'}`}
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-slate-400 shrink-0">
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 shrink-0 ${feedForm.category === cat ? 'text-stone-400' : 'text-stone-200'}`}>
                                         <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zm0 5.25a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
                                       </svg>
-                                      <span className="truncate">{cat}</span>
-                                      {feedForm.category === cat && (
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-blue-600 ml-auto shrink-0">
-                                          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                                        </svg>
-                                      )}
+                                      <span className="truncate font-bold">{cat}</span>
                                     </button>
                                   ))
                                 ) : (
-                                  <p className="px-3 py-4 text-center text-sm text-slate-400">暂无已有分类</p>
+                                  <p className="px-4 py-6 text-center text-xs font-bold text-stone-300 uppercase tracking-widest">No categories</p>
                                 )}
                               </div>
                               
                               {/* Clear Button */}
                               {feedForm.category && (
-                                <div className="p-2 border-t border-slate-100 dark:border-slate-600">
+                                <div className="p-3 border-t border-stone-50 dark:border-stone-800">
                                   <button
                                     type="button"
                                     onClick={() => handleCategorySelect('')}
-                                    className="w-full px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md dark:hover:bg-red-900/20"
+                                    className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-stone-400 hover:text-red-500 transition-all"
                                   >
-                                    清除分类
+                                    Clear Selection
                                   </button>
                                 </div>
                               )}
                             </div>
                           )}
-                          <p className="text-[11px] text-slate-400 mt-1.5 dark:text-slate-500">使用 <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded">/</code> 分隔多级分类</p>
                         </div>
                         <div className="md:col-span-2"><label className={labelClass}>订阅源 URL</label><input type="text" className={`${inputClass} font-mono`} placeholder="http://.../feed.xml" value={feedForm.url} onChange={e => setFeedForm({ ...feedForm, url: e.target.value })} /></div>
-                        <div><label className={labelClass}>自定义标题 (可选)</label><input type="text" className={inputClass} placeholder="留空则使用源标题" value={feedForm.customTitle} onChange={e => setFeedForm({ ...feedForm, customTitle: e.target.value })} /></div>
-                        <div><label className={labelClass}>选项</label><label className="flex items-center gap-2 text-sm p-2"><input type="checkbox" className="w-4 h-4" checked={feedForm.isSub} onChange={e => setFeedForm({ ...feedForm, isSub: e.target.checked })} />作为子订阅源显示 (缩进样式)</label></div>
+                        <div><label className={labelClass}>自定义标题</label><input type="text" className={inputClass} placeholder="留空则自动抓取" value={feedForm.customTitle} onChange={e => setFeedForm({ ...feedForm, customTitle: e.target.value })} /></div>
+                        <div>
+                          <label className={labelClass}>配置</label>
+                          <label className="flex items-center gap-4 text-sm font-bold text-stone-600 p-4 bg-stone-50/50 rounded-2xl cursor-pointer hover:bg-stone-100 transition-all dark:bg-stone-900/30 dark:text-stone-300">
+                            <input type="checkbox" className="w-5 h-5 rounded-lg border-2 border-stone-200 text-stone-800 focus:ring-0" checked={feedForm.isSub} onChange={e => setFeedForm({ ...feedForm, isSub: e.target.checked })} />
+                            作为二级子项 (缩进显示)
+                          </label>
+                        </div>
                       </div>
-                      <div className="flex justify-end items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-                        {feedStatus.msg && <p className={`text-xs mr-auto ${feedStatus.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{feedStatus.msg}</p>}
-                        {isEditingFeed && <button onClick={cancelEditFeed} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium dark:text-slate-300 dark:hover:bg-slate-700">取消编辑</button>}
-                        <button onClick={handleUpsertFeed} disabled={isSubmittingFeed} className="px-5 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md disabled:opacity-50">
-                          {isSubmittingFeed ? '提交中...' : (isEditingFeed ? '更新订阅源' : '添加订阅源')}
+                      <div className="flex justify-end items-center gap-4 pt-6">
+                        {feedStatus.msg && <p className={`text-xs font-bold mr-auto ${feedStatus.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>{feedStatus.msg}</p>}
+                        {isEditingFeed && <button onClick={cancelEditFeed} className="px-6 py-3 text-stone-500 hover:bg-stone-100 rounded-2xl text-sm font-bold transition-all dark:hover:bg-stone-800">取消</button>}
+                        <button onClick={handleUpsertFeed} disabled={isSubmittingFeed} className="px-10 py-3.5 bg-stone-800 text-white hover:bg-black rounded-2xl text-sm font-black shadow-xl shadow-stone-200/50 disabled:opacity-30 transition-all">
+                          {isSubmittingFeed ? 'Processing...' : (isEditingFeed ? 'Update Feed' : 'Create Feed')}
                         </button>
                       </div>
                     </div>
@@ -1533,28 +1562,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
               </div>
             )}
 
+
             </div>
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end shrink-0 dark:bg-slate-900 dark:border-slate-700">
+          <div className="px-10 py-8 flex justify-end shrink-0 gap-4">
             <motion.button 
               onClick={onClose} 
-              className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors dark:text-slate-300 dark:hover:bg-slate-700"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              className="px-8 py-3.5 text-stone-500 hover:bg-stone-100 rounded-2xl text-sm font-bold transition-all dark:hover:bg-stone-800"
+              whileTap={{ scale: 0.96 }}
             >
               取消
             </motion.button>
             <motion.button 
               onClick={handleSaveAll} 
-              className="ml-3 px-8 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-sm font-bold shadow-md"
-              whileHover={{ scale: 1.02, boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.4)' }}
+              className="px-10 py-3.5 bg-stone-800 text-stone-100 hover:bg-black rounded-2xl text-sm font-black shadow-2xl shadow-stone-200/50 dark:bg-stone-100 dark:text-stone-900 dark:shadow-none transition-all"
+              whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
             >
-              保存设置
+              保存所有设置
             </motion.button>
           </div>
+
         </motion.div>
       </motion.div>
     </AnimatePresence>

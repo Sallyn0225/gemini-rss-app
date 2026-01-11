@@ -71,10 +71,10 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
           className={`
             h-8 w-8 rounded-full text-xs font-medium flex items-center justify-center transition-all
             ${isSelected 
-              ? 'bg-blue-600 text-white shadow-md transform scale-105' 
+              ? 'bg-organic-500 text-white shadow-soft-md scale-105' 
               : isToday 
-                ? 'text-blue-600 font-bold bg-blue-50 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300' 
-                : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'}
+                ? 'text-organic-600 font-bold bg-organic-50 border border-organic-200 dark:bg-organic-900/30 dark:border-organic-800 dark:text-organic-300' 
+                : 'text-slate-700 hover:bg-organic-100/50 dark:text-slate-300 dark:hover:bg-slate-700'}
           `}
         >
           {d}
@@ -94,7 +94,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
           setViewDate(newDate);
           setViewMode('day');
         }}
-        className="p-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg dark:text-slate-300 dark:hover:bg-slate-700"
+        className="p-2 text-sm text-slate-700 hover:bg-organic-100/50 rounded-lg dark:text-slate-300 dark:hover:bg-slate-700"
       >
         {m}
       </button>
@@ -115,7 +115,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
             setViewDate(newDate);
             setViewMode('month');
           }}
-          className={`p-2 text-sm rounded-lg ${y === viewDate.getFullYear() ? 'bg-blue-50 text-blue-600 font-bold dark:bg-blue-900/30 dark:text-blue-300' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'}`}
+          className={`p-2 text-sm rounded-lg ${y === viewDate.getFullYear() ? 'bg-organic-50 text-organic-600 font-bold dark:bg-organic-900/30 dark:text-organic-300' : 'text-slate-700 hover:bg-organic-100/50 dark:text-slate-300 dark:hover:bg-slate-700'}`}
         >
           {y}
         </button>
@@ -125,18 +125,18 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 select-none dark:bg-slate-800 dark:border-slate-700">
+    <div className="glass-panel backdrop-blur-md bg-white/80 rounded-organic-lg border border-white/50 p-4 select-none dark:bg-slate-800/80 dark:border-slate-700 shadow-soft-lg">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={handlePrev} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300">
+        <button onClick={handlePrev} className="p-1 hover:bg-organic-100/50 rounded-full text-slate-400 hover:text-organic-600 transition-colors dark:hover:bg-slate-700 dark:hover:text-slate-300">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <button onClick={handleHeaderClick} className="text-sm font-bold text-slate-800 hover:text-blue-600 transition-colors dark:text-slate-100 dark:hover:text-blue-400">
+        <button onClick={handleHeaderClick} className="text-sm font-bold text-slate-800 hover:text-organic-600 transition-colors dark:text-slate-100 dark:hover:text-organic-400">
           {viewMode === 'day' && `${viewDate.getFullYear()}年 ${MONTHS[viewDate.getMonth()]}`}
           {viewMode === 'month' && `${viewDate.getFullYear()}`}
           {viewMode === 'year' && `${Math.floor(viewDate.getFullYear() / 10) * 10} - ${Math.floor(viewDate.getFullYear() / 10) * 10 + 9}`}
         </button>
-        <button onClick={handleNext} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300">
+        <button onClick={handleNext} className="p-1 hover:bg-organic-100/50 rounded-full text-slate-400 hover:text-organic-600 transition-colors dark:hover:bg-slate-700 dark:hover:text-slate-300">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
         </button>
       </div>
@@ -147,7 +147,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
           <>
             <div className="grid grid-cols-7 mb-2">
               {['日', '一', '二', '三', '四', '五', '六'].map(d => (
-                <div key={d} className="text-center text-[10px] text-slate-400 font-bold dark:text-slate-500">{d}</div>
+                <div key={d} className="text-center text-[10px] text-slate-400 font-bold dark:text-slate-500 uppercase tracking-tighter">{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-y-1 justify-items-center">
@@ -170,7 +170,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ selectedDate, on
       {selectedDate && (
         <button 
           onClick={() => onDateSelect(null)} 
-          className="w-full mt-3 text-xs text-slate-400 hover:text-red-500 py-1 border-t border-slate-100 dark:border-slate-700"
+          className="w-full mt-3 text-xs text-slate-400 hover:text-organic-600 py-1 border-t border-slate-100 dark:border-slate-700 transition-colors"
         >
           清除选择
         </button>
