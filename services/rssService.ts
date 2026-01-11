@@ -3,8 +3,8 @@
 import { Feed, Article, ImageProxyMode, MediaUrl, createMediaUrl, selectMediaUrl } from '../types';
 
 const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
-const ALL_ORIGINS_API = 'https://api.allorigins.win/get?url=';
 const ALL_ORIGINS_RAW = 'https://api.allorigins.win/raw?url=';
+
 const CORS_PROXY = 'https://corsproxy.io/?';
 const CODETABS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
 const THING_PROXY = 'https://thingproxy.freeboard.io/fetch/';

@@ -431,8 +431,8 @@ const App: React.FC = () => {
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dailySummary, setDailySummary] = useState<string | null>(null);
-  const [isSummarizing, setIsSummarizing] = useState<boolean>(false);
   const [summaryCache, setSummaryCache] = useState<Record<string, string>>({});
+
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisSuccess, setAnalysisSuccess] = useState<boolean>(false);
@@ -576,17 +576,6 @@ const App: React.FC = () => {
     return root;
   }, [feedConfigs]);
 
-  // --- 检查分类是否应该显示（祖先未折叠）---
-  const isCategoryVisible = useCallback((path: string): boolean => {
-    const parts = path.split('/');
-    for (let i = 1; i < parts.length; i++) {
-      const ancestorPath = parts.slice(0, i).join('/');
-      if (collapsedCategories.has(ancestorPath)) {
-        return false;
-      }
-    }
-    return true;
-  }, [collapsedCategories]);
 
   // --- 优化后的 initFeeds：只加载配置，不加载内容 ---
   const initFeeds = useCallback(async () => {
@@ -1866,7 +1855,7 @@ const App: React.FC = () => {
                   <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap animate-fade-in font-sans dark:text-slate-300">{dailySummary}</div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center">
-                    <button onClick={handleRunAnalysis} disabled={isSummarizing || isAnalyzing} className="group relative inline-flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-white transition-all duration-200 bg-indigo-600 rounded-full hover:bg-indigo-700 disabled:bg-indigo-500 disabled:cursor-wait">
+                    <button onClick={handleRunAnalysis} disabled={isAnalyzing} className="group relative inline-flex items-center justify-center gap-2 px-5 py-2.5 font-semibold text-white transition-all duration-200 bg-indigo-600 rounded-full hover:bg-indigo-700 disabled:bg-indigo-500 disabled:cursor-wait">
                       {isAnalyzing ? (
                         <>
                           <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
