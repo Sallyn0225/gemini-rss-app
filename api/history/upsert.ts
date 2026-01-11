@@ -127,7 +127,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
   } catch (error: any) {
-    console.error('[API Error]', error);
+    if (res.headersSent) {
+      console.error('[Server Error] [API Error] Headers already sent:', error);
+      return;
+    }
+    console.error('[Server Error] [API Error]', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

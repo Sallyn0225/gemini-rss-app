@@ -59,6 +59,7 @@ This project targets **Serverless (Vercel + Neon)** for production.
 - **Components**: 
   - Functional components with `React.FC` or standard function declarations.
   - Use `useCallback` and `useMemo` for performance optimization in complex components.
+  - **Reordering Logic**: When implementing drag-and-drop reordering (e.g., in `SettingsModal.tsx`), always use debouncing for API calls to prevent race conditions and excessive database load.
   - Files located in `components/`.
 
 ### 📘 TypeScript

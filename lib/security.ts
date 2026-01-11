@@ -1,5 +1,6 @@
 import { promises as dns } from 'dns';
 import { isIP } from 'net';
+import { IncomingHttpHeaders } from 'http';
 
 /**
  * Safe URL parsing with protocol validation
@@ -60,14 +61,21 @@ export const isPrivateIp = (ip: string): boolean => {
 };
 
 /**
+ * Custom error type with optional code
+ */
+interface SecurityError extends Error {
+  code?: string;
+}
+
+/**
  * Resolve hostname and reject private/loopback targets
  */
 export const resolveAndValidateHost = async (hostname: string): Promise<string> => {
   const result = await dns.lookup(hostname, { all: false });
   const ip = typeof result === 'string' ? result : result.address;
   if (isPrivateIp(ip)) {
-    const err = new Error('Target host resolves to a private or loopback address');
-    (err as any).code = 'PRIVATE_HOST';
+    const err = new Error('Target host resolves to a private or loopback address') as SecurityError;
+    err.code = 'PRIVATE_HOST';
     throw err;
   }
   return ip;
@@ -99,11 +107,11 @@ export const inferAllowedImageHosts = (feedUrl: string): string[] => {
 /**
  * Normalize client IP from request headers
  */
-export const normalizeClientIp = (headers: any): string => {
+export const normalizeClientIp = (headers: IncomingHttpHeaders | Headers): string => {
   // Handle both Web API Headers and Node.js IncomingHttpHeaders
-  const getHeader = (name: string) => {
-    if (typeof headers.get === 'function') return headers.get(name);
-    return headers[name.toLowerCase()];
+  const getHeader = (name: string): string | undefined => {
+    if (typeof (headers as Headers).get === 'function') return (headers as Headers).get(name) || undefined;
+    return (headers as IncomingHttpHeaders)[name.toLowerCase()] as string | undefined;
   };
 
   const forwarded = (getHeader('x-forwarded-for') || '').split(',')[0].trim();
@@ -115,16 +123,16 @@ export const normalizeClientIp = (headers: any): string => {
 /**
  * Validate admin secret from request headers
  */
-export const validateAdminSecret = (headers: any): boolean => {
+export const validateAdminSecret = (headers: IncomingHttpHeaders | Headers): boolean => {
   const adminSecret = process.env.ADMIN_SECRET;
   if (!adminSecret) return false;
   
   // Handle both Web API Headers and Node.js IncomingHttpHeaders
   let providedSecret: string | null = null;
-  if (typeof headers.get === 'function') {
-    providedSecret = headers.get('x-admin-secret');
+  if (typeof (headers as Headers).get === 'function') {
+    providedSecret = (headers as Headers).get('x-admin-secret');
   } else {
-    providedSecret = headers['x-admin-secret'] as string;
+    providedSecret = (headers as IncomingHttpHeaders)['x-admin-secret'] as string;
   }
   
   return !!providedSecret && providedSecret === adminSecret;

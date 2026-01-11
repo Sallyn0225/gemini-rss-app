@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { db } from '../../db/index.js';
-import { feeds } from '../../db/schema.js';
+import { feeds, NewFeed } from '../../db/schema.js';
 import { eq, inArray } from 'drizzle-orm';
 import { validateAdminSecret } from '../../lib/security.js';
 
@@ -109,6 +109,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       await db.transaction(async (tx) => {
+        // Optimization: Use a loop for now but be aware of performance.
+        // For large lists, a bulk update using CASE or unnest would be better.
+        // But Drizzle neon-http doesn't support easy bulk updates with different values yet.
+        // We'll process them in chunks or use a more efficient way if needed.
         for (let i = 0; i < uniqueIds.length; i++) {
           await tx.update(feeds)
             .set({ displayOrder: i, updatedAt: new Date() } as any)
@@ -121,8 +125,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 
     return res.status(400).json({ error: 'Invalid action parameter' });
-  } catch (error: any) {
-    console.error('[API Error]', error);
-    return res.status(500).json({ error: 'Internal server error', details: error.message });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (res.headersSent) {
+      console.error('[Server Error] [API Error] Headers already sent:', error);
+      return;
+    }
+    console.error('[Server Error] [API Error]', error);
+    return res.status(500).json({ error: 'Internal server error', details: errorMessage });
   }
 }

@@ -34,17 +34,18 @@ interface GroupNode {
 
 // Drag handle icon component
 const DragHandleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
     <path fillRule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5A.75.75 0 012.75 9h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 9.75zm0 5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z" clipRule="evenodd" />
   </svg>
 );
 
-// Draggable nested feed item inside groups
-const DraggableNestedFeedItem: React.FC<{
+
+
+const DraggableNestedFeedItem = React.memo<{
   feed: FullSystemFeedConfig;
   onEdit: (feed: FullSystemFeedConfig) => void;
   onDelete: (id: string) => void;
-}> = ({ feed, onEdit, onDelete }) => {
+}>(({ feed, onEdit, onDelete }) => {
   const dragControls = useDragControls();
   
   return (
@@ -52,11 +53,16 @@ const DraggableNestedFeedItem: React.FC<{
       value={feed}
       dragListener={false}
       dragControls={dragControls}
-      className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+      className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 transition-colors list-none shadow-sm"
+      whileDrag={{ 
+        scale: 1.02, 
+        boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+        zIndex: 50
+      }}
     >
       {/* Drag Handle */}
       <div 
-        className="text-slate-400 shrink-0 cursor-grab active:cursor-grabbing touch-none"
+        className="text-slate-400 shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 hover:text-blue-500 transition-colors"
         onPointerDown={(e) => { e.preventDefault(); dragControls.start(e); }}
       >
         <DragHandleIcon />
@@ -77,7 +83,9 @@ const DraggableNestedFeedItem: React.FC<{
       </div>
     </Reorder.Item>
   );
-};
+});
+DraggableNestedFeedItem.displayName = 'DraggableNestedFeedItem';
+
 
 // Recursive component for rendering nested groups with drag support
 const NestedGroupItem: React.FC<{
@@ -87,29 +95,40 @@ const NestedGroupItem: React.FC<{
   toggleGroupCollapse: (path: string) => void;
   onEdit: (feed: FullSystemFeedConfig) => void;
   onDelete: (id: string) => void;
-  childOrder: string[];
-  feedOrder: FullSystemFeedConfig[];
+  childOrderMap: Record<string, string[]>;
   onChildOrderChange: (parentPath: string, newOrder: string[]) => void;
   onFeedOrderChange: (parentPath: string, newFeeds: FullSystemFeedConfig[]) => void;
   dragControls?: ReturnType<typeof useDragControls>;
-}> = ({ node, depth, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, childOrder, feedOrder, onChildOrderChange, onFeedOrderChange, dragControls }) => {
+}> = ({ node, depth, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, childOrderMap, onChildOrderChange, onFeedOrderChange, dragControls }) => {
   const isCollapsed = collapsedGroups.has(node.fullPath);
   const childKeys = Object.keys(node.children);
+  
+  // Get child order from map or fallback to default
+  const childOrder = childOrderMap[node.fullPath] || childKeys;
+  
   // Sort children by childOrder
-  const sortedChildKeys = [...childKeys].sort((a, b) => {
-    const aIndex = childOrder.indexOf(a);
-    const bIndex = childOrder.indexOf(b);
-    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
-    return aIndex - bIndex;
-  });
+  const sortedChildKeys = useMemo(() => {
+    const keys = Object.keys(node.children);
+    return [...keys].sort((a, b) => {
+      const aIndex = childOrder.indexOf(a);
+      const bIndex = childOrder.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  }, [node.children, childOrder]);
+
+  const feedOrder = node.feeds; // Internal feeds are already in the node
   const hasChildren = sortedChildKeys.length > 0;
   const hasFeeds = feedOrder.length > 0;
-  const totalCount = feedOrder.length + sortedChildKeys.reduce((sum, key) => {
-    const countInChild = (n: GroupNode): number => n.feeds.length + Object.values(n.children).reduce((s, c) => s + countInChild(c), 0);
-    return sum + countInChild(node.children[key]);
-  }, 0);
+
+  const totalCount = useMemo(() => {
+    const countInNode = (n: GroupNode): number => 
+      n.feeds.length + Object.values(n.children).reduce((s, c) => s + countInNode(c), 0);
+    return feedOrder.length + sortedChildKeys.reduce((sum, key) => sum + countInNode(node.children[key]), 0);
+  }, [node, sortedChildKeys, feedOrder]);
+
 
   return (
     <div className={`border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden ${depth > 0 ? 'ml-4' : ''}`}>
@@ -175,7 +194,7 @@ const NestedGroupItem: React.FC<{
                   axis="y" 
                   values={sortedChildKeys} 
                   onReorder={(newOrder) => onChildOrderChange(node.fullPath, newOrder)}
-                  className="space-y-2"
+                  className="space-y-2 list-none p-0 m-0"
                 >
                   {sortedChildKeys.map(childKey => {
                     const childNode = node.children[childKey];
@@ -189,12 +208,14 @@ const NestedGroupItem: React.FC<{
                         toggleGroupCollapse={toggleGroupCollapse}
                         onEdit={onEdit}
                         onDelete={onDelete}
+                        childOrderMap={childOrderMap}
                         onChildOrderChange={onChildOrderChange}
                         onFeedOrderChange={onFeedOrderChange}
                       />
                     );
                   })}
                 </Reorder.Group>
+
               )}
               
               {/* Render feeds with reorder support */}
@@ -203,7 +224,7 @@ const NestedGroupItem: React.FC<{
                   axis="y" 
                   values={feedOrder} 
                   onReorder={(newFeeds) => onFeedOrderChange(node.fullPath, newFeeds)}
-                  className="space-y-1"
+                  className="space-y-1 list-none p-0 m-0"
                 >
                   {feedOrder.map((feed) => (
                     <DraggableNestedFeedItem 
@@ -215,6 +236,7 @@ const NestedGroupItem: React.FC<{
                   ))}
                 </Reorder.Group>
               )}
+
             </div>
           </motion.div>
         )}
@@ -223,8 +245,7 @@ const NestedGroupItem: React.FC<{
   );
 };
 
-// Wrapper component for draggable child groups
-const DraggableChildGroup: React.FC<{
+const DraggableChildGroup = React.memo<{
   childKey: string;
   childNode: GroupNode;
   depth: number;
@@ -232,9 +253,10 @@ const DraggableChildGroup: React.FC<{
   toggleGroupCollapse: (path: string) => void;
   onEdit: (feed: FullSystemFeedConfig) => void;
   onDelete: (id: string) => void;
+  childOrderMap: Record<string, string[]>;
   onChildOrderChange: (parentPath: string, newOrder: string[]) => void;
   onFeedOrderChange: (parentPath: string, newFeeds: FullSystemFeedConfig[]) => void;
-}> = ({ childKey, childNode, depth, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, onChildOrderChange, onFeedOrderChange }) => {
+}>(({ childKey, childNode, depth, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, childOrderMap, onChildOrderChange, onFeedOrderChange }) => {
   const dragControls = useDragControls();
   
   return (
@@ -242,6 +264,8 @@ const DraggableChildGroup: React.FC<{
       value={childKey}
       dragListener={false}
       dragControls={dragControls}
+      className="list-none"
+      whileDrag={{ scale: 1.01, zIndex: 50 }}
     >
       <NestedGroupItem
         node={childNode}
@@ -250,27 +274,28 @@ const DraggableChildGroup: React.FC<{
         toggleGroupCollapse={toggleGroupCollapse}
         onEdit={onEdit}
         onDelete={onDelete}
-        childOrder={Object.keys(childNode.children)}
-        feedOrder={childNode.feeds}
+        childOrderMap={childOrderMap}
         onChildOrderChange={onChildOrderChange}
         onFeedOrderChange={onFeedOrderChange}
         dragControls={dragControls}
       />
     </Reorder.Item>
   );
-};
+});
+DraggableChildGroup.displayName = 'DraggableChildGroup';
 
 // Wrapper component for draggable top-level groups
-const DraggableTopLevelGroup: React.FC<{
+const DraggableTopLevelGroup = React.memo<{
   groupName: string;
   node: GroupNode;
   collapsedGroups: Set<string>;
   toggleGroupCollapse: (path: string) => void;
   onEdit: (feed: FullSystemFeedConfig) => void;
   onDelete: (id: string) => void;
+  childOrderMap: Record<string, string[]>;
   onChildOrderChange: (parentPath: string, newOrder: string[]) => void;
   onFeedOrderChange: (parentPath: string, newFeeds: FullSystemFeedConfig[]) => void;
-}> = ({ groupName, node, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, onChildOrderChange, onFeedOrderChange }) => {
+}>(({ groupName, node, collapsedGroups, toggleGroupCollapse, onEdit, onDelete, childOrderMap, onChildOrderChange, onFeedOrderChange }) => {
   const dragControls = useDragControls();
   
   return (
@@ -278,6 +303,8 @@ const DraggableTopLevelGroup: React.FC<{
       value={groupName}
       dragListener={false}
       dragControls={dragControls}
+      className="list-none"
+      whileDrag={{ scale: 1.01, zIndex: 50 }}
     >
       <NestedGroupItem
         node={node}
@@ -286,22 +313,23 @@ const DraggableTopLevelGroup: React.FC<{
         toggleGroupCollapse={toggleGroupCollapse}
         onEdit={onEdit}
         onDelete={onDelete}
-        childOrder={Object.keys(node.children)}
-        feedOrder={node.feeds}
+        childOrderMap={childOrderMap}
         onChildOrderChange={onChildOrderChange}
         onFeedOrderChange={onFeedOrderChange}
         dragControls={dragControls}
       />
     </Reorder.Item>
   );
-};
+});
+DraggableTopLevelGroup.displayName = 'DraggableTopLevelGroup';
 
-// Draggable feed item component with handle-only drag
-const DraggableFeedItem: React.FC<{
+
+
+const DraggableFeedItem = React.memo<{
   feed: FullSystemFeedConfig;
   onEdit: (feed: FullSystemFeedConfig) => void;
   onDelete: (id: string) => void;
-}> = ({ feed, onEdit, onDelete }) => {
+}>(({ feed, onEdit, onDelete }) => {
   const dragControls = useDragControls();
 
   return (
@@ -337,7 +365,9 @@ const DraggableFeedItem: React.FC<{
       </div>
     </Reorder.Item>
   );
-};
+});
+DraggableFeedItem.displayName = 'DraggableFeedItem';
+
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, imageProxyMode, onImageProxyModeChange }) => {
   const [localSettings, setLocalSettings] = useState<AISettings>(settings || DEFAULT_SETTINGS);
@@ -365,13 +395,99 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const [adminSecret, setAdminSecret] = useState('');
   const [verifiedSecret, setVerifiedSecret] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const reorderTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [fullFeedList, setFullFeedList] = useState<FullSystemFeedConfig[]>([]);
+
   const [isEditingFeed, setIsEditingFeed] = useState(false);
   const [feedForm, setFeedForm] = useState({ id: '', url: '', category: '', isSub: false, customTitle: '' });
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [newCategoryInput, setNewCategoryInput] = useState('');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [groupOrder, setGroupOrder] = useState<string[]>([]);
+  const [childGroupOrderMap, setChildGroupOrderMap] = useState<Record<string, string[]>>({});
+
+  // Handle top-level group reorder
+  const handleTopLevelGroupReorder = (newOrder: string[]) => {
+    setGroupOrder(newOrder);
+    
+    // Also reorder fullFeedList by the new group order
+    const ungroupedFeeds = fullFeedList.filter(f => !f.category);
+    const groupedFeeds = fullFeedList.filter(f => f.category);
+    
+    // Sort grouped feeds by new group order
+    const sortedGroupedFeeds = [...groupedFeeds].sort((a, b) => {
+      const aTopCategory = a.category!.split('/')[0];
+      const bTopCategory = b.category!.split('/')[0];
+      const aIndex = newOrder.indexOf(aTopCategory);
+      const bIndex = newOrder.indexOf(bTopCategory);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+    
+    handleDragReorder([...sortedGroupedFeeds, ...ungroupedFeeds]);
+  };
+
+  // Handle child group reorder - reorder feeds by their category prefix
+  const handleChildOrderChange = (parentPath: string, newOrder: string[]) => {
+    // Get all feeds sorted by the new child order
+    const feedsInParent = fullFeedList.filter(f => 
+      f.category && f.category.startsWith(parentPath + '/')
+    );
+    const feedsNotInParent = fullFeedList.filter(f => 
+      !f.category || !f.category.startsWith(parentPath + '/')
+    );
+    
+    // Sort feedsInParent by newOrder
+    const sortedFeeds = [...feedsInParent].sort((a, b) => {
+      // Extract the immediate child name from category
+      const aChildName = a.category!.slice(parentPath.length + 1).split('/')[0];
+      const bChildName = b.category!.slice(parentPath.length + 1).split('/')[0];
+      const aIndex = newOrder.indexOf(aChildName);
+      const bIndex = newOrder.indexOf(bChildName);
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+    
+    // Find position of first feed in parent group
+    const firstIndex = fullFeedList.findIndex(f => 
+      f.category && f.category.startsWith(parentPath + '/')
+    );
+    
+    // Rebuild list
+    const newList = [...feedsNotInParent];
+    newList.splice(firstIndex >= 0 ? firstIndex : newList.length, 0, ...sortedFeeds);
+    
+    handleDragReorder(newList);
+  };
+
+  // Reorder children within a parent group (state only)
+  const handleChildOrderUpdate = (parentPath: string, newOrder: string[]) => {
+    setChildGroupOrderMap(prev => ({
+      ...prev,
+      [parentPath]: newOrder
+    }));
+    handleChildOrderChange(parentPath, newOrder);
+  };
+
+  const handleFeedOrderChange = (parentPath: string, newFeeds: FullSystemFeedConfig[]) => {
+    // Get all feeds that belong to this exact category path
+    const feedsInGroup = fullFeedList.filter(f => f.category === parentPath);
+    const feedsNotInGroup = fullFeedList.filter(f => f.category !== parentPath);
+    
+    // Find position of first feed in this group
+    const firstIndex = fullFeedList.findIndex(f => f.category === parentPath);
+    
+    // Rebuild list with new order
+    const newList = [...feedsNotInGroup];
+    newList.splice(firstIndex >= 0 ? firstIndex : newList.length, 0, ...newFeeds);
+    
+    handleDragReorder(newList);
+  };
+
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [feedStatus, setFeedStatus] = useState<{ msg: string, type: 'success' | 'error' | null }>({ msg: '', type: null });
   const [isSubmittingFeed, setIsSubmittingFeed] = useState(false);
@@ -388,6 +504,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       setVerifiedSecret(null);
       setAdminSecret('');
       setFullFeedList([]);
+      setChildGroupOrderMap({});
+
 
       // Select first provider for models tab if exists
       if (settings?.providers?.length > 0) {
@@ -488,84 +606,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     });
   };
 
-  // Handle feed reorder within a group
-  const handleFeedOrderChange = (parentPath: string, newFeeds: FullSystemFeedConfig[]) => {
-    // Get all feeds that belong to this exact category path
-    const feedsInGroup = fullFeedList.filter(f => f.category === parentPath);
-    const feedsNotInGroup = fullFeedList.filter(f => f.category !== parentPath);
-    
-    // Find position of first feed in this group
-    const firstIndex = fullFeedList.findIndex(f => f.category === parentPath);
-    
-    // Rebuild list with new order
-    const newList = [...feedsNotInGroup];
-    newList.splice(firstIndex >= 0 ? firstIndex : newList.length, 0, ...newFeeds);
-    
-    handleDragReorder(newList);
-  };
-
-  // Handle child group reorder - reorder feeds by their category prefix
-  const handleChildOrderChange = (parentPath: string, newOrder: string[]) => {
-    // Get all feeds sorted by the new child order
-    const feedsInParent = fullFeedList.filter(f => 
-      f.category && f.category.startsWith(parentPath + '/')
-    );
-    const feedsNotInParent = fullFeedList.filter(f => 
-      !f.category || !f.category.startsWith(parentPath + '/')
-    );
-    
-    // Sort feedsInParent by newOrder
-    const sortedFeeds = [...feedsInParent].sort((a, b) => {
-      // Extract the immediate child name from category
-      const aChildName = a.category!.slice(parentPath.length + 1).split('/')[0];
-      const bChildName = b.category!.slice(parentPath.length + 1).split('/')[0];
-      const aIndex = newOrder.indexOf(aChildName);
-      const bIndex = newOrder.indexOf(bChildName);
-      if (aIndex === -1 && bIndex === -1) return 0;
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
-    });
-    
-    // Find position of first feed in parent group
-    const firstIndex = fullFeedList.findIndex(f => 
-      f.category && f.category.startsWith(parentPath + '/')
-    );
-    
-    // Rebuild list
-    const newList = [...feedsNotInParent];
-    newList.splice(firstIndex >= 0 ? firstIndex : newList.length, 0, ...sortedFeeds);
-    
-    handleDragReorder(newList);
-  };
-
   // Handle ungrouped feeds reorder
   const handleUngroupedOrderChange = (newFeeds: FullSystemFeedConfig[]) => {
     const groupedFeeds = fullFeedList.filter(f => f.category);
     handleDragReorder([...groupedFeeds, ...newFeeds]);
-  };
-
-  // Handle top-level group reorder
-  const handleTopLevelGroupReorder = (newOrder: string[]) => {
-    setGroupOrder(newOrder);
-    
-    // Also reorder fullFeedList by the new group order
-    const ungroupedFeeds = fullFeedList.filter(f => !f.category);
-    const groupedFeeds = fullFeedList.filter(f => f.category);
-    
-    // Sort grouped feeds by new group order
-    const sortedGroupedFeeds = [...groupedFeeds].sort((a, b) => {
-      const aTopCategory = a.category!.split('/')[0];
-      const bTopCategory = b.category!.split('/')[0];
-      const aIndex = newOrder.indexOf(aTopCategory);
-      const bIndex = newOrder.indexOf(bTopCategory);
-      if (aIndex === -1 && bIndex === -1) return 0;
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
-    });
-    
-    handleDragReorder([...sortedGroupedFeeds, ...ungroupedFeeds]);
   };
 
   // Close category dropdown when clicking outside
@@ -578,6 +622,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+
 
   if (!isOpen) return null;
 
@@ -796,14 +842,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     // Optimistic update
     setFullFeedList(newOrder);
 
-    try {
-      await reorderSystemFeeds(newOrder.map(f => f.id), verifiedSecret);
-    } catch (e: any) {
-      setFeedStatus({ msg: '排序失败: ' + e.message, type: 'error' });
-      // Revert on failure
-      await handleLoadFeeds(verifiedSecret);
+    // Debounce the API call to avoid overloading the backend and causing race conditions
+    if (reorderTimeoutRef.current) {
+      clearTimeout(reorderTimeoutRef.current);
     }
+
+    reorderTimeoutRef.current = setTimeout(async () => {
+      try {
+        await reorderSystemFeeds(newOrder.map(f => f.id), verifiedSecret);
+      } catch (e: unknown) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        setFeedStatus({ msg: '排序保存失败: ' + errorMessage, type: 'error' });
+        // Revert on failure
+        await handleLoadFeeds(verifiedSecret);
+      }
+    }, 500); // 500ms debounce
   };
+
 
   // Category selection handler
   const handleCategorySelect = (category: string) => {
@@ -1295,26 +1350,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                           axis="y" 
                           values={sortedGroupNames} 
                           onReorder={handleTopLevelGroupReorder}
-                          className="space-y-3"
+                          className="space-y-3 list-none p-0 m-0"
                         >
-                          {/* Grouped Feeds using NestedGroupItem */}
-                          {sortedGroupNames.map((groupName) => {
-                            const node = groupTree.root[groupName];
-                            if (!node) return null;
-                            return (
-                              <DraggableTopLevelGroup
-                                key={groupName}
-                                groupName={groupName}
-                                node={node}
-                                collapsedGroups={collapsedGroups}
-                                toggleGroupCollapse={toggleGroupCollapse}
-                                onEdit={startEditFeed}
-                                onDelete={handleDeleteFeed}
-                                onChildOrderChange={handleChildOrderChange}
-                                onFeedOrderChange={handleFeedOrderChange}
-                              />
-                            );
-                          })}
+
+                        {/* Grouped Feeds using NestedGroupItem */}
+                        {sortedGroupNames.map((groupName) => {
+                          const node = groupTree.root[groupName];
+                          if (!node) return null;
+                          return (
+                        <DraggableTopLevelGroup
+                          key={groupName}
+                          groupName={groupName}
+                          node={node}
+                          collapsedGroups={collapsedGroups}
+                          toggleGroupCollapse={toggleGroupCollapse}
+                          onEdit={startEditFeed}
+                          onDelete={handleDeleteFeed}
+                          childOrderMap={childGroupOrderMap}
+                          onChildOrderChange={handleChildOrderUpdate}
+                          onFeedOrderChange={handleFeedOrderChange}
+                        />
+                          );
+                        })}
+
                           
                           {/* Ungrouped Feeds */}
                           {groupTree.ungrouped.length > 0 && (
@@ -1355,12 +1413,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                     transition={{ duration: 0.2, ease: 'easeInOut' }}
                                     className="overflow-hidden"
                                   >
-                                    <Reorder.Group 
-                                      axis="y" 
-                                      values={groupTree.ungrouped} 
-                                      onReorder={handleUngroupedOrderChange}
-                                      className="p-2 space-y-1"
-                                    >
+                                      <Reorder.Group 
+                                        axis="y" 
+                                        values={groupTree.ungrouped} 
+                                        onReorder={handleUngroupedOrderChange}
+                                        className="p-2 space-y-1 list-none m-0"
+                                      >
+
                                       {groupTree.ungrouped.map((feed) => (
                                         <DraggableNestedFeedItem
                                           key={feed.id}

@@ -56,6 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!response.ok) {
       const errorText = await response.text();
+      if (res.headersSent) return;
       return res.status(response.status).json({
         error: `Upstream error for ID '${feedId}'`,
         status: response.status,
@@ -71,7 +72,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Cache-Control', CACHE_CONTROL_HEADER);
     return res.status(200).send(body);
   } catch (error: any) {
-    console.error(`[Feed Fetch Error]`, error);
+    if (res.headersSent) {
+      console.error(`[Server Error] [Feed Fetch] Headers already sent:`, error);
+      return;
+    }
+    console.error(`[Server Error] [Feed Fetch Error]`, error);
     const isTimeout = error.message.includes('timeout') || error.message.includes('超时');
     const isPrivateHost = error.code === 'PRIVATE_HOST';
     

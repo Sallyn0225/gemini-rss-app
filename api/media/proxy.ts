@@ -68,7 +68,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const mediaHost = parsedMedia.hostname.toLowerCase();
     if (!allowedMediaHosts.has(mediaHost)) {
-      console.error(`[Media Proxy] Blocked media host: ${mediaHost}`);
+      if (res.headersSent) return;
+      console.error(`[Server Error] [Media Proxy] Blocked media host: ${mediaHost}`);
       return res.status(403).json({ error: 'Media host is not allowed by server configuration' });
     }
 
@@ -79,12 +80,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response = await fetchWithResolvedIp(parsedMedia.toString(), resolvedIp, { timeout: 30000 });
 
     if (!response.ok) {
+      if (res.headersSent) return;
       return res.status(response.status).json({ error: 'Upstream media fetch failed' });
     }
 
     // Check content length
     const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > MEDIA_PROXY_MAX_BYTES) {
+      if (res.headersSent) return;
       return res.status(413).json({ error: 'Media exceeds configured size limit' });
     }
 
@@ -109,7 +112,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.end();
   } catch (error: any) {
-    console.error(`[Media Proxy Error]`, error);
+    if (res.headersSent) {
+      console.error(`[Server Error] [Media Proxy] Headers already sent:`, error);
+      return;
+    }
+    console.error(`[Server Error] [Media Proxy Error]`, error);
     const isPrivateHost = error.code === 'PRIVATE_HOST';
     const isSizeLimit = error.message.includes('size limit') || error.message.includes('exceeds');
     
