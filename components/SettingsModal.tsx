@@ -3,6 +3,7 @@ import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion
 import { AISettings, AIProvider, AIModelConfig, AIProviderType, ImageProxyMode } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, reorderSystemFeeds, FullSystemFeedConfig } from '../services/rssService';
 import { fetchProviderModels } from '../services/geminiService';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Dialog, 
   DialogContent, 
@@ -313,6 +314,7 @@ const DraggableTopLevelGroup = React.memo<{
 DraggableTopLevelGroup.displayName = 'DraggableTopLevelGroup';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, imageProxyMode, onImageProxyModeChange }) => {
+  const { toast } = useToast();
   const [localSettings, setLocalSettings] = useState<AISettings>(settings || DEFAULT_SETTINGS);
   const [activeTab, setActiveTab] = useState('providers');
 
@@ -500,12 +502,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         ...prev,
         providers: prev.providers.map(p => p.id === editingProviderId ? { ...p, ...editForm } : p)
       }));
+      toast({
+        title: "提供商已更新",
+        description: `${editForm.name} 的配置已保存`,
+      });
     } else {
       const newProvider: AIProvider = {
         id: Date.now().toString(36) + Math.random().toString(36).substring(2),
         ...editForm
       };
       setLocalSettings(prev => ({ ...prev, providers: [...prev.providers, newProvider] }));
+      toast({
+        title: "提供商已添加",
+        description: `${editForm.name} 已成功添加到配置列表`,
+      });
     }
     setIsEditingProvider(false);
     setEditingProviderId(null);
@@ -594,6 +604,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       return;
     }
     onSave(localSettings);
+    toast({
+      title: "✅ 设置已保存",
+      description: "您的 API Key 和模型配置已安全保存到本地浏览器",
+      variant: "default",
+    });
     onClose();
   };
 

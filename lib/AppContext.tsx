@@ -97,6 +97,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }).catch(err => console.error('Failed to load read articles from IDB:', err));
   }, []);
 
+  // Persist AI settings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('rss_ai_settings', JSON.stringify(aiSettings));
+    } catch (err) {
+      console.error('Failed to persist AI settings to localStorage:', err);
+    }
+  }, [aiSettings]);
+
   const setImageProxyMode = useCallback((mode: ImageProxyMode) => {
     setImageProxyModeState(mode);
     setGlobalImageProxyMode(mode);

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import { AppProvider } from './lib/AppContext';
+import { Toaster } from '@/components/ui/toaster';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,6 +15,7 @@ root.render(
   <React.StrictMode>
     <AppProvider>
       <App />
+      <Toaster />
     </AppProvider>
   </React.StrictMode>
 );
