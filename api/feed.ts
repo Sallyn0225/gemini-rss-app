@@ -8,6 +8,7 @@ import { fetchWithProxy } from '../lib/http';
 // In-memory cache for feed responses
 const feedCache = new Map<string, { content: string; contentType: string; timestamp: number }>();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CACHE_CONTROL_HEADER = 'public, max-age=60, s-maxage=600, stale-while-revalidate=300';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -55,6 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
       console.log(`[Cache HIT] ID: ${feedId}`);
       res.setHeader('Content-Type', cached.contentType);
+      res.setHeader('Cache-Control', CACHE_CONTROL_HEADER);
       return res.status(200).send(cached.content);
     }
     console.log(`[Cache MISS] ID: ${feedId}`);
@@ -86,6 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', CACHE_CONTROL_HEADER);
     return res.status(200).send(body);
   } catch (error: any) {
     console.error(`[Feed Fetch Error]`, error);

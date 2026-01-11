@@ -11,6 +11,41 @@ import {
 import { fetchWithProxy, streamWithSizeLimit } from '../../lib/http';
 
 const MEDIA_PROXY_MAX_BYTES = parseInt(process.env.MEDIA_PROXY_MAX_BYTES || '52428800', 10); // 50MB
+const ALLOWED_MEDIA_HOSTS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+let allowedMediaHostsCache: { hosts: Set<string>; expiresAt: number } | null = null;
+
+const getAllowedMediaHosts = async (): Promise<Set<string>> => {
+  if (allowedMediaHostsCache && allowedMediaHostsCache.expiresAt > Date.now()) {
+    return allowedMediaHostsCache.hosts;
+  }
+
+  const allFeeds = await db.select().from(feeds);
+  const hosts = new Set<string>();
+
+  for (const feed of allFeeds) {
+    const parsed = safeParseUrl(feed.url);
+    if (parsed?.hostname) {
+      hosts.add(parsed.hostname.toLowerCase());
+    }
+    if (feed.allowedMediaHosts) {
+      try {
+        const parsedHosts = JSON.parse(feed.allowedMediaHosts);
+        if (Array.isArray(parsedHosts)) {
+          parsedHosts.forEach(h => hosts.add(String(h).toLowerCase()));
+        }
+      } catch {}
+    }
+    inferAllowedImageHosts(feed.url).forEach(h => hosts.add(h));
+  }
+
+  allowedMediaHostsCache = {
+    hosts,
+    expiresAt: Date.now() + ALLOWED_MEDIA_HOSTS_CACHE_TTL_MS
+  };
+
+  return hosts;
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -50,24 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Domain whitelist check
-    const allFeeds = await db.select().from(feeds);
-    const allowedMediaHosts = new Set<string>();
-    
-    for (const feed of allFeeds) {
-      const parsed = safeParseUrl(feed.url);
-      if (parsed?.hostname) {
-        allowedMediaHosts.add(parsed.hostname.toLowerCase());
-      }
-      if (feed.allowedMediaHosts) {
-        try {
-          const hosts = JSON.parse(feed.allowedMediaHosts);
-          if (Array.isArray(hosts)) {
-            hosts.forEach(h => allowedMediaHosts.add(h.toLowerCase()));
-          }
-        } catch {}
-      }
-      inferAllowedImageHosts(feed.url).forEach(h => allowedMediaHosts.add(h));
-    }
+    const allowedMediaHosts = await getAllowedMediaHosts();
 
     const mediaHost = parsedMedia.hostname.toLowerCase();
     if (!allowedMediaHosts.has(mediaHost)) {

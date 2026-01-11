@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { db } from '../../db';
 import { feeds } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { validateAdminSecret } from '../../lib/security';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -90,19 +90,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (action === 'reorder') {
       const { ids } = req.body;
       
-      if (!Array.isArray(ids)) {
-        return res.status(400).json({ error: 'Invalid input: ids must be an array' });
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'Invalid input: ids must be a non-empty array' });
       }
 
-      // Update display order for each feed
-      for (let i = 0; i < ids.length; i++) {
-        await db.update(feeds)
-          .set({ displayOrder: i, updatedAt: new Date() })
-          .where(eq(feeds.id, ids[i]));
+      const uniqueIds = Array.from(new Set(ids));
+      if (uniqueIds.length !== ids.length) {
+        return res.status(400).json({ error: 'Duplicate feed ids are not allowed' });
       }
 
+      const existingIds = await db
+        .select({ id: feeds.id })
+        .from(feeds)
+        .where(inArray(feeds.id, uniqueIds));
+
+      if (existingIds.length !== uniqueIds.length) {
+        return res.status(404).json({ error: 'One or more feeds not found' });
+      }
+
+      await db.transaction(async (tx) => {
+        for (let i = 0; i < uniqueIds.length; i++) {
+          await tx.update(feeds)
+            .set({ displayOrder: i, updatedAt: new Date() })
+            .where(eq(feeds.id, uniqueIds[i]));
+        }
+      });
+ 
       return res.status(200).json({ success: true });
     }
+
 
     return res.status(400).json({ error: 'Invalid action parameter' });
   } catch (error: any) {

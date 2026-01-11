@@ -160,21 +160,34 @@ export const reorderSystemFeeds = async (ids: string[], secret: string): Promise
 
 // Upload current items to server history (fire-and-forget, won't block UI)
 const upsertHistory = (feedId: string, items: Article[]): void => {
-  fetch('/api/history/upsert', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feedId, items }),
-  }).then(res => {
-    if (res.ok) return res.json();
-    throw new Error('Upsert failed');
-  }).then(data => {
-    if (data.added > 0) {
-      console.log(`[History] Saved ${data.added} new items for "${feedId}", total: ${data.total}`);
-    }
-  }).catch(e => {
-    console.warn(`[History] Failed to upsert for "${feedId}":`, e);
-  });
+  const maxAttempts = 3;
+  const baseDelayMs = 500;
+
+  const attemptUpsert = (attempt: number): void => {
+    fetch('/api/history/upsert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedId, items }),
+    }).then(res => {
+      if (res.ok) return res.json();
+      throw new Error(`Upsert failed with status ${res.status}`);
+    }).then(data => {
+      if (data.added > 0) {
+        console.log(`[History] Saved ${data.added} new items for "${feedId}", total: ${data.total}`);
+      }
+    }).catch(e => {
+      if (attempt < maxAttempts) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        setTimeout(() => attemptUpsert(attempt + 1), delay);
+        return;
+      }
+      console.warn(`[History] Failed to upsert for "${feedId}" after ${maxAttempts} attempts:`, e);
+    });
+  };
+
+  attemptUpsert(1);
 };
+
 
 // Fetch history from server
 export const fetchHistory = async (feedId: string, limit?: number, offset?: number): Promise<{items: Article[], total: number}> => {

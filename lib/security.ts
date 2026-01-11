@@ -35,8 +35,12 @@ export const isPrivateIp = (ip: string): boolean => {
 
   const [a, b] = parts;
 
+  // 0.0.0.0/8 (current network)
+  if (a === 0) return true;
   // 10.0.0.0/8
   if (a === 10) return true;
+  // 100.64.0.0/10 (carrier-grade NAT)
+  if (a === 100 && b >= 64 && b <= 127) return true;
   // 172.16.0.0/12
   if (a === 172 && b >= 16 && b <= 31) return true;
   // 192.168.0.0/16
@@ -45,6 +49,12 @@ export const isPrivateIp = (ip: string): boolean => {
   if (a === 127) return true;
   // 169.254.0.0/16 (link-local)
   if (a === 169 && b === 254) return true;
+  // 192.0.0.0/24 (reserved)
+  if (a === 192 && b === 0) return true;
+  // 198.18.0.0/15 (benchmarking)
+  if (a === 198 && (b === 18 || b === 19)) return true;
+  // 224.0.0.0/4 (multicast) and 240.0.0.0/4 (reserved)
+  if (a >= 224) return true;
 
   return false;
 };

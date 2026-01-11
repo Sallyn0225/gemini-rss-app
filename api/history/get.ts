@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { db } from '../../db';
 import { history } from '../../db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -26,16 +26,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing id parameter' });
     }
 
-    // Get total count
-    const allItems = await db.select()
+    // Get total count without loading all rows
+    const totalResult = await db
+      .select({ count: sql<number>`count(*)` })
       .from(history)
       .where(eq(history.feedId, feedId));
     
-    const total = allItems.length;
-
+    const total = Number(totalResult[0]?.count ?? 0);
+ 
     if (total === 0) {
       return res.status(200).json({ feedId, items: [], lastUpdated: null, total: 0 });
     }
+
 
     // Get paginated items
     let query = db.select()
