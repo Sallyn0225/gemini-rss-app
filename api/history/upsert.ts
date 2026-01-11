@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from '../../db';
-import { history, feeds } from '../../db/schema';
+import { db } from '../../db/index.js';
+import { history, feeds } from '../../db/schema.js';
 import { eq, and, lt, sql } from 'drizzle-orm';
-import { normalizeClientIp } from '../../lib/security';
+import { normalizeClientIp } from '../../lib/security.js';
 
 const HISTORY_UPSERT_WINDOW_MS = 60 * 1000;
 const HISTORY_UPSERT_MAX_REQUESTS = parseInt(process.env.HISTORY_UPSERT_MAX_REQUESTS || '30', 10);

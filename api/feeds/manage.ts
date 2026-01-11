@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from '../../db';
-import { feeds } from '../../db/schema';
+import { db } from '../../db/index.js';
+import { feeds } from '../../db/schema.js';
 import { eq, inArray } from 'drizzle-orm';
-import { validateAdminSecret } from '../../lib/security';
+import { validateAdminSecret } from '../../lib/security.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers

@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from '../db';
-import { feeds } from '../db/schema';
+import { db } from '../db/index.js';
+import { feeds } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { safeParseUrl, resolveAndValidateHost } from '../lib/security';
-import { fetchWithResolvedIp } from '../lib/http';
+import { safeParseUrl, resolveAndValidateHost } from '../lib/security.js';
+import { fetchWithResolvedIp } from '../lib/http.js';
 
 const CACHE_CONTROL_HEADER = 'public, max-age=60, s-maxage=600, stale-while-revalidate=300';
 

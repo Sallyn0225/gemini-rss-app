@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from '../../db';
-import { feeds } from '../../db/schema';
+import { db } from '../../db/index.js';
+import { feeds } from '../../db/schema.js';
 import { 
   safeParseUrl, 
   resolveAndValidateHost, 
   inferAllowedImageHosts 
-} from '../../lib/security';
-import { fetchWithResolvedIp, streamWithSizeLimit } from '../../lib/http';
+} from '../../lib/security.js';
+import { fetchWithResolvedIp, streamWithSizeLimit } from '../../lib/http.js';
 
 const MEDIA_PROXY_MAX_BYTES = parseInt(process.env.MEDIA_PROXY_MAX_BYTES || '52428800', 10); // 50MB
 const getAllowedMediaHosts = async (): Promise<Set<string>> => {
