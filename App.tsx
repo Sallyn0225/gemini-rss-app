@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from "lucide-react";
 import { 
   fetchRSS, 
   fetchSystemFeeds, 
@@ -294,12 +295,31 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {/* 右侧栏 - 遮罩层 */}
+      <AnimatePresence>
+        {isRightSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+            onClick={() => setIsRightSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* 右侧栏 - 筛选与分析 */}
       <aside className={cn(
         "fixed inset-y-0 right-0 z-40 w-80 flex flex-col bg-card border-l transition-all duration-300 ease-in-out lg:relative lg:translate-x-0 shrink-0",
         isRightSidebarOpen ? "translate-x-0" : "translate-x-full",
         !isRightSidebarOpen && "lg:w-0 lg:border-none lg:overflow-hidden"
       )}>
+        <div className="p-4 border-b flex items-center justify-between lg:hidden shrink-0">
+          <h3 className="text-sm font-black uppercase tracking-widest">筛选与分析</h3>
+          <Button variant="ghost" size="icon" onClick={() => setIsRightSidebarOpen(false)}>
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
         <div className="p-4 flex flex-col gap-6 h-full overflow-y-auto">
           <div className="flex flex-col gap-1">
             <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">时间筛选</h3>
