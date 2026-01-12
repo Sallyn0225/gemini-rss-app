@@ -34,7 +34,7 @@ interface ArticleListProps {
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
   currentPage: number;
-  setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+  setCurrentPage: (page: number) => void;
   totalPages: number;
   filteredArticlesCount: number;
   isLoadingMoreHistory: boolean;
@@ -206,7 +206,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
                   className="rounded-full px-6 font-bold"
                 >
@@ -231,7 +231,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
                   className="rounded-full px-6 font-bold"
                 >

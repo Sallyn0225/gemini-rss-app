@@ -24,7 +24,7 @@ import { ArticleReader } from './components/ArticleReader';
 import { Dashboard } from './components/Dashboard';
 import { SettingsModal } from './components/SettingsModal';
 import { CalendarWidget } from './components/CalendarWidget';
-import { cn } from './lib/utils';
+import { cn, mergeAndDedupeArticles } from './lib/utils';
 import { 
   Dialog, 
   DialogContent, 
@@ -70,7 +70,8 @@ const App: React.FC = () => {
   } = useAppContext();
 
   const FEED_CACHE_TTL = 10 * 60 * 1000;
-  const HISTORY_PAGE_SIZE = 200;
+  const HISTORY_INITIAL_LOAD = 24;  // 首次加载 2 页（24 条）
+  const HISTORY_PRELOAD_SIZE = 12;  // 预加载 1 页（12 条）
   const ARTICLES_PER_PAGE = 12;
 
   const [loading, setLoading] = useState(false);
@@ -170,33 +171,66 @@ const App: React.FC = () => {
   }, [filteredArticles, currentPage, articleClassifications]);
 
   const handleFeedSelect = useCallback(async (meta: FeedMeta, options?: { skipHistory?: boolean; articleId?: string }) => {
-    if (!options?.skipHistory && typeof window !== 'undefined') window.history.pushState({ feedId: meta.id }, '', buildFeedPath(meta.id));
+    if (!options?.skipHistory && typeof window !== 'undefined') {
+      window.history.pushState({ feedId: meta.id }, '', buildFeedPath(meta.id));
+    }
     setSelectedFeedMeta(meta);
     setActiveArticle(null);
     setPendingArticleId(options?.articleId || null);
     setSelectedDate(null);
     setActiveFilters([]);
+    setCurrentPage(1);  // 重置页码
+    
     const cached = feedContentCache[meta.id];
     if (cached) setSelectedFeed(cached);
+    
     setLoadingFeedId(meta.id);
     try {
+      // 并行：拉取 RSS + 加载历史
       const [fetchedFeed, historyData] = await Promise.all([
         fetchRSS(meta.id),
-        fetchHistory(meta.id, HISTORY_PAGE_SIZE, 0).catch(() => ({ items: [], total: 0 }))
+        fetchHistory(meta.id, HISTORY_INITIAL_LOAD, 0).catch(() => ({ items: [], total: 0 }))
       ]);
-      const finalFeed: Feed = { ...fetchedFeed, items: fetchedFeed.items }; // Simplified merge for now
+      
+      // 合并去重
+      const mergedItems = mergeAndDedupeArticles(fetchedFeed.items, historyData.items);
+      const finalFeed: Feed = { ...fetchedFeed, items: mergedItems };
+      
+      // 更新缓存和状态
       setFeedContentCache(prev => ({ ...prev, [meta.id]: finalFeed }));
       setSelectedFeed(finalFeed);
-    } catch (e) { setErrorMsg("加载失败"); } finally { setLoadingFeedId(null); }
+      setHistoryStatus(prev => ({
+        ...prev,
+        [meta.id]: { total: historyData.total, loaded: mergedItems.length }
+      }));
+    } catch (e) {
+      setErrorMsg("加载失败");
+    } finally {
+      setLoadingFeedId(null);
+    }
   }, [feedContentCache, setFeedContentCache, setSelectedFeed, setSelectedFeedMeta, setActiveArticle]);
 
   const handleRefresh = useCallback(async () => {
     if (!selectedFeedMeta || isRefreshing) return;
     setIsRefreshing(true);
     try {
+      // 1. 拉取最新 RSS（自动存入数据库）
       const fetchedFeed = await fetchRSS(selectedFeedMeta.id);
-      setFeedContentCache(prev => ({ ...prev, [selectedFeedMeta.id]: fetchedFeed }));
-      setSelectedFeed(fetchedFeed);
+      
+      // 2. 重新加载历史
+      const historyData = await fetchHistory(selectedFeedMeta.id, HISTORY_INITIAL_LOAD, 0);
+      
+      // 3. 合并去重
+      const mergedItems = mergeAndDedupeArticles(fetchedFeed.items, historyData.items);
+      const finalFeed: Feed = { ...fetchedFeed, items: mergedItems };
+      
+      // 4. 更新状态，回到第一页
+      setFeedContentCache(prev => ({ ...prev, [selectedFeedMeta.id]: finalFeed }));
+      setSelectedFeed(finalFeed);
+      setHistoryStatus(prev => ({
+        ...prev,
+        [selectedFeedMeta.id]: { total: historyData.total, loaded: mergedItems.length }
+      }));
       setCurrentPage(1);
     } catch (e) {
       setErrorMsg("刷新失败");
@@ -204,6 +238,59 @@ const App: React.FC = () => {
       setIsRefreshing(false);
     }
   }, [selectedFeedMeta, isRefreshing, setFeedContentCache]);
+
+  // 分页切换时预加载下一页
+  const handlePageChange = useCallback((newPage: number) => {
+    setCurrentPage(newPage);
+    
+    if (!selectedFeedMeta || !selectedFeed) return;
+    
+    const feedId = selectedFeedMeta.id;
+    const status = historyStatus[feedId];
+    if (!status) return;
+    
+    // 计算是否需要预加载：下一页的起始位置超过了已加载的数量
+    const nextPageStart = newPage * ARTICLES_PER_PAGE;
+    const needsPreload = nextPageStart + ARTICLES_PER_PAGE > status.loaded 
+                         && status.loaded < status.total;
+    
+    if (needsPreload) {
+      // 异步预加载，不阻塞页面切换
+      fetchHistory(feedId, HISTORY_PRELOAD_SIZE, status.loaded)
+        .then(moreData => {
+          if (moreData.items.length > 0) {
+            // 使用 feedContentCache 获取最新状态
+            setFeedContentCache(prev => {
+              const currentFeed = prev[feedId];
+              if (!currentFeed) return prev;
+              
+              const mergedItems = mergeAndDedupeArticles(currentFeed.items, moreData.items);
+              const updatedFeed = { ...currentFeed, items: mergedItems };
+              
+              // 同步更新 selectedFeed
+              setSelectedFeed(updatedFeed);
+              
+              // 更新历史状态
+              setHistoryStatus(prevStatus => {
+                const latestStatus = prevStatus[feedId];
+                return {
+                  ...prevStatus,
+                  [feedId]: { 
+                    total: latestStatus?.total ?? status.total, 
+                    loaded: mergedItems.length
+                  }
+                };
+              });
+              
+              return { ...prev, [feedId]: updatedFeed };
+            });
+          }
+        })
+        .catch(e => {
+          console.warn('预加载历史失败:', e);
+        });
+    }
+  }, [selectedFeedMeta, selectedFeed, historyStatus, setFeedContentCache, setSelectedFeed]);
 
   const handleArticleSelect = (article: Article) => {
     setActiveArticle(article);
@@ -339,7 +426,7 @@ const App: React.FC = () => {
             isAiConfigured={isAiConfigured}
             paginatedArticlesWithCategory={paginatedArticlesWithCategory} readArticleIds={readArticleIds}
             handleArticleSelect={handleArticleSelect} onRefresh={handleRefresh} isRefreshing={isRefreshing}
-            currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages}
+            currentPage={currentPage} setCurrentPage={handlePageChange} totalPages={totalPages}
             filteredArticlesCount={filteredArticles.length} isLoadingMoreHistory={false} canLoadMoreHistory={false}
             showScrollToTop={showScrollToTop} handleScrollToTop={() => {}}
             articleListRef={articleListRef} visiblePageTokens={[]}
