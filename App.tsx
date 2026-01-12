@@ -464,13 +464,21 @@ const App: React.FC = () => {
           <ArticleReader 
             article={activeArticle} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen}
             isRightSidebarOpen={isRightSidebarOpen} setIsRightSidebarOpen={setIsRightSidebarOpen}
-            handleBackToArticles={() => setActiveArticle(null)} targetLang={targetLang}
+            handleBackToArticles={() => {
+              setActiveArticle(null);
+              if (selectedFeedMeta) {
+                window.history.replaceState({ feedId: selectedFeedMeta.id }, '', buildFeedPath(selectedFeedMeta.id));
+              } else {
+                window.history.replaceState({}, '', '/');
+              }
+            }} targetLang={targetLang}
             handleLanguageSwitch={setTargetLang} showTranslation={showTranslation}
             handleTranslateToggle={handleTranslateToggle} isTranslating={isTranslating}
             translatedContent={translatedContent} getTranslatorName={() => "AI"}
             proxiedArticleContent={activeArticle.content} readingViewAvatar={getMediaUrl(selectedFeed?.image)}
           />
         )}
+
       </main>
 
       {/* 右侧栏 - 遮罩层 */}
