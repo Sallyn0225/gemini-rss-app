@@ -100,12 +100,12 @@ const DraggableNestedFeedItem = React.memo<{
         </p>
         <p className="text-[10px] text-muted-foreground font-medium truncate opacity-70">{feed.url}</p>
       </div>
-      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(feed)}>
-          <Edit2 className="w-3.5 h-3.5" />
+      <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-8 sm:w-8" onClick={() => onEdit(feed)}>
+          <Edit2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(feed.id)}>
-          <Trash2 className="w-3.5 h-3.5" />
+        <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-8 sm:w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => onDelete(feed.id)}>
+          <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
         </Button>
       </div>
     </Reorder.Item>
@@ -680,7 +680,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl w-[95vw] md:w-full h-[90vh] md:h-[85vh] p-0 flex flex-col overflow-hidden rounded-[1.5rem] md:rounded-[2rem]">
+      <DialogContent className="max-w-4xl w-full sm:w-[95vw] h-[100dvh] sm:h-[90vh] md:h-[85vh] p-0 flex flex-col overflow-hidden rounded-none sm:rounded-[1.5rem] md:rounded-[2rem]">
         <DialogHeader className="px-4 md:px-6 py-4 border-b shrink-0">
           <div className="flex items-center gap-2">
             <Settings2 className="w-5 h-5 text-primary" />
@@ -689,28 +689,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          <TabsList className="w-full md:w-48 h-auto flex flex-row md:flex-col justify-start bg-muted/30 p-2 gap-1 shrink-0 overflow-x-auto custom-scrollbar">
-            <TabsTrigger value="providers" className="justify-start gap-2 px-3 md:px-4 py-2 md:py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs md:text-sm">
+          <TabsList className="w-full md:w-48 h-auto grid grid-cols-4 md:flex md:flex-col bg-muted/30 p-1.5 md:p-2 gap-1 shrink-0">
+            <TabsTrigger value="providers" className="flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2 px-2 md:px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] md:text-sm">
               <Cpu className="w-4 h-4" />
-              <span className="hidden md:inline">API 提供商</span>
+              <span>API</span>
             </TabsTrigger>
-            <TabsTrigger value="models" className="justify-start gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="models" className="flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2 px-2 md:px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] md:text-sm">
               <Settings2 className="w-4 h-4" />
-              <span className="hidden md:inline">模型配置</span>
+              <span>模型</span>
             </TabsTrigger>
-            <TabsTrigger value="feeds" className="justify-start gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="feeds" className="flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2 px-2 md:px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] md:text-sm">
               <Rss className="w-4 h-4" />
-              <span className="hidden md:inline">订阅源管理</span>
+              <span>订阅源</span>
             </TabsTrigger>
-            <TabsTrigger value="display" className="justify-start gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="display" className="flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2 px-2 md:px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] md:text-sm">
               <Monitor className="w-4 h-4" />
-              <span className="hidden md:inline">显示设置</span>
+              <span>显示</span>
             </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-hidden relative">
             <ScrollArea className="h-full">
-              <div className="p-6 md:p-8">
+              <div className="p-4 sm:p-6 md:p-8">
                 {/* --- PROVIDERS TAB --- */}
                 <TabsContent value="providers" className="m-0 space-y-6">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -1244,9 +1244,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
           </div>
         </Tabs>
 
-        <DialogFooter className="px-4 md:px-6 py-4 border-t shrink-0 bg-muted/20 flex flex-row gap-2">
-          <Button variant="ghost" onClick={onClose} className="flex-1 md:flex-none">取消</Button>
-          <Button onClick={handleSaveAll} className="flex-1 md:flex-none md:px-8">保存所有设置</Button>
+        <DialogFooter className="px-4 md:px-6 py-3 sm:py-4 border-t shrink-0 bg-muted/20 flex flex-col-reverse sm:flex-row gap-2">
+          <Button variant="ghost" onClick={onClose} className="w-full sm:w-auto">取消</Button>
+          <Button onClick={handleSaveAll} className="w-full sm:w-auto sm:px-8">保存所有设置</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
