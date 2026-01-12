@@ -43,6 +43,26 @@ const getArticleId = (article: Article): string => article.guid || article.link 
 const buildFeedPath = (feedId: string): string => `/feed/${encodeURIComponent(feedId)}`;
 const buildArticlePath = (feedId: string, articleId: string): string => `${buildFeedPath(feedId)}/article/${encodeURIComponent(articleId)}`;
 
+const LAST_VALID_FEED_KEY = 'last_valid_feed_id';
+
+const getLastValidFeedId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(LAST_VALID_FEED_KEY);
+  } catch {
+    return null;
+  }
+};
+
+const setLastValidFeedId = (feedId: string): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LAST_VALID_FEED_KEY, feedId);
+  } catch {
+    return;
+  }
+};
+
 const parseRoute = () => {
   if (typeof window === 'undefined') return { feedId: null, articleId: null };
   const parts = window.location.pathname.split('/').filter(Boolean);
@@ -189,6 +209,13 @@ const App: React.FC = () => {
   }, [filteredArticles, currentPage, articleClassifications]);
 
   const handleFeedSelect = useCallback(async (meta: FeedMeta, options?: { skipHistory?: boolean; articleId?: string }) => {
+    if (!meta?.id || meta.id === 'none') {
+      setErrorMsg('订阅源 ID 无效');
+      return;
+    }
+
+    setLastValidFeedId(meta.id);
+
     if (!options?.skipHistory && typeof window !== 'undefined') {
       // 如果已经在同一个 feed，使用 replaceState 而不是 pushState，避免重复历史记录
       if (selectedFeedMeta?.id === meta.id) {
@@ -400,7 +427,22 @@ const App: React.FC = () => {
       return;
     }
     const meta = feedConfigs.find(f => f.id === route.feedId);
-    if (meta && selectedFeedMeta?.id !== route.feedId) {
+    if (!meta) {
+      const fallbackId = getLastValidFeedId();
+      const fallbackMeta = fallbackId ? feedConfigs.find(f => f.id === fallbackId) : null;
+      if (fallbackMeta) {
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({ feedId: fallbackMeta.id }, '', buildFeedPath(fallbackMeta.id));
+        }
+        handleFeedSelect(fallbackMeta, { skipHistory: true });
+        return;
+      }
+      setSelectedFeed(null); setSelectedFeedMeta(null); setActiveArticle(null);
+      if (typeof window !== 'undefined') window.history.replaceState({}, '', '/');
+      setErrorMsg('订阅源不存在或已删除');
+      return;
+    }
+    if (selectedFeedMeta?.id !== route.feedId) {
       handleFeedSelect(meta, { skipHistory: true, articleId: route.articleId });
     } else if (route.articleId && selectedFeed) {
       const art = selectedFeed.items.find(i => getArticleId(i) === route.articleId);
