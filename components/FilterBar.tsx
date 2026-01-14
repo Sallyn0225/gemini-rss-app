@@ -14,6 +14,7 @@ interface FilterBarProps {
   analysisSuccess: boolean;
   selectedDate: Date | null;
   isAiConfigured: boolean;
+  onShowToast?: (message: string, variant?: 'default' | 'destructive') => void;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = React.memo(({
@@ -24,7 +25,8 @@ export const FilterBar: React.FC<FilterBarProps> = React.memo(({
   isAnalyzing,
   analysisSuccess,
   selectedDate,
-  isAiConfigured
+  isAiConfigured,
+  onShowToast
 }) => {
   const filters = [
     ArticleCategory.OFFICIAL, 
@@ -42,11 +44,11 @@ export const FilterBar: React.FC<FilterBarProps> = React.memo(({
           size="sm"
           onClick={() => {
             if (!selectedDate) {
-              alert("请先选择日期以进行 AI 分析");
+              onShowToast?.("请先选择日期以进行 AI 分析", "destructive");
               return;
             }
             if (!isAiConfigured) {
-              alert("请先在设置中配置 AI 模型");
+              onShowToast?.("请先在设置中配置 AI 模型", "destructive");
               return;
             }
             onAnalyze();

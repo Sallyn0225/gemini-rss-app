@@ -236,96 +236,59 @@ export const translateContent = async (
   }
 };
 
-interface AnalysisResult {
-  summary: string;
-  classifications: string[];
-}
-
-export const analyzeFeedContent = async (
-  feedTitle: string,
-  date: Date,
+/**
+ * 快速分类文章（第一步）
+ * 仅返回分类结果，Prompt 更短，响应更快
+ */
+export const classifyArticles = async (
   articles: Article[],
   settings: AISettings | null = null
-): Promise<AnalysisResult> => {
+): Promise<string[]> => {
   if (articles.length === 0) {
-    return { summary: "该日期无文章可总结。", classifications: [] };
+    return [];
   }
 
-  const dateStr = date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
-  
-  // Context preparation
-  const context = articles.map((a, index) => `ID: ${index}\n标题: ${a.title}\n内容摘要: ${a.description?.replace(/<[^>]+>/g, '').substring(0, 300)}`).join('\n\n');
+  // Context preparation - 使用更短的描述以加快响应
+  const context = articles.map((a, index) => 
+    `${index}. ${a.title}${a.description ? ` - ${a.description.replace(/<[^>]+>/g, '').substring(0, 150)}` : ''}`
+  ).join('\n');
 
   const prompt = `
-    你是一个智能新闻分析师。请仔细阅读以下文章列表，完成两个任务：
-    1. 为每一篇文章进行分类。
-    2. 为"${feedTitle}"在${dateStr}发布的内容生成一段总结。
+你是一个新闻分类专家。请将以下文章快速分类。
 
-    文章列表：
-    ${context}
+文章列表：
+${context}
 
-    **任务一：文章分类**
-    请将每一篇文章归类为以下四个类别之一（必须严格匹配）：
-    - "官方公告与新闻发布"
-    - "内容更新与媒体宣发"
-    - "线下活动与演出速报"
-    - "社区互动与粉丝福利"
+分类规则：
+- 将每篇文章归类为以下四个类别之一（必须严格匹配）：
+  - "官方公告与新闻发布"
+  - "内容更新与媒体宣发"
+  - "线下活动与演出速报"
+  - "社区互动与粉丝福利"
 
-    **重要分类规则 (Priority Rule)**:
-    - **如果文章标题以 "RT" 开头 (例如 "RT User:", "RT @User", "RT 梦限大..."), 请忽略 "RT" 前缀，根据引用内容的语义进行归类。**
-    - 如果文章是转推，请根据其核心内容（被转发的原贴内容或评论内容）判断其所属类别。
+- 如果标题以 "RT" 开头，根据引用内容的语义进行归类。
 
-    **任务二：每日总结**
-    请根据分类结果，生成一份纯文本总结。
-    
-    **总结格式要求**：
-    1. **格式必须为纯文本**：严禁使用任何Markdown格式（禁止使用加粗**，禁止使用列表-，禁止使用标题#）。
-    2. **语言**：简体中文。
-    3. **排版要求**：**每个分类的内容必须单独成段，段落之间必须使用两个换行符(\\n\\n)分隔**。
-    4. **输出结构模版**：
+输出格式：
+返回 JSON 数组，顺序与输入文章一致。
+例如：["官方公告与新闻发布", "社区互动与粉丝福利", ...]
+`;
 
-    ${dateStr}，${feedTitle}发布的内容如下。
-
-    官方公告与新闻发布方面，[内容...]。
-
-    内容更新与媒体宣发方面，[内容...]。
-
-    线下活动与演出速报方面，[内容...]。
-
-    社区互动与粉丝福利方面，[内容...]。
-
-    **输出格式**：
-    请返回标准的 JSON 格式，不包含任何 Markdown 代码块标记（如 \`\`\`json）。
-    JSON 结构如下：
-    {
-      "summary": "你的总结文本...",
-      "classifications": ["分类1", "分类2", ...] // 数组顺序必须与输入的文章顺序一致
-    }
-  `;
-
-  // 1. Try Custom Settings (Prefer Analysis config)
+  // 1. Try Custom Settings
   const config = getModelForTask(settings, 'analysis');
   if (config) {
     try {
       const text = await callLLM(config.provider, config.modelId, prompt, true);
       const result = JSON.parse(text);
-      return {
-        summary: result.summary || "总结生成失败。",
-        classifications: Array.isArray(result.classifications) ? result.classifications : []
-      };
+      return Array.isArray(result) ? result : [];
     } catch (e: any) {
-      console.warn("Custom analysis provider failed:", e);
-      // Return error in summary so user sees it in the dashboard widget
-      return {
-        summary: `分析失败：${e.message}`,
-        classifications: []
-      };
+      console.warn("Classification failed:", e);
+      throw new Error(`分类失败：${e.message}`);
     }
   }
 
   // 2. Fallback to System Default
   if (!systemApiKey) {
-    return { summary: "缺少系统 API Key，请在设置中配置。", classifications: [] };
+    throw new Error("缺少系统 API Key，请在设置中配置。");
   }
 
   try {
@@ -335,18 +298,102 @@ export const analyzeFeedContent = async (
       config: { responseMimeType: 'application/json' }
     });
     
-    const text = response.text || "{}";
+    const text = response.text || "[]";
     const result = JSON.parse(text);
-    
-    return {
-      summary: result.summary || "总结生成失败。",
-      classifications: Array.isArray(result.classifications) ? result.classifications : []
-    };
+    return Array.isArray(result) ? result : [];
   } catch (error: any) {
-    console.error("Gemini Analysis Error:", error);
-    return {
-      summary: `System Gemini Error: ${error.message}`,
-      classifications: []
-    };
+    console.error("Gemini Classification Error:", error);
+    throw new Error(`System Gemini Error: ${error.message}`);
+  }
+};
+
+/**
+ * 生成每日总结（第二步）
+ * 接收分类结果作为输入，生成结构化总结
+ */
+export const generateDailySummary = async (
+  feedTitle: string,
+  date: Date,
+  articles: Article[],
+  classifications: string[],
+  settings: AISettings | null = null
+): Promise<string> => {
+  if (articles.length === 0) {
+    return "该日期无文章可总结。";
+  }
+
+  const dateStr = date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  
+  // 按分类组织文章
+  const categorizedArticles = articles.map((a, index) => ({
+    title: a.title,
+    category: classifications[index] || "未分类",
+    description: a.description?.replace(/<[^>]+>/g, '').substring(0, 200)
+  }));
+
+  const context = categorizedArticles.map(a => 
+    `[${a.category}] ${a.title}${a.description ? `: ${a.description}` : ''}`
+  ).join('\n');
+
+  const prompt = `
+你是一个新闻总结专家。请根据以下已分类的文章列表，生成一份每日总结。
+
+日期：${dateStr}
+来源：${feedTitle}
+
+已分类的文章：
+${context}
+
+总结格式要求：
+1. 格式必须为纯文本：严禁使用任何 Markdown 格式（禁止加粗**、列表-、标题#）
+2. 语言：简体中文
+3. 每个分类的内容必须单独成段，段落之间使用两个换行符分隔
+
+输出结构模版：
+${dateStr}，${feedTitle}发布的内容如下。
+
+官方公告与新闻发布方面，[内容...]。
+
+内容更新与媒体宣发方面，[内容...]。
+
+线下活动与演出速报方面，[内容...]。
+
+社区互动与粉丝福利方面，[内容...]。
+
+注意：如果某个分类没有文章，可以省略该段落或简单说明"无相关内容"。
+直接返回总结文本，不要包含任何 JSON 格式。
+`;
+
+  // 1. Try Custom Settings (Prefer Summary config, fallback to Analysis)
+  let config = getModelForTask(settings, 'summary');
+  if (!config) {
+    config = getModelForTask(settings, 'analysis');
+  }
+  
+  if (config) {
+    try {
+      const text = await callLLM(config.provider, config.modelId, prompt, false);
+      return text.trim() || "总结生成失败。";
+    } catch (e: any) {
+      console.warn("Summary generation failed:", e);
+      throw new Error(`总结生成失败：${e.message}`);
+    }
+  }
+
+  // 2. Fallback to System Default
+  if (!systemApiKey) {
+    throw new Error("缺少系统 API Key，请在设置中配置。");
+  }
+
+  try {
+    const response = await systemAi.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: prompt,
+    });
+    
+    return response.text?.trim() || "总结生成失败。";
+  } catch (error: any) {
+    console.error("Gemini Summary Error:", error);
+    throw new Error(`System Gemini Error: ${error.message}`);
   }
 };

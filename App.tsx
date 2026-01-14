@@ -9,7 +9,7 @@ import {
   getMediaUrl,
   proxyImageUrl
 } from './services/rssService';
-import { translateContent, analyzeFeedContent } from './services/geminiService';
+import { translateContent, classifyArticles, generateDailySummary } from './services/geminiService';
 import { 
   Feed, 
   Article, 
@@ -38,6 +38,7 @@ import { useAppContext } from './lib/AppContext';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from '@/hooks/use-toast';
 
 const getArticleId = (article: Article): string => article.guid || article.link || `${article.title}-${article.pubDate}`;
 const buildFeedPath = (feedId: string): string => `/feed/${encodeURIComponent(feedId)}`;
@@ -89,6 +90,8 @@ const App: React.FC = () => {
     isAiConfigured
   } = useAppContext();
 
+  const { toast } = useToast();
+
   const FEED_CACHE_TTL = 10 * 60 * 1000;
   const HISTORY_INITIAL_LOAD = 24;  // 首次加载 2 页（24 条）
   const HISTORY_PRELOAD_SIZE = 12;  // 预加载 1 页（12 条）
@@ -106,9 +109,12 @@ const App: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dailySummary, setDailySummary] = useState<string | null>(null);
   const [summaryCache, setSummaryCache] = useState<Record<string, string>>({});
+  const [classificationCache, setClassificationCache] = useState<Record<string, Record<string, string>>>({});
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisSuccess, setAnalysisSuccess] = useState(false);
+  const [isClassifying, setIsClassifying] = useState(false);  // 分类进行中
+  const [isSummarizing, setIsSummarizing] = useState(false);  // 总结进行中
   const [articleClassifications, setArticleClassifications] = useState<Record<string, string>>({});
   const [targetLang, setTargetLang] = useState<Language>(Language.CHINESE);
   const [translatedContent, setTranslatedContent] = useState<string | null>(null);
@@ -138,6 +144,14 @@ const App: React.FC = () => {
   const handleScrollPositionChange = useCallback((feedId: string, position: number) => {
     scrollPositionsRef.current.set(feedId, position);
   }, []);
+
+  // Toast 回调函数，用于 FilterBar 等子组件
+  const showToast = useCallback((message: string, variant?: 'default' | 'destructive') => {
+    toast({
+      description: message,
+      variant: variant || 'default',
+    });
+  }, [toast]);
 
 
   const groupedFeeds = useMemo(() => {
@@ -184,7 +198,10 @@ const App: React.FC = () => {
   const filteredArticles = useMemo(() => {
     if (activeFilters.length === 0) return baseArticles;
     return baseArticles.filter(article => 
-      activeFilters.some(f => articleClassifications[article.guid] === f || (f === ArticleCategory.RETWEET && /^RT\s/i.test(article.title)))
+      activeFilters.some(f => {
+        const articleId = getArticleId(article);
+        return (articleId && articleClassifications[articleId] === f) || (f === ArticleCategory.RETWEET && /^RT\s/i.test(article.title));
+      })
     );
   }, [baseArticles, activeFilters, articleClassifications]);
 
@@ -204,7 +221,7 @@ const App: React.FC = () => {
   const paginatedArticlesWithCategory = useMemo(() => {
     const start = (currentPage - 1) * ARTICLES_PER_PAGE;
     return filteredArticles.slice(start, start + ARTICLES_PER_PAGE).map(a => ({
-      ...a, aiCategory: articleClassifications[a.guid]
+      ...a, aiCategory: articleClassifications[getArticleId(a)]
     }));
   }, [filteredArticles, currentPage, articleClassifications]);
 
@@ -370,40 +387,79 @@ const App: React.FC = () => {
   };
 
   const handleRunAnalysis = useCallback(async () => {
-    if (!selectedFeedMeta || !selectedFeed || !selectedDate || isAnalyzing) return;
+    if (!selectedFeedMeta || !selectedFeed || !selectedDate) return;
+
+    const cacheKey = `${selectedFeedMeta.id}-${selectedDate.toDateString()}`;
+
+    // 如果已有缓存，直接复用，避免重复调用
+    if (summaryCache[cacheKey] && classificationCache[cacheKey]) {
+      setDailySummary(summaryCache[cacheKey]);
+      setArticleClassifications(classificationCache[cacheKey]);
+      setAnalysisSuccess(true);
+      setIsClassifying(false);
+      setIsSummarizing(false);
+      setIsAnalyzing(false);
+      setIsRightSidebarOpen(true);
+      toast({ description: "已加载缓存的 AI 分析结果" });
+      return;
+    }
+
+    if (isAnalyzing) return;
+
     setIsAnalyzing(true);
     setAnalysisSuccess(false);
+    setIsClassifying(true);
+    setIsSummarizing(false);
+    setIsRightSidebarOpen(true); // 立即打开右侧栏显示进度
     
     try {
-      const cacheKey = `${selectedFeedMeta.id}-${selectedDate.toDateString()}`;
+      // 第一步：快速分类（约 3-5 秒）
+      const classifications = await classifyArticles(baseArticles, aiSettings);
       
-      const result = await analyzeFeedContent(
-        selectedFeed.title,
-        selectedDate,
-        baseArticles,
-        aiSettings
-      );
-      
-      setDailySummary(result.summary);
-      setSummaryCache(prev => ({ ...prev, [cacheKey]: result.summary }));
-      
-      // 更新文章分类
-      const newClassifications = { ...articleClassifications };
+      // 分类完成，立即更新 UI
+      const newClassifications: Record<string, string> = {};
       baseArticles.forEach((article, index) => {
-        if (result.classifications[index]) {
-          newClassifications[article.guid] = result.classifications[index];
+        const key = getArticleId(article);
+        if (classifications[index] && key) {
+          newClassifications[key] = classifications[index];
         }
       });
       setArticleClassifications(newClassifications);
+      setClassificationCache(prev => ({ ...prev, [cacheKey]: newClassifications }));
+      setIsClassifying(false);
+      
+      toast({ description: "文章分类完成，正在生成总结..." });
+      
+      // 第二步：生成总结（约 10-20 秒）
+      setIsSummarizing(true);
+      const summary = await generateDailySummary(
+        selectedFeed.title,
+        selectedDate,
+        baseArticles,
+        classifications,
+        aiSettings
+      );
+      
+      setDailySummary(summary);
+      setSummaryCache(prev => ({ ...prev, [cacheKey]: summary }));
+      setIsSummarizing(false);
       setAnalysisSuccess(true);
-      setIsRightSidebarOpen(true); // 分析完成后自动打开右侧栏查看结果
-    } catch (e) {
+      
+      toast({ description: "AI 分析完成！" });
+      
+    } catch (e: any) {
       console.error("Analysis failed:", e);
-      setErrorMsg("分析失败，请检查 AI 配置");
+      setErrorMsg(e.message || "分析失败，请检查 AI 配置");
+      toast({
+        description: e.message || "分析失败，请检查 AI 配置",
+        variant: "destructive",
+      });
     } finally {
       setIsAnalyzing(false);
+      setIsClassifying(false);
+      setIsSummarizing(false);
     }
-  }, [selectedFeedMeta, selectedFeed, selectedDate, isAnalyzing, baseArticles, aiSettings, articleClassifications, setIsRightSidebarOpen]);
+  }, [selectedFeedMeta, selectedFeed, selectedDate, isAnalyzing, baseArticles, aiSettings, setIsRightSidebarOpen, toast, summaryCache, classificationCache]);
 
   useEffect(() => {
     if (selectedFeedMeta && selectedDate) {
@@ -415,11 +471,17 @@ const App: React.FC = () => {
         setDailySummary(null);
         setAnalysisSuccess(false);
       }
+      if (classificationCache[cacheKey]) {
+        setArticleClassifications(classificationCache[cacheKey]);
+      } else {
+        setArticleClassifications({});
+      }
     } else {
       setDailySummary(null);
       setAnalysisSuccess(false);
+      setArticleClassifications({});
     }
-  }, [selectedFeedMeta, selectedDate, summaryCache]);
+  }, [selectedFeedMeta, selectedDate, summaryCache, classificationCache]);
 
   const syncStateWithRoute = useCallback((route: any, skipHistory: boolean) => {
     if (!route.feedId) {
@@ -521,6 +583,7 @@ const App: React.FC = () => {
             feedId={selectedFeedMeta.id}
             initialScrollPosition={scrollPositionsRef.current.get(selectedFeedMeta.id) ?? 0}
             onScrollPositionChange={handleScrollPositionChange}
+            onShowToast={showToast}
           />
         )}
 
@@ -601,13 +664,50 @@ const App: React.FC = () => {
                   </div>
                 </ScrollArea>
               </div>
+            ) : isAnalyzing ? (
+              <div className="bg-muted/30 rounded-xl border p-4 flex flex-col gap-4">
+                <div className="flex items-center gap-2 text-primary">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    {isClassifying ? "正在分类文章..." : isSummarizing ? "正在生成总结..." : "AI 分析中..."}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {/* 步骤指示器 */}
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                      isClassifying ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    )}>
+                      {!isClassifying && !isSummarizing ? "1" : isClassifying ? "⏳" : "✓"}
+                    </div>
+                    <span className={cn("text-xs", isClassifying ? "text-primary font-bold" : "text-muted-foreground")}>
+                      分类文章
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={cn(
+                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                      isSummarizing ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    )}>
+                      {isSummarizing ? "⏳" : "2"}
+                    </div>
+                    <span className={cn("text-xs", isSummarizing ? "text-primary font-bold" : "text-muted-foreground")}>
+                      生成总结
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  通常需要 10-30 秒，请耐心等待...
+                </p>
+              </div>
             ) : (
               <div className="bg-muted/30 rounded-xl border border-dashed p-8 flex flex-col items-center justify-center text-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                   <span className="text-xs">📊</span>
                 </div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                  {isAnalyzing ? "正在进行 AI 分析..." : "选择日期并点击\n「AI 分析」生成总结"}
+                  选择日期并点击{"\n"}「AI 分析」生成总结
                 </p>
               </div>
             )}

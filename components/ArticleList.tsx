@@ -46,6 +46,7 @@ interface ArticleListProps {
   feedId: string;
   initialScrollPosition?: number;
   onScrollPositionChange?: (feedId: string, position: number) => void;
+  onShowToast?: (message: string, variant?: 'default' | 'destructive') => void;
 }
 
 export const ArticleList: React.FC<ArticleListProps> = ({
@@ -78,7 +79,8 @@ export const ArticleList: React.FC<ArticleListProps> = ({
   visiblePageTokens,
   feedId,
   initialScrollPosition = 0,
-  onScrollPositionChange
+  onScrollPositionChange,
+  onShowToast
 }) => {
   const [pullDistance, setPullDistance] = React.useState(0);
   const touchStartRef = React.useRef<number>(0);
@@ -198,6 +200,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
         analysisSuccess={analysisSuccess}
         selectedDate={selectedDate}
         isAiConfigured={isAiConfigured}
+        onShowToast={onShowToast}
       />
 
       <ScrollArea ref={articleListRef as any} className="flex-1 bg-muted/10">
