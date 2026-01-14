@@ -43,7 +43,11 @@
       "destination": "/api/history?action=:action"
     },
     {
-      "source": "/(.*)",
+      "source": "/feed/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:path((?!api|assets|_next).*)",
       "destination": "/index.html"
     }
   ],
