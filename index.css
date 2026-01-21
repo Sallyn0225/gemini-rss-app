@@ -74,6 +74,6 @@
 
 /* Fallback for prose images on mobile to prevent overflow */
 .prose img {
-  max-width: 100%;
-  height: auto;
+  max-width: 100% !important;
+  height: auto !important;
 }
