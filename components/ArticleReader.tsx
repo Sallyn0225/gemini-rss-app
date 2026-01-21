@@ -99,8 +99,8 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
         </div>
       </header>
 
-      <ScrollArea className="flex-1">
-        <article className="max-w-3xl mx-auto px-6 py-12 md:py-16 space-y-8">
+      <ScrollArea className="flex-1 min-w-0">
+        <article className="max-w-3xl w-full mx-auto px-6 py-12 md:py-16 space-y-8">
           <header className="space-y-6">
             <h1 className="text-3xl md:text-5xl font-black leading-tight tracking-tight">{article.title}</h1>
             <div className="flex items-center gap-4">
