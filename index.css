@@ -71,3 +71,9 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/30;
 }
+
+/* Fallback for prose images on mobile to prevent overflow */
+.prose img {
+  max-width: 100%;
+  height: auto;
+}
