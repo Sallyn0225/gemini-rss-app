@@ -2,7 +2,6 @@
 
 **Generated:** Sun Jan 11 2026
 **Updated:** Mon Mar 03 2026 (Cloudflare Pages migration)
-**Branch:** `cloudflare-pages-migration` (based on `vercel-neon-refactor`)
 
 ## OVERVIEW
 Gemini RSS Translator: A React 19 + Vite SPA for RSS aggregation, AI translation, and media proxying. Supports two deployment targets:

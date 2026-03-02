@@ -23,8 +23,8 @@ No test runner is configured. Drizzle migrations are managed via `drizzle.config
 
 This is a **React 19 + Vite SPA** with two supported deployment targets:
 
-1. **Vercel Functions** + **Neon PostgreSQL** (original, on `vercel-neon-refactor` branch)
-2. **Cloudflare Pages Functions** + **D1 SQLite / Neon PG** (on `cloudflare-pages-migration` branch)
+1. **Vercel Functions** + **Neon PostgreSQL** (backend in `api/` + `lib/`)
+2. **Cloudflare Pages Functions** + **D1 SQLite / Neon PG** (backend in `functions/` + `server/`)
 
 ### Key principle
 All user preferences and API keys are stored **client-side only** (localStorage + IndexedDB). The backend handles RSS fetching, media proxying, and article history — never user credentials.

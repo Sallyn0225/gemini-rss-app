@@ -20,7 +20,6 @@
 
 | | Vercel + Neon | Cloudflare Pages + D1 |
 |---|---|---|
-| **分支** | `vercel-neon-refactor` | `cloudflare-pages-migration` |
 | **数据库** | Neon PostgreSQL | D1 (SQLite)，可 fallback Neon |
 | **冷启动** | ~1 秒 | ~0 毫秒 |
 | **免费存储** | 0.5 GB | 5 GB |

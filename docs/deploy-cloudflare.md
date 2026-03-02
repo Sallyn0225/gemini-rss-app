@@ -36,8 +36,6 @@
 3. 在弹出页面直接点 **Create fork**
 4. 等待几秒，你的 GitHub 里就有了一份项目副本
 
-> **重要**：Fork 完成后，切换到 `cloudflare-pages-migration` 分支（这是 Cloudflare 专用分支）。
-
 ---
 
 ## 第二步：把代码下载到本地
@@ -50,9 +48,6 @@ git clone https://github.com/你的用户名/gemini-rss-app.git
 
 # 进入项目目录
 cd gemini-rss-app
-
-# 切换到 Cloudflare 分支
-git checkout cloudflare-pages-migration
 
 # 安装项目依赖
 npm install
@@ -196,7 +191,7 @@ npm run deploy:cf
 首次部署时，Wrangler 会问你一些问题：
 - **Create a new project?** → 输入 `Y`
 - **Project name** → 直接回车用默认值，或者输入你想要的名字
-- **Production branch** → 输入 `cloudflare-pages-migration`
+- **Production branch** → 输入 `main`（或你的默认分支名）
 
 部署成功后会显示你的网址，比如：
 
@@ -212,7 +207,7 @@ https://gemini-rss-app.pages.dev
 3. 点击 **Create** → **Pages** → **Connect to Git**
 4. 选择你 Fork 的 GitHub 仓库
 5. 配置：
-   - **Production branch**: `cloudflare-pages-migration`
+   - **Production branch**: 你的默认分支（通常是 `main`）
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
 6. 点击 **Save and Deploy**
@@ -282,7 +277,7 @@ npm run preview:cf
 ```bash
 # 同步上游代码
 git fetch upstream
-git merge upstream/cloudflare-pages-migration
+git merge upstream/main
 
 # 重新部署
 npm run deploy:cf
