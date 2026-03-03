@@ -16,4 +16,7 @@ export interface Env {
 
   // Max proxied media size in bytes (default 50MB)
   MEDIA_PROXY_MAX_BYTES?: string;
+
+  // Max article HTML size in bytes for extraction (default 5MB)
+  ARTICLE_EXTRACT_MAX_BYTES?: string;
 }

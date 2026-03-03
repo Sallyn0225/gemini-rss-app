@@ -15,6 +15,7 @@
     "db:migrate:d1:remote": "wrangler d1 migrations apply gemini-rss-db --remote"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "@neondatabase/serverless": "^0.10.4",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
@@ -33,6 +34,7 @@
     "drizzle-orm": "^0.36.4",
     "framer-motion": "^12.23.24",
     "idb-keyval": "^6.2.2",
+    "linkedom": "^0.18.12",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.13.0",
@@ -47,6 +49,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/mozilla-readability": "^0.2.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.23",

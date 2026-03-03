@@ -152,3 +152,22 @@ export const createMediaUrl = (originalUrl: string): MediaUrl => {
     proxied: buildProxiedUrl(originalUrl)
   };
 };
+
+// --- Article Extraction Types ---
+
+export interface ExtractedArticle {
+  title: string;
+  content: string;
+  textContent: string;
+  excerpt: string;
+  byline: string;
+  siteName: string;
+  length: number;
+}
+
+export interface ArticleExtractionResponse {
+  success: boolean;
+  data?: ExtractedArticle;
+  error?: string;
+  fallback?: 'use_rss_content';
+}
