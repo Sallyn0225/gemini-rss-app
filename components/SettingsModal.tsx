@@ -27,12 +27,11 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Settings2, 
-  Cpu, 
-  Rss, 
-  Monitor, 
-  Plus, 
+import {
+  Settings2,
+  Cpu,
+  Rss,
+  Plus,
   Trash2, 
   Edit2, 
   GripVertical, 
@@ -700,10 +699,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
               <Rss className="w-4 h-4" />
               <span>订阅源</span>
             </TabsTrigger>
-            <TabsTrigger value="display" className="flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2 px-2 md:px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] md:text-sm">
-              <Monitor className="w-4 h-4" />
-              <span>显示</span>
-            </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-hidden relative">
@@ -1182,21 +1177,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                       </Card>
                     </div>
                   )}
-                </TabsContent>
-
-                {/* --- DISPLAY TAB --- */}
-                <TabsContent value="display" className="m-0 space-y-8">
-                  <div>
-                    <h3 className="text-lg font-bold">显示与偏好</h3>
-                    <p className="text-sm text-muted-foreground">个性化您的阅读环境</p>
-                  </div>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">媒体加载</CardTitle>
-                      <CardDescription>图片资源将从原始地址直接加载</CardDescription>
-                    </CardHeader>
-                  </Card>
                 </TabsContent>
               </div>
             </ScrollArea>
