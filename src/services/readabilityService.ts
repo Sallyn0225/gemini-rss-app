@@ -1,5 +1,6 @@
 import { Readability } from '@mozilla/readability';
 import type { Article, ExtractedArticle } from '../../types';
+import { fetchViaCorsProxy } from './corsProxy';
 
 /**
  * 判断 article.content 是否比 article.description 更丰富
@@ -68,17 +69,38 @@ export function extractFromHtml(html: string, url: string): ExtractedArticle | n
   }
 }
 
+/** 简单检查响应是否为 HTML */
+const isHtml = (text: string): boolean => {
+  const trimmed = text.trimStart().substring(0, 500).toLowerCase();
+  return trimmed.includes('<!doctype html') || trimmed.includes('<html') || trimmed.includes('<head');
+};
+
 /**
- * 通过服务端 CORS 代理获取原始 HTML，在客户端用 Readability 解析
+ * 获取文章全文：优先走公共 CORS 代理（零服务端开销），失败再 fallback 到服务端
  */
 export async function fetchAndExtractClientSide(articleUrl: string): Promise<ExtractedArticle | null> {
+  // 策略 1：公共 CORS 代理（不消耗 Workers 请求）
+  try {
+    const html = await fetchViaCorsProxy(articleUrl, { validate: isHtml });
+    if (html) {
+      const result = extractFromHtml(html, articleUrl);
+      if (result) {
+        console.log('[Readability] Extracted via CORS proxy');
+        return result;
+      }
+    }
+  } catch (e) {
+    console.warn('[Readability] All CORS proxies failed, falling back to server');
+  }
+
+  // 策略 2：服务端代理（fallback）
   try {
     const response = await fetch(
       `/api/article/extract?url=${encodeURIComponent(articleUrl)}&mode=raw`
     );
 
     if (!response.ok) {
-      console.warn('[Readability] Raw HTML fetch failed:', response.status);
+      console.warn('[Readability] Server raw HTML fetch failed:', response.status);
       return null;
     }
 
