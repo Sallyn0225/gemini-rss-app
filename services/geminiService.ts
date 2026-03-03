@@ -37,7 +37,7 @@ const parseApiError = async (response: Response, providerName: string): Promise<
        // Gemini often uses error.message, OpenAI uses error.message or just string
        const errObj = json.error;
        if (typeof errObj === 'string') details = errObj;
-       else if (errObj.message) details = errObj.message;
+       else if (errObj.message) details = errObj.type ? `[${errObj.type}] ${errObj.message}` : errObj.message;
        else details = JSON.stringify(errObj);
     } else {
        details = errorBody.substring(0, 300);
@@ -60,43 +60,58 @@ const parseApiError = async (response: Response, providerName: string): Promise<
 
 // --- Helper: Fetch Models List ---
 export const fetchProviderModels = async (provider: AIProvider): Promise<string[]> => {
-  const isGemini = provider.type === 'gemini';
   const baseUrl = provider.baseUrl.replace(/\/+$/, '');
 
   try {
-    if (isGemini) {
-      // Gemini: GET /v1beta/models
-      const url = `${baseUrl}/v1beta/models?key=${provider.apiKey}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(await parseApiError(response, 'Gemini API'));
-      }
-
-      const data = await response.json();
-      // Gemini returns names like "models/gemini-pro". We usually just want the ID part.
-      if (data.models && Array.isArray(data.models)) {
-        return data.models.map((m: any) => m.name.replace(/^models\//, ''));
-      }
-      return [];
-    } else {
-      // OpenAI: GET /models
-      const url = `${baseUrl}/models`;
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${provider.apiKey}`
+    switch (provider.type) {
+      case 'gemini': {
+        const url = `${baseUrl}/v1beta/models?key=${provider.apiKey}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, 'Gemini API'));
         }
-      });
-
-      if (!response.ok) {
-        throw new Error(await parseApiError(response, 'OpenAI API'));
+        const data = await response.json();
+        if (data.models && Array.isArray(data.models)) {
+          return data.models.map((m: any) => m.name.replace(/^models\//, ''));
+        }
+        return [];
       }
-
-      const data = await response.json();
-      if (data.data && Array.isArray(data.data)) {
-        return data.data.map((m: any) => m.id);
+      case 'anthropic': {
+        const url = `${baseUrl}/v1/models`;
+        const response = await fetch(url, {
+          headers: {
+            'x-api-key': provider.apiKey,
+            'anthropic-version': '2023-06-01'
+          }
+        });
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, 'Anthropic API'));
+        }
+        const data = await response.json();
+        if (data.data && Array.isArray(data.data)) {
+          return data.data.map((m: any) => m.id);
+        }
+        return [];
       }
-      return [];
+      case 'openai':
+      case 'openai-responses': {
+        const url = `${baseUrl}/models`;
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${provider.apiKey}`
+          }
+        });
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, 'OpenAI API'));
+        }
+        const data = await response.json();
+        if (data.data && Array.isArray(data.data)) {
+          return data.data.map((m: any) => m.id);
+        }
+        return [];
+      }
+      default:
+        throw new Error(`不支持的 API 格式: ${provider.type}`);
     }
   } catch (error: any) {
     console.error("Fetch Models Error:", error);
@@ -111,8 +126,6 @@ const callLLM = async (
   prompt: string,
   jsonMode: boolean = false
 ): Promise<string> => {
-  const isGemini = provider.type === 'gemini';
-  
   // Clean URL: Remove trailing slash
   const baseUrl = provider.baseUrl.replace(/\/+$/, '');
 
@@ -120,53 +133,107 @@ const callLLM = async (
   const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s Timeout
 
   try {
-    if (isGemini) {
-      // GEMINI REST API
-      const url = `${baseUrl}/v1beta/models/${modelId}:generateContent?key=${provider.apiKey}`;
-      const body = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: jsonMode ? { responseMimeType: "application/json" } : undefined
-      };
+    let response: Response;
+    let providerLabel: string;
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        throw new Error(await parseApiError(response, 'Gemini REST API'));
+    switch (provider.type) {
+      case 'gemini': {
+        providerLabel = 'Gemini REST API';
+        const url = `${baseUrl}/v1beta/models/${modelId}:generateContent?key=${provider.apiKey}`;
+        const body = {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: jsonMode ? { responseMimeType: "application/json" } : undefined
+        };
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, providerLabel));
+        }
+        const geminiData = await response.json();
+        return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
       }
 
-      const data = await response.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    } else {
-      // OPENAI COMPATIBLE API
-      const url = `${baseUrl}/chat/completions`;
-      const body = {
-        model: modelId,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: jsonMode ? { type: "json_object" } : undefined
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${provider.apiKey}`
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        throw new Error(await parseApiError(response, 'OpenAI API'));
+      case 'openai': {
+        providerLabel = 'OpenAI API';
+        const url = `${baseUrl}/chat/completions`;
+        const body = {
+          model: modelId,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: jsonMode ? { type: "json_object" } : undefined
+        };
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${provider.apiKey}`
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, providerLabel));
+        }
+        const openaiData = await response.json();
+        return openaiData.choices?.[0]?.message?.content || '';
       }
 
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || '';
+      case 'openai-responses': {
+        providerLabel = 'OpenAI Responses API';
+        const url = `${baseUrl}/responses`;
+        const body: Record<string, any> = {
+          model: modelId,
+          input: prompt,
+        };
+        if (jsonMode) {
+          body.text = { format: { type: "json_object" } };
+        }
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${provider.apiKey}`
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, providerLabel));
+        }
+        const respData = await response.json();
+        return respData.output_text || respData.output?.[0]?.content?.[0]?.text || '';
+      }
+
+      case 'anthropic': {
+        providerLabel = 'Anthropic Messages API';
+        const url = `${baseUrl}/v1/messages`;
+        const body = {
+          model: modelId,
+          max_tokens: 64000,
+          messages: [{ role: 'user', content: prompt }]
+        };
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': provider.apiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          throw new Error(await parseApiError(response, providerLabel));
+        }
+        const anthropicData = await response.json();
+        return anthropicData.content?.[0]?.text || '';
+      }
+
+      default:
+        throw new Error(`不支持的 API 格式: ${provider.type}`);
     }
   } catch (e: any) {
     if (e.name === 'AbortError') {
