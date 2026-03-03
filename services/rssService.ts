@@ -53,7 +53,7 @@ export const fetchAllSystemFeeds = async (secret: string): Promise<FullSystemFee
   if (!response.ok) {
     let errorMessage = "Failed to fetch full feed list";
     try {
-      const err = await response.json();
+      const err = await response.json() as { error?: string };
       errorMessage = err.error || errorMessage;
     } catch {
       // If it's not JSON, might be a raw error message
@@ -84,7 +84,7 @@ export const addSystemFeed = async (
   });
 
   if (!response.ok) {
-    const err = await response.json();
+    const err = await response.json() as { error?: string };
     throw new Error(err.error || "Failed to add or update feed");
   }
 };
@@ -100,7 +100,7 @@ export const deleteSystemFeed = async (id: string, secret: string): Promise<void
     body: JSON.stringify({ id })
   });
   if (!response.ok) {
-    const err = await response.json();
+    const err = await response.json() as { error?: string };
     throw new Error(err.error || "Failed to delete feed");
   }
 };
@@ -116,7 +116,7 @@ export const reorderSystemFeeds = async (ids: string[], secret: string): Promise
     body: JSON.stringify({ ids })
   });
   if (!response.ok) {
-    const err = await response.json();
+    const err = await response.json() as { error?: string };
     throw new Error(err.error || "Failed to reorder feeds");
   }
 };
@@ -171,8 +171,8 @@ const upsertHistory = (feedId: string, items: Article[]): void => {
       if (res.ok) return res.json();
       throw new Error(`Upsert failed with status ${res.status}`);
     }).then(data => {
-      if (data.added > 0) {
-        console.log(`[History] Saved ${data.added} new items for "${feedId}", total: ${data.total}`);
+      if ((data as any).added > 0) {
+        console.log(`[History] Saved ${(data as any).added} new items for "${feedId}", total: ${(data as any).total}`);
       }
     }).catch(e => {
       if (attempt < maxAttempts) {
@@ -196,8 +196,8 @@ export const fetchHistory = async (feedId: string, limit?: number, offset?: numb
 
   const res = await fetch(`/api/history/get?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to load history');
-  const data = await res.json();
-  return { items: data.items as Article[], total: data.total };
+  const data = await res.json() as { items: Article[]; total: number };
+  return { items: data.items, total: data.total };
 };
 
 // Helper to extract image from HTML content safely and robustly
@@ -350,7 +350,7 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
 
   try {
     const response = await fetch(`${RSS2JSON_API}${encodeURIComponent(url)}`);
-    const data = await response.json();
+    const data = await response.json() as { status: string; feed: { title: string; description: string; image?: string }; items: any[] };
     if (data.status === 'ok') {
       return {
         url: url, title: data.feed.title, description: data.feed.description,

@@ -16,7 +16,7 @@ interface ArticleCardProps {
 export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({ article, onClick, isSelected, isRead }) => {
   const [imgError, setImgError] = useState(false);
 
-  const hasValidThumbnail = !imgError && article.thumbnail?.original;
+  const hasValidThumbnail = !imgError && article.thumbnail;
 
   const preview = useMemo(() => {
     const previewLength = hasValidThumbnail ? 150 : 250;

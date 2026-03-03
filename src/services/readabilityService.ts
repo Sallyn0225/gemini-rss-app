@@ -45,7 +45,7 @@ export function extractFromHtml(html: string, url: string): ExtractedArticle | n
     // 设置 <base href> 解决相对 URL 问题
     const base = doc.createElement('base');
     base.href = url;
-    doc.head.prepend(base);
+    doc.head.insertBefore(base, doc.head.firstChild);
 
     const reader = new Readability(doc, { keepClasses: true });
     const article = reader.parse();

@@ -70,7 +70,7 @@ export const fetchProviderModels = async (provider: AIProvider): Promise<string[
         if (!response.ok) {
           throw new Error(await parseApiError(response, 'Gemini API'));
         }
-        const data = await response.json();
+        const data = await response.json() as { models?: { name: string }[] };
         if (data.models && Array.isArray(data.models)) {
           return data.models.map((m: any) => m.name.replace(/^models\//, ''));
         }
@@ -87,7 +87,7 @@ export const fetchProviderModels = async (provider: AIProvider): Promise<string[
         if (!response.ok) {
           throw new Error(await parseApiError(response, 'Anthropic API'));
         }
-        const data = await response.json();
+        const data = await response.json() as { data?: { id: string }[] };
         if (data.data && Array.isArray(data.data)) {
           return data.data.map((m: any) => m.id);
         }
@@ -104,7 +104,7 @@ export const fetchProviderModels = async (provider: AIProvider): Promise<string[
         if (!response.ok) {
           throw new Error(await parseApiError(response, 'OpenAI API'));
         }
-        const data = await response.json();
+        const data = await response.json() as { data?: { id: string }[] };
         if (data.data && Array.isArray(data.data)) {
           return data.data.map((m: any) => m.id);
         }
@@ -153,7 +153,7 @@ const callLLM = async (
         if (!response.ok) {
           throw new Error(await parseApiError(response, providerLabel));
         }
-        const geminiData = await response.json();
+        const geminiData = await response.json() as any;
         return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
       }
 
@@ -177,7 +177,7 @@ const callLLM = async (
         if (!response.ok) {
           throw new Error(await parseApiError(response, providerLabel));
         }
-        const openaiData = await response.json();
+        const openaiData = await response.json() as any;
         return openaiData.choices?.[0]?.message?.content || '';
       }
 
@@ -203,7 +203,7 @@ const callLLM = async (
         if (!response.ok) {
           throw new Error(await parseApiError(response, providerLabel));
         }
-        const respData = await response.json();
+        const respData = await response.json() as any;
         return respData.output_text || respData.output?.[0]?.content?.[0]?.text || '';
       }
 
@@ -228,7 +228,7 @@ const callLLM = async (
         if (!response.ok) {
           throw new Error(await parseApiError(response, providerLabel));
         }
-        const anthropicData = await response.json();
+        const anthropicData = await response.json() as any;
         return anthropicData.content?.[0]?.text || '';
       }
 
