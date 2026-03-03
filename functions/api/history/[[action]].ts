@@ -14,7 +14,7 @@ import { handleHistory } from '../../../server/handlers/history.js';
 export const onRequest: PagesFunction<Env> = async (context) => {
   const dbClient = createDbClient(context.env);
   const repo = new Repository(dbClient);
-  const rateLimiter = createRateLimiter(context.env.RATE_LIMIT_KV);
+  const rateLimiter = createRateLimiter();
 
   // Rewrite path-based action to query param so the handler can read it
   // /api/history/get?id=X → action=get, /api/history/upsert → action=upsert

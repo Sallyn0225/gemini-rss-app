@@ -32,7 +32,6 @@ export async function handleFeeds(
         category: f.category,
         isSub: f.isSub || false,
         customTitle: f.customTitle || '',
-        canProxyImages: true,
       }));
       return Response.json(safeFeeds);
     }

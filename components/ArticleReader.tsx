@@ -1,12 +1,14 @@
-import React from 'react';
-import { 
-  ChevronLeft, 
-  Languages, 
-  Sparkles, 
-  RefreshCw, 
-  PanelLeft, 
-  PanelRight, 
-  ExternalLink 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  ChevronLeft,
+  Languages,
+  Sparkles,
+  RefreshCw,
+  PanelLeft,
+  PanelRight,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,6 +22,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Article, Language } from '../types';
+import { fetchFullArticle } from '../src/services/articleService';
 
 interface ArticleReaderProps {
   article: Article;
@@ -56,6 +59,78 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
   proxiedArticleContent,
   readingViewAvatar
 }) => {
+  // 控制是否显示完整内容
+  const [showFullContent, setShowFullContent] = useState(false);
+
+  // 文章提取相关状态
+  const [extractedContent, setExtractedContent] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
+
+  // 当文章切换时，重置所有状态
+  useEffect(() => {
+    setShowFullContent(false);
+    setExtractedContent(null);
+    setExtractionError(null);
+  }, [article.guid]);
+
+  // 处理展开全文按钮点击
+  const handleExpandFullArticle = async () => {
+    // 如果已经展开，则收起
+    if (showFullContent) {
+      setShowFullContent(false);
+      return;
+    }
+
+    // 如果已经有提取的内容，直接展开
+    if (extractedContent) {
+      setShowFullContent(true);
+      return;
+    }
+
+    // 开始提取
+    setIsExtracting(true);
+    setExtractionError(null);
+
+    try {
+      const result = await fetchFullArticle(article);
+
+      if (result.success && result.data) {
+        // 提取成功
+        setExtractedContent(result.data.content);
+        setShowFullContent(true);
+      } else {
+        // 提取失败，降级到 RSS 内容
+        setExtractionError(result.error || '提取失败');
+        setExtractedContent(proxiedArticleContent);
+        setShowFullContent(true);
+      }
+    } catch (error) {
+      // 异常情况，降级到 RSS 内容
+      setExtractionError(error instanceof Error ? error.message : '未知错误');
+      setExtractedContent(proxiedArticleContent);
+      setShowFullContent(true);
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  // 判断是否需要显示切换按钮
+  const shouldShowToggle = useMemo(() => {
+    // 只要文章有原文链接，就显示"展开全文"按钮
+    // 无论 description 长短，用户都可能需要从原网站提取完整内容
+    return !!article.link;
+  }, [article.link]);
+
+  // 获取要显示的内容
+  const displayContent = useMemo(() => {
+    if (!shouldShowToggle || !showFullContent) {
+      return article.description; // 显示摘要
+    }
+    // 显示提取的内容或 RSS 内容
+    return extractedContent || proxiedArticleContent;
+  }, [shouldShowToggle, showFullContent, extractedContent, proxiedArticleContent, article.description]);
+
   return (
     <div className="h-full flex flex-col bg-background animate-in slide-in-from-right duration-500">
       <header className="h-16 border-b flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md sticky top-0 z-20">
@@ -134,10 +209,46 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
           )}
 
           {!showTranslation && (
-            <div
-              className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-2xl prose-headings:font-black selection:bg-primary selection:text-primary-foreground prose-table:block prose-table:overflow-x-auto prose-img:max-w-full prose-img:h-auto prose-pre:max-w-full prose-pre:overflow-x-auto"
-              dangerouslySetInnerHTML={{ __html: proxiedArticleContent }}
-            />
+            <>
+              <div
+                className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-2xl prose-headings:font-black selection:bg-primary selection:text-primary-foreground prose-table:block prose-table:overflow-x-auto prose-img:max-w-full prose-img:h-auto prose-pre:max-w-full prose-pre:overflow-x-auto"
+                dangerouslySetInnerHTML={{ __html: displayContent }}
+              />
+
+              {shouldShowToggle && (
+                <div className="flex flex-col items-center mt-8 gap-2">
+                  <Button
+                    variant="default"
+                    size="lg"
+                    onClick={handleExpandFullArticle}
+                    disabled={isExtracting}
+                    className="gap-2 font-black text-sm uppercase tracking-widest"
+                  >
+                    {isExtracting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        加载中...
+                      </>
+                    ) : showFullContent ? (
+                      <>
+                        <ChevronUp className="w-4 h-4" />
+                        收起内容
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4" />
+                        展开全文
+                      </>
+                    )}
+                  </Button>
+                  {extractionError && showFullContent && (
+                    <div className="text-xs text-muted-foreground text-center">
+                      无法从原网站提取，显示 RSS 内容
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
           
           <div className="h-20" />

@@ -2,13 +2,11 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { get, set } from 'idb-keyval';
 import {
   Feed,
-  Article, 
-  Language, 
-  AISettings, 
-  ImageProxyMode, 
-  FeedMeta 
+  Article,
+  Language,
+  AISettings,
+  FeedMeta
 } from '../types';
-import { setImageProxyMode as setGlobalImageProxyMode } from '../services/rssService';
 
 interface AppContextType {
   // Appearance & UI
@@ -20,7 +18,7 @@ interface AppContextType {
   setIsRightSidebarOpen: (open: boolean) => void;
   sidebarMode: 'list' | 'grid';
   setSidebarMode: (mode: 'list' | 'grid') => void;
-  
+
   // Data State
   feedConfigs: FeedMeta[];
   setFeedConfigs: (configs: FeedMeta[]) => void;
@@ -32,13 +30,11 @@ interface AppContextType {
   setSelectedFeed: (feed: Feed | null) => void;
   activeArticle: Article | null;
   setActiveArticle: (article: Article | null) => void;
-  
+
   // Settings & AI
   aiSettings: AISettings;
   setAiSettings: (settings: AISettings) => void;
-  imageProxyMode: ImageProxyMode;
-  setImageProxyMode: (mode: ImageProxyMode) => void;
-  
+
   // Reading Progress
   readArticleIds: Set<string>;
   markAsRead: (id: string) => void;
@@ -75,18 +71,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const [imageProxyMode, setImageProxyModeState] = useState<ImageProxyMode>(() => {
-    const stored = localStorage.getItem('image_proxy_mode') as ImageProxyMode;
-    return (stored === 'all' || stored === 'none') ? stored : 'all';
-  });
-
   const [readArticleIds, setReadArticleIds] = useState<Set<string>>(new Set());
-
-  // Sync imageProxyMode to global variable on mount
-  // This ensures the module-level variable in rssService is in sync with React state
-  useEffect(() => {
-    setGlobalImageProxyMode(imageProxyMode);
-  }, [imageProxyMode]);
 
   // Load read articles from IndexedDB on mount
   useEffect(() => {
@@ -105,12 +90,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Failed to persist AI settings to localStorage:', err);
     }
   }, [aiSettings]);
-
-  const setImageProxyMode = useCallback((mode: ImageProxyMode) => {
-    setImageProxyModeState(mode);
-    setGlobalImageProxyMode(mode);
-    localStorage.setItem('image_proxy_mode', mode);
-  }, []);
 
   const markAsRead = useCallback((id: string) => {
     setReadArticleIds(prev => {
@@ -148,7 +127,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     selectedFeed, setSelectedFeed,
     activeArticle, setActiveArticle,
     aiSettings, setAiSettings,
-    imageProxyMode, setImageProxyMode,
     readArticleIds, markAsRead,
     isAiConfigured
   };

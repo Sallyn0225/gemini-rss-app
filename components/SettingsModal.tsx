@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import { AISettings, AIProvider, AIModelConfig, AIProviderType, ImageProxyMode } from '../types';
+import { AISettings, AIProvider, AIModelConfig, AIProviderType } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, reorderSystemFeeds, FullSystemFeedConfig } from '../services/rssService';
 import { fetchProviderModels } from '../services/geminiService';
 import { useToast } from '@/hooks/use-toast';
@@ -27,12 +27,11 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Settings2, 
-  Cpu, 
-  Rss, 
-  Monitor, 
-  Plus, 
+import {
+  Settings2,
+  Cpu,
+  Rss,
+  Plus,
   Trash2, 
   Edit2, 
   GripVertical, 
@@ -53,8 +52,6 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: AISettings;
   onSave: (newSettings: AISettings) => void;
-  imageProxyMode?: ImageProxyMode;
-  onImageProxyModeChange?: (mode: ImageProxyMode) => void;
 }
 
 const DEFAULT_SETTINGS: AISettings = {
@@ -313,7 +310,7 @@ const DraggableTopLevelGroup = React.memo<{
 });
 DraggableTopLevelGroup.displayName = 'DraggableTopLevelGroup';
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, imageProxyMode, onImageProxyModeChange }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave }) => {
   const { toast } = useToast();
   const [localSettings, setLocalSettings] = useState<AISettings>(settings || DEFAULT_SETTINGS);
   const [activeTab, setActiveTab] = useState('providers');
@@ -701,10 +698,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
             <TabsTrigger value="feeds" className="flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2 px-2 md:px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] md:text-sm">
               <Rss className="w-4 h-4" />
               <span>订阅源</span>
-            </TabsTrigger>
-            <TabsTrigger value="display" className="flex-col md:flex-row items-center justify-center md:justify-start gap-1 md:gap-2 px-2 md:px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] md:text-sm">
-              <Monitor className="w-4 h-4" />
-              <span>显示</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1184,60 +1177,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                       </Card>
                     </div>
                   )}
-                </TabsContent>
-
-                {/* --- DISPLAY TAB --- */}
-                <TabsContent value="display" className="m-0 space-y-8">
-                  <div>
-                    <h3 className="text-lg font-bold">显示与偏好</h3>
-                    <p className="text-sm text-muted-foreground">个性化您的阅读环境</p>
-                  </div>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">媒体代理策略</CardTitle>
-                      <CardDescription>如何加载受限地区的图片资源</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div 
-                        onClick={() => onImageProxyModeChange?.('all')}
-                        className={cn(
-                          "flex flex-col gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                          imageProxyMode === 'all' ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                        )}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", imageProxyMode === 'all' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                            <Lock className="w-5 h-5" />
-                          </div>
-                          {imageProxyMode === 'all' && <Check className="w-5 h-5 text-primary" />}
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm">全面代理</div>
-                          <p className="text-xs text-muted-foreground mt-1">通过服务器中转所有图片，解决网络连通性问题。</p>
-                        </div>
-                      </div>
-
-                      <div 
-                        onClick={() => onImageProxyModeChange?.('none')}
-                        className={cn(
-                          "flex flex-col gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all",
-                          imageProxyMode === 'none' ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                        )}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", imageProxyMode === 'none' ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                            <Unlock className="w-5 h-5" />
-                          </div>
-                          {imageProxyMode === 'none' && <Check className="w-5 h-5 text-primary" />}
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm">直接加载</div>
-                          <p className="text-xs text-muted-foreground mt-1">原图直链，不占用服务器带宽。适合网络环境优良的用户。</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </TabsContent>
               </div>
             </ScrollArea>

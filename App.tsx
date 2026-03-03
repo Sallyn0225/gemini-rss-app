@@ -1,24 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles } from "lucide-react";
-import { 
-  fetchRSS, 
-  fetchSystemFeeds, 
+import {
+  fetchRSS,
+  fetchSystemFeeds,
   fetchFeedSummaries,
-  fetchHistory, 
-  setCurrentFeedCanProxyImages, 
-  getMediaUrl,
-  proxyImageUrl
+  fetchHistory
 } from './services/rssService';
 import { translateContent, classifyArticles, generateDailySummary } from './services/geminiService';
-import { 
-  Feed, 
-  Article, 
-  Language, 
-  ArticleCategory, 
-  AISettings, 
-  FeedMeta,
-  MediaUrl
+import {
+  Feed,
+  Article,
+  Language,
+  ArticleCategory,
+  AISettings,
+  FeedMeta
 } from './types';
 import { LeftSidebar, CategoryNode } from './components/LeftSidebar';
 import { ArticleList } from './components/ArticleList';
@@ -68,13 +64,7 @@ const setLastValidFeedId = (feedId: string): void => {
   }
 };
 
-const isMediaUrl = (value: unknown): value is MediaUrl => {
-  if (!value || typeof value !== 'object') return false;
-  const maybe = value as MediaUrl;
-  return typeof maybe.original === 'string' && typeof maybe.proxied === 'string';
-};
-
-const loadFeedAvatarCache = async (feedIds: string[]): Promise<Record<string, MediaUrl>> => {
+const loadFeedAvatarCache = async (feedIds: string[]): Promise<Record<string, string>> => {
   const entries = await Promise.all(
     feedIds.map(async (id) => {
       const cached = await getFromIdb(`${FEED_AVATAR_CACHE_PREFIX}${id}`);
@@ -82,8 +72,8 @@ const loadFeedAvatarCache = async (feedIds: string[]): Promise<Record<string, Me
     })
   );
 
-  return entries.reduce<Record<string, MediaUrl>>((acc, [id, cached]) => {
-    if (isMediaUrl(cached) && (cached.original || cached.proxied)) {
+  return entries.reduce<Record<string, string>>((acc, [id, cached]) => {
+    if (typeof cached === 'string' && cached) {
       acc[id] = cached;
     }
     return acc;
@@ -111,7 +101,6 @@ const App: React.FC = () => {
     selectedFeed, setSelectedFeed,
     activeArticle, setActiveArticle,
     aiSettings, setAiSettings,
-    imageProxyMode, setImageProxyMode,
     readArticleIds, markAsRead,
     isAiConfigured
   } = useAppContext();
@@ -128,7 +117,7 @@ const App: React.FC = () => {
   const [loadingFeedId, setLoadingFeedId] = useState<string | null>(null);
   const [historyStatus, setHistoryStatus] = useState<Record<string, { total: number; loaded: number }>>({});
   const [feedSummaryMap, setFeedSummaryMap] = useState<Record<string, number>>({});
-  const [feedAvatarCache, setFeedAvatarCache] = useState<Record<string, MediaUrl>>({});
+  const [feedAvatarCache, setFeedAvatarCache] = useState<Record<string, string>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -178,8 +167,8 @@ const App: React.FC = () => {
     });
   }, [toast]);
 
-  const updateFeedAvatarCache = useCallback((feedId: string, image?: MediaUrl) => {
-    if (!image || (!image.original && !image.proxied)) return;
+  const updateFeedAvatarCache = useCallback((feedId: string, image?: string) => {
+    if (!image) return;
     setFeedAvatarCache(prev => ({ ...prev, [feedId]: image }));
     setToIdb(`${FEED_AVATAR_CACHE_PREFIX}${feedId}`, image).catch(err => {
       console.warn('Failed to save feed avatar to IDB:', err);
@@ -657,7 +646,7 @@ const App: React.FC = () => {
             handleLanguageSwitch={setTargetLang} showTranslation={showTranslation}
             handleTranslateToggle={handleTranslateToggle} isTranslating={isTranslating}
             translatedContent={translatedContent} getTranslatorName={() => "AI"}
-            proxiedArticleContent={activeArticle.content} readingViewAvatar={getMediaUrl(selectedFeed?.image)}
+            proxiedArticleContent={activeArticle.content} readingViewAvatar={selectedFeed?.image || ''}
           />
         )}
 
@@ -773,7 +762,6 @@ const App: React.FC = () => {
       <SettingsModal
         isOpen={showSettings} onClose={() => setShowSettings(false)}
         settings={aiSettings} onSave={setAiSettings}
-        imageProxyMode={imageProxyMode} onImageProxyModeChange={setImageProxyMode}
       />
     </div>
   );

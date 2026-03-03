@@ -1,59 +1,9 @@
 
 
-import { Feed, Article, FeedSummary, ImageProxyMode, MediaUrl, createMediaUrl, selectMediaUrl } from '../types';
+import { Feed, Article, FeedSummary } from '../types';
+import { CORS_PROXIES } from '../src/services/corsProxy';
 
 const RSS2JSON_API = 'https://api.rss2json.com/v1/api.json?rss_url=';
-const ALL_ORIGINS_RAW = 'https://api.allorigins.win/raw?url=';
-
-const CORS_PROXY = 'https://corsproxy.io/?';
-const CODETABS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
-const THING_PROXY = 'https://thingproxy.freeboard.io/fetch/';
-
-// --- Image Proxy Mode Management ---
-// 代理模式：
-// - 'all': 全部代理（媒体通过服务器加载，适合无法直接访问图片源的用户）
-// - 'none': 不代理（媒体从用户浏览器直连，不消耗服务器流量）
-let currentImageProxyMode: ImageProxyMode = 'all';
-let currentFeedCanProxyImages: boolean = true;
-
-export const setImageProxyMode = (mode: ImageProxyMode): void => {
-  currentImageProxyMode = mode;
-};
-
-export const setCurrentFeedCanProxyImages = (canProxy: boolean): void => {
-  currentFeedCanProxyImages = canProxy;
-};
-
-/**
- * 根据当前代理模式从MediaUrl中选择合适的URL
- * @param media - MediaUrl对象
- * @returns 选择后的URL字符串
- */
-export const getMediaUrl = (media: MediaUrl | string | undefined): string => {
-  return selectMediaUrl(media, currentImageProxyMode);
-};
-
-/**
- * @deprecated 请使用 selectMediaUrl 或 getMediaUrl 代替
- * 保留此函数用于向后兼容，处理富文本等需要运行时选择的场景
- */
-export const proxyImageUrl = (url: string, _forceProxy: boolean = false): string => {
-  if (!url || !url.startsWith('http')) {
-    return url;
-  }
-
-  // 如果当前 feed 不在服务器图片代理白名单中，始终直连
-  if (!currentFeedCanProxyImages) {
-    return url;
-  }
-
-  // 根据用户代理模式偏好处理
-  if (currentImageProxyMode === 'none') {
-    return url;
-  } else {
-    return `/api/media/proxy?url=${encodeURIComponent(url)}`;
-  }
-};
 
 // --- New: Fetch Feed Configuration from Server ---
 export interface SystemFeedConfig {
@@ -61,7 +11,6 @@ export interface SystemFeedConfig {
   category: string;
   isSub: boolean;
   customTitle?: string;
-  canProxyImages?: boolean;
   // URL is hidden by server
 }
 
@@ -174,8 +123,42 @@ export const reorderSystemFeeds = async (ids: string[], secret: string): Promise
 
 // --- History API Functions ---
 
+// Client-side dedup cache: feedId -> Set of article keys (guid or link)
+const _upsertedKeys = new Map<string, Set<string>>();
+
+const getArticleKey = (item: Article): string => item.guid || item.link || `${item.title}-${item.pubDate}`;
+
 // Upload current items to server history (fire-and-forget, won't block UI)
+// Filters out items already sent in previous calls to avoid redundant server work
 const upsertHistory = (feedId: string, items: Article[]): void => {
+  // Dedup: only send items we haven't sent before
+  let knownKeys = _upsertedKeys.get(feedId);
+  if (!knownKeys) {
+    knownKeys = new Set();
+    _upsertedKeys.set(feedId, knownKeys);
+  }
+
+  const newItems = items.filter(item => {
+    const key = getArticleKey(item);
+    if (knownKeys!.has(key)) return false;
+    knownKeys!.add(key);
+    return true;
+  });
+
+  if (newItems.length === 0) {
+    console.log(`[History] No new items to upsert for "${feedId}"`);
+    return;
+  }
+
+  // Strip content when it equals description to save bandwidth
+  const payload = newItems.map(item => {
+    if (item.content && item.content === item.description) {
+      const { content, ...rest } = item;
+      return rest;
+    }
+    return item;
+  });
+
   const maxAttempts = 3;
   const baseDelayMs = 500;
 
@@ -183,7 +166,7 @@ const upsertHistory = (feedId: string, items: Article[]): void => {
     fetch('/api/history/upsert', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ feedId, items }),
+      body: JSON.stringify({ feedId, items: payload }),
     }).then(res => {
       if (res.ok) return res.json();
       throw new Error(`Upsert failed with status ${res.status}`);
@@ -259,7 +242,7 @@ const parseXML = (xmlText: string, url: string): Feed => {
   const title = channel.querySelector('title')?.textContent || 'Untitled Feed';
   const description = channel.querySelector('description, subtitle')?.textContent || '';
 
-  // Feed 头像：生成双URL格式
+  // Feed 头像
   let imageUrl = '';
   const imgNode = channel.querySelector('image url') || channel.querySelector('icon') || channel.querySelector('logo');
   if (imgNode) imageUrl = imgNode.textContent || '';
@@ -278,7 +261,7 @@ const parseXML = (xmlText: string, url: string): Feed => {
     const contentEncoded = entry.getElementsByTagNameNS('*', 'encoded')[0]?.textContent;
     const content = contentEncoded || entry.querySelector('content')?.textContent || desc;
 
-    // 提取缩略图原始URL
+    // 提取缩略图URL
     let thumbnailUrl = '';
 
     const mediaNodes = entry.getElementsByTagNameNS('*', 'content');
@@ -309,24 +292,21 @@ const parseXML = (xmlText: string, url: string): Feed => {
 
     if (!thumbnailUrl) thumbnailUrl = extractImageFromHtml(content || desc);
 
-    // 生成双URL格式的缩略图
     items.push({
       title: entryTitle, pubDate, link, guid, author,
-      thumbnail: createMediaUrl(thumbnailUrl),  // 双URL格式
+      thumbnail: thumbnailUrl || '',
       description: desc, content, enclosure, feedTitle: title
     });
   });
 
   return {
     url, title, description,
-    image: createMediaUrl(imageUrl),  // 双URL格式
+    image: imageUrl || '',
     items
   };
 }
 
 export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
-  const timestamp = Date.now(); // Cache buster
-
   // Check if it's a known System ID (no protocol) or a raw URL
   if (!urlOrId.startsWith('http')) {
     try {
@@ -353,12 +333,10 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
   }
 
   const url = urlOrId;
-  const strategies = [
-    { name: 'CodeTabs', url: `${CODETABS_PROXY}${encodeURIComponent(url)}&_t=${timestamp}` },
-    { name: 'AllOriginsRaw', url: `${ALL_ORIGINS_RAW}${encodeURIComponent(url)}&_t=${timestamp}` },
-    { name: 'ThingProxy', url: `${THING_PROXY}${url}` },
-    { name: 'CORSProxy', url: `${CORS_PROXY}${url}` },
-  ];
+  const strategies = CORS_PROXIES.map(proxy => ({
+    name: proxy.name,
+    url: proxy.buildUrl(url),
+  }));
 
   for (const strategy of strategies) {
     try {
@@ -376,14 +354,14 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
     if (data.status === 'ok') {
       return {
         url: url, title: data.feed.title, description: data.feed.description,
-        image: createMediaUrl(data.feed.image || ''),  // 双URL格式
+        image: data.feed.image || '',
         items: data.items.map((item: any) => {
           let thumbnailUrl = item.thumbnail;
           if (!thumbnailUrl && item.enclosure?.type?.startsWith('image/')) thumbnailUrl = item.enclosure.link;
           if (!thumbnailUrl) thumbnailUrl = extractImageFromHtml(item.content || item.description);
           return {
             ...item,
-            thumbnail: createMediaUrl(thumbnailUrl || ''),  // 双URL格式
+            thumbnail: thumbnailUrl || '',
             feedTitle: data.feed.title
           };
         }),

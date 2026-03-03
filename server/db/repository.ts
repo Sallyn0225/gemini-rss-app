@@ -4,6 +4,10 @@ import * as pgSchema from './schema.pg.js';
 import * as d1Schema from './schema.d1.js';
 import { safeParseUrl, inferAllowedImageHosts } from '../security.js';
 
+// Module-level cache for allowed media hosts (5-minute TTL)
+let _globalHostCache: { hosts: Set<string>; expiresAt: number } | null = null;
+const HOST_CACHE_TTL = 5 * 60 * 1000;
+
 // Unified types used by handlers
 export interface FeedRow {
   id: string;
@@ -297,6 +301,11 @@ export class Repository {
   // ─── Media proxy helpers ───
 
   async getAllAllowedMediaHosts(): Promise<Set<string>> {
+    // Return cached result if still valid
+    if (_globalHostCache && Date.now() < _globalHostCache.expiresAt) {
+      return _globalHostCache.hosts;
+    }
+
     const allFeeds = await this.listFeeds();
     const hosts = new Set<string>();
 
@@ -312,6 +321,7 @@ export class Repository {
       inferAllowedImageHosts(feed.url).forEach(h => hosts.add(h));
     }
 
+    _globalHostCache = { hosts, expiresAt: Date.now() + HOST_CACHE_TTL };
     return hosts;
   }
 }

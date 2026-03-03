@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Feed, FeedMeta, MediaUrl } from '../types';
-import { getMediaUrl, proxyImageUrl } from '../services/rssService';
+import { Feed, FeedMeta } from '../types';
 import { Check, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +9,7 @@ type SidebarViewMode = 'list' | 'grid';
 interface FeedItemProps {
   feedMeta: FeedMeta;
   feedContent?: Feed | null;
-  feedAvatar?: MediaUrl;
+  feedAvatar?: string;
   feedArticleCount?: number;
   mode: SidebarViewMode;
   isSelected: boolean;
@@ -20,8 +19,8 @@ interface FeedItemProps {
 
 export const FeedItem: React.FC<FeedItemProps> = React.memo(({ feedMeta, feedContent, feedAvatar, feedArticleCount, mode, isSelected, isLoading, onSelect }) => {
   const displayTitle = feedMeta.customTitle || feedContent?.title || feedMeta.id;
-  const fallbackAvatar = useMemo(() => proxyImageUrl(`https://ui-avatars.com/api/?name=${encodeURIComponent(displayTitle)}&background=3b82f6&color=fff&size=128`), [displayTitle]);
-  const resolvedAvatar = getMediaUrl(feedContent?.image || feedAvatar) || fallbackAvatar;
+  const fallbackAvatar = useMemo(() => `https://ui-avatars.com/api/?name=${encodeURIComponent(displayTitle)}&background=3b82f6&color=fff&size=128`, [displayTitle]);
+  const resolvedAvatar = feedContent?.image || feedAvatar || fallbackAvatar;
   const resolvedCount = feedContent ? feedContent.items.length : feedArticleCount;
 
   const handleClick = useCallback(() => {

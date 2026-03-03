@@ -18,3 +18,8 @@ id = ""  # Fill in after `wrangler kv namespace create RATE_LIMIT_KV`
 # ─── Secrets (set via `wrangler pages secret put`) ───
 # ADMIN_SECRET
 # DATABASE_URL  (optional, Neon PG fallback)
+
+# ─── Environment Variables ───
+[vars]
+MEDIA_PROXY_MAX_BYTES = "52428800"  # 50MB
+ARTICLE_EXTRACT_MAX_BYTES = "5242880"  # 5MB
