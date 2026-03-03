@@ -8,7 +8,7 @@
 
 ### 一、添加自己的API KEY
 
-访问网页，点击设置按钮，即可使用自己的API KEY。支持OpenAI、Gemini两种API格式。
+访问网页，点击设置按钮，即可使用自己的API KEY。支持 OpenAI、OpenAI Responses、Gemini、Anthropic 四种 API 格式。
 
 > 如果你没有API KEY，建议去[硅基流动](https://siliconflow.cn/)或者[魔搭社区](https://modelscope.cn/)获取一个免费的API KEY使用。
 

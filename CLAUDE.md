@@ -37,7 +37,7 @@ All user preferences and API keys are stored **client-side only** (localStorage 
 - **`src/services/articleService.ts`** — Article full-text extraction with IndexedDB caching (24h TTL)
 - **`src/services/readabilityService.ts`** — Client-side Readability extraction (DOMParser + @mozilla/readability)
 - **`src/services/corsProxy.ts`** — Public CORS proxy list with automatic fallback
-- **`services/geminiService.ts`** — AI translation, classification, summarization via Google GenAI SDK
+- **`services/geminiService.ts`** — AI translation, classification, summarization; supports 4 provider formats: OpenAI, OpenAI Responses API, Gemini REST, Anthropic Messages API
 - **`types.ts`** — canonical type definitions (`Article`, `Feed`, `ExtractedArticle`, `AISettings`, `ArticleCategory`)
 
 ### Backend — Vercel (legacy, `api/`)

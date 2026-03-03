@@ -8,7 +8,7 @@
 
 - 支持订阅多个 RSS 源（官方账号、企划情报、活动信息等）
 - 前端内置阅读体验：列表视图 + 日历筛选 + 活跃度统计
-- 可配置自有大模型 API（OpenAI 兼容 / Gemini）完成翻译、日总结、分类打标签
+- 可配置自有大模型 API（OpenAI 兼容 / OpenAI Responses / Gemini / Anthropic）完成翻译、日总结、分类打标签
 - 支持文章全文提取（客户端 Readability 解析，无需跳转外部网站）
 - 不内置任何 API Key，所有密钥仅保存在浏览器本地
 
@@ -101,7 +101,7 @@ npm run preview:cf
 ## AI 设置
 
 1. 打开网站，点击左下角 **设置**
-2. 添加 API 提供商（OpenAI 兼容 / Gemini / 反代）
+2. 添加 API 提供商（OpenAI 兼容 / OpenAI Responses / Gemini / Anthropic）
 3. 分别为「翻译」「总结」「分析」任务指定模型
 
 所有 API Key 保存在浏览器 `localStorage`，不会上传到服务器。
