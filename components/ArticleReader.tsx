@@ -117,12 +117,10 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
 
   // 判断是否需要显示切换按钮
   const shouldShowToggle = useMemo(() => {
-    const desc = article.description?.replace(/<[^>]+>/g, '').trim() || '';
-
-    // 只要摘要有足够的内容（>=100 字符），就显示"展开全文"按钮
-    // 用户可以点击从原网站提取完整内容，或查看 RSS 的完整内容
-    return desc.length >= 100;
-  }, [article.description]);
+    // 只要文章有原文链接，就显示"展开全文"按钮
+    // 无论 description 长短，用户都可能需要从原网站提取完整内容
+    return !!article.link;
+  }, [article.link]);
 
   // 获取要显示的内容
   const displayContent = useMemo(() => {
