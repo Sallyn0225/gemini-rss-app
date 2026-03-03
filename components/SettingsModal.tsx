@@ -1189,8 +1189,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 {existingCategories.length > 0 && (
                                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                                     <Select onValueChange={v => setFeedForm({ ...feedForm, category: v })}>
-                                      <SelectTrigger className="w-8 h-8 p-0 border-none bg-transparent">
-                                        <SelectValue />
+                                      <SelectTrigger className="w-8 h-8 p-0 border-none bg-transparent [&>svg]:opacity-100">
+                                        <span className="sr-only">选择分类</span>
                                       </SelectTrigger>
                                       <SelectContent>
                                         {existingCategories.map(cat => (
