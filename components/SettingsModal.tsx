@@ -47,6 +47,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const PROVIDER_DEFAULTS: Record<AIProviderType, { label: string; badge: string; baseUrl: string; keyPlaceholder: string }> = {
+  'openai':           { label: 'OpenAI 兼容 (Chat)',       badge: 'GPT', baseUrl: 'https://api.openai.com/v1',                keyPlaceholder: 'sk-...' },
+  'openai-responses': { label: 'OpenAI Responses API',     badge: 'RSP', baseUrl: 'https://api.openai.com/v1',                keyPlaceholder: 'sk-...' },
+  'gemini':           { label: 'Gemini API',                badge: 'GEM', baseUrl: 'https://generativelanguage.googleapis.com', keyPlaceholder: 'AIza...' },
+  'anthropic':        { label: 'Anthropic Messages API',    badge: 'CLD', baseUrl: 'https://api.anthropic.com',                keyPlaceholder: 'sk-ant-...' },
+};
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -485,7 +492,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   const handleProviderTypeChange = (newType: AIProviderType) => {
-    const baseUrl = newType === 'gemini' ? 'https://generativelanguage.googleapis.com' : 'https://api.openai.com/v1';
+    const baseUrl = PROVIDER_DEFAULTS[newType].baseUrl;
     setEditForm(prev => ({ ...prev, type: newType, baseUrl }));
   };
 
@@ -735,18 +742,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="openai">OpenAI 兼容</SelectItem>
+                                <SelectItem value="openai">OpenAI 兼容 (Chat)</SelectItem>
+                                <SelectItem value="openai-responses">OpenAI Responses API</SelectItem>
                                 <SelectItem value="gemini">Gemini API</SelectItem>
+                                <SelectItem value="anthropic">Anthropic Messages API</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="md:col-span-2 space-y-2">
                             <Label>接入点地址</Label>
-                            <Input className="font-mono" placeholder={editForm.type === 'openai' ? 'https://api.openai.com/v1' : 'https://generativelanguage.googleapis.com'} value={editForm.baseUrl} onChange={e => setEditForm({ ...editForm, baseUrl: e.target.value })} />
+                            <Input className="font-mono" placeholder={PROVIDER_DEFAULTS[editForm.type].baseUrl} value={editForm.baseUrl} onChange={e => setEditForm({ ...editForm, baseUrl: e.target.value })} />
                           </div>
                           <div className="md:col-span-2 space-y-2">
                             <Label>API Key</Label>
-                            <Input type="password" className="font-mono" placeholder="sk-..." value={editForm.apiKey} onChange={e => setEditForm({ ...editForm, apiKey: e.target.value })} />
+                            <Input type="password" className="font-mono" placeholder={PROVIDER_DEFAULTS[editForm.type].keyPlaceholder} value={editForm.apiKey} onChange={e => setEditForm({ ...editForm, apiKey: e.target.value })} />
                           </div>
                         </div>
                       </CardContent>
@@ -771,7 +780,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                                   "w-10 h-10 rounded-lg flex items-center justify-center text-white font-black text-[10px]",
                                   "bg-primary"
                                 )}>
-                                {provider.type === 'gemini' ? 'GEM' : 'GPT'}
+                                {PROVIDER_DEFAULTS[provider.type]?.badge || provider.type.toUpperCase().slice(0, 3)}
                               </div>
                               <div className="min-w-0">
                                 <h4 className="font-bold text-sm truncate">{provider.name}</h4>
@@ -824,7 +833,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                           <div className="p-6 space-y-6">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <Badge variant="outline" className="w-fit">
-                                {localSettings.providers.find(p => p.id === activeProviderForModels)?.type === 'gemini' ? 'Gemini API' : 'OpenAI'}
+                                {PROVIDER_DEFAULTS[localSettings.providers.find(p => p.id === activeProviderForModels)?.type || 'openai']?.label || 'Unknown'}
                               </Badge>
                               <Button size="sm" onClick={handleFetchModels} disabled={isFetchingModels} className="gap-2">
                                 <RefreshCw className={cn("w-3.5 h-3.5", isFetchingModels && "animate-spin")} />

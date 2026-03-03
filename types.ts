@@ -61,7 +61,7 @@ export interface FeedSummary {
 
 // --- AI Settings Types ---
 
-export type AIProviderType = 'openai' | 'gemini';
+export type AIProviderType = 'openai' | 'openai-responses' | 'gemini' | 'anthropic';
 
 export interface AIProvider {
   id: string;
