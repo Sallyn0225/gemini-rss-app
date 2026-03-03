@@ -176,7 +176,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 7. Extract content
+    // 7. If mode=raw, return raw HTML (client will parse with Readability)
+    const mode = (req.query.mode as string) || '';
+    if (mode === 'raw') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.status(200).send(html);
+    }
+
+    // 8. Extract content
     const extracted = await extractArticleContent(html, articleUrl);
 
     if (!extracted || !extracted.content) {
@@ -188,7 +196,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 8. Return success
+    // 9. Return success
     res.setHeader('Cache-Control', 'public, max-age=86400');
     return res.status(200).json({
       success: true,

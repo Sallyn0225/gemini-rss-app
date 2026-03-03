@@ -93,7 +93,7 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
     setExtractionError(null);
 
     try {
-      const result = await fetchFullArticle(article.link);
+      const result = await fetchFullArticle(article);
 
       if (result.success && result.data) {
         // 提取成功

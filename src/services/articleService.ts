@@ -1,5 +1,6 @@
 import { get, set } from 'idb-keyval';
-import type { ArticleExtractionResponse } from '../types';
+import type { Article, ArticleExtractionResponse } from '../../types';
+import { hasRichRssContent, fetchAndExtractClientSide } from './readabilityService';
 
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -9,40 +10,64 @@ interface CachedExtraction {
 }
 
 /**
- * 从原网站提取完整文章内容
- * @param articleUrl - 文章原始 URL
- * @returns 提取结果
+ * 从原网站提取完整文章内容（三层提取策略）
+ *
+ * Tier 1: 使用 RSS feed 中已有的 content（零服务端调用）
+ * Tier 2: 通过轻量 CORS 代理获取 HTML + 浏览器端 Readability 解析
+ * Tier 3: 回退到 RSS content + 显示错误提示
  */
-export async function fetchFullArticle(articleUrl: string): Promise<ArticleExtractionResponse> {
+export async function fetchFullArticle(article: Article): Promise<ArticleExtractionResponse> {
   try {
-    // 1. 检查缓存
-    const cacheKey = `article_extract:${articleUrl}`;
+    // 1. 检查 IndexedDB 缓存
+    const cacheKey = `article_extract:${article.link}`;
     const cached = await get<CachedExtraction>(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log('[Article Extract] Cache hit:', articleUrl);
+      console.log('[Article Extract] Cache hit:', article.link);
       return cached.data;
     }
 
-    // 2. 调用后端 API
-    console.log('[Article Extract] Fetching from server:', articleUrl);
-    const response = await fetch(`/api/article/extract?url=${encodeURIComponent(articleUrl)}`);
+    // 2. Tier 1: RSS content 已经比 description 丰富，直接使用
+    if (hasRichRssContent(article)) {
+      console.log('[Article Extract] Tier 1: Using rich RSS content');
+      const result: ArticleExtractionResponse = {
+        success: true,
+        data: {
+          title: article.title,
+          content: article.content,
+          textContent: article.content.replace(/<[^>]+>/g, ''),
+          excerpt: (article.description || '').replace(/<[^>]+>/g, '').slice(0, 200),
+          byline: article.author || '',
+          siteName: article.feedTitle || '',
+          length: article.content.replace(/<[^>]+>/g, '').length,
+        },
+      };
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      await set(cacheKey, { data: result, timestamp: Date.now() });
+      return result;
     }
 
-    const result: ArticleExtractionResponse = await response.json();
+    // 3. Tier 2: 客户端提取（通过 CORS 代理获取原始 HTML + 浏览器端 Readability）
+    console.log('[Article Extract] Tier 2: Client-side extraction via proxy:', article.link);
+    const extracted = await fetchAndExtractClientSide(article.link);
 
-    // 3. 缓存成功的提取结果
-    if (result.success && result.data) {
-      await set(cacheKey, {
-        data: result,
-        timestamp: Date.now(),
-      });
+    if (extracted) {
+      const result: ArticleExtractionResponse = {
+        success: true,
+        data: extracted,
+      };
+
+      await set(cacheKey, { data: result, timestamp: Date.now() });
+      return result;
     }
 
-    return result;
+    // 4. Tier 3: 回退到 RSS content
+    console.log('[Article Extract] Tier 3: Falling back to RSS content');
+    return {
+      success: false,
+      error: '无法从原网站提取内容',
+      fallback: 'use_rss_content',
+    };
   } catch (error) {
     console.error('[Article Extract] Error:', error);
     return {

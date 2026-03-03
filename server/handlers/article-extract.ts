@@ -209,7 +209,19 @@ export async function handleArticleExtract(
       );
     }
 
-    // 7. 提取内容
+    // 7. 如果 mode=raw，直接返回原始 HTML（客户端自行用 Readability 解析）
+    const mode = url.searchParams.get('mode');
+    if (mode === 'raw') {
+      return new Response(html, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    }
+
+    // 8. 提取内容
     const extracted = await extractArticleContent(html, articleUrl);
 
     if (!extracted || !extracted.content) {
@@ -229,7 +241,7 @@ export async function handleArticleExtract(
       );
     }
 
-    // 8. 返回成功结果
+    // 9. 返回成功结果
     return new Response(
       JSON.stringify({
         success: true,
