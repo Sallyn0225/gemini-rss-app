@@ -118,20 +118,11 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
   // 判断是否需要显示切换按钮
   const shouldShowToggle = useMemo(() => {
     const desc = article.description?.replace(/<[^>]+>/g, '').trim() || '';
-    const cont = article.content?.replace(/<[^>]+>/g, '').trim() || '';
 
-    // 如果摘要为空或很短，不显示切换
-    if (!desc || desc.length < 100) return false;
-
-    // 如果内容为空，不显示切换
-    if (!cont) return false;
-
-    // 如果内容和摘要相同，不显示切换
-    if (desc === cont) return false;
-
-    // 如果摘要是内容的完整子串（说明摘要就是内容的截取），显示切换
-    return true;
-  }, [article.description, article.content]);
+    // 只要摘要有足够的内容（>=100 字符），就显示"展开全文"按钮
+    // 用户可以点击从原网站提取完整内容，或查看 RSS 的完整内容
+    return desc.length >= 100;
+  }, [article.description]);
 
   // 获取要显示的内容
   const displayContent = useMemo(() => {
