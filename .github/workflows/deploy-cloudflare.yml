@@ -21,6 +21,11 @@ jobs:
 
       - run: npm run build
 
+      - name: Inject Cloudflare resource IDs
+        run: |
+          sed -i "s/database_id = \"\"/database_id = \"${{ secrets.D1_DATABASE_ID }}\"/" wrangler.toml
+          sed -i "s/^id = \"\"/id = \"${{ secrets.KV_NAMESPACE_ID }}\"/" wrangler.toml
+
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
