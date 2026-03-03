@@ -23,8 +23,15 @@ const checkRateLimit = (ip: string): boolean => {
   return entry.count > RATE_LIMIT_MAX;
 };
 
-// Get all allowed media hosts from database
+// Get all allowed media hosts from database (with 5-minute cache)
+let _vercelHostCache: { hosts: Set<string>; expiresAt: number } | null = null;
+const HOST_CACHE_TTL = 5 * 60 * 1000;
+
 const getAllAllowedMediaHosts = async (): Promise<Set<string>> => {
+  if (_vercelHostCache && Date.now() < _vercelHostCache.expiresAt) {
+    return _vercelHostCache.hosts;
+  }
+
   const allFeeds = await db.select().from(feeds);
   const hosts = new Set<string>();
 
@@ -40,6 +47,7 @@ const getAllAllowedMediaHosts = async (): Promise<Set<string>> => {
     inferAllowedImageHosts(feed.url).forEach(h => hosts.add(h));
   }
 
+  _vercelHostCache = { hosts, expiresAt: Date.now() + HOST_CACHE_TTL };
   return hosts;
 };
 

@@ -7,7 +7,7 @@ import { handleArticleExtract } from '../../../server/handlers/article-extract.j
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const dbClient = createDbClient(context.env);
   const repo = new Repository(dbClient);
-  const rateLimiter = createRateLimiter(context.env.RATE_LIMIT_KV);
+  const rateLimiter = createRateLimiter();
   const maxBytes = parseInt(context.env.ARTICLE_EXTRACT_MAX_BYTES || '5242880', 10);
 
   return handleArticleExtract(context.request, repo, rateLimiter, maxBytes);
