@@ -12,7 +12,21 @@
 - 双代理模式（代理图片 / 直接加载）适配不同网络环境
 - 不内置任何 API Key，所有密钥仅保存在浏览器本地
 
-> 本仓库是一个可本地运行 / 自部署的前端 + Serverless 后端项目（Vercel Functions + Neon），不依赖 Google AI Studio 环境。
+---
+
+## 部署方式
+
+本项目支持两种 Serverless 部署方式，功能完全一致，选择任意一种即可：
+
+| | Vercel + Neon | Cloudflare Pages + D1 |
+|---|---|---|
+| **数据库** | Neon PostgreSQL | D1 (SQLite)，可 fallback Neon |
+| **冷启动** | ~1 秒 | ~0 毫秒 |
+| **免费存储** | 0.5 GB | 5 GB |
+| **适合场景** | 快速上手，纯网页操作 | 更低延迟，更大免费额度 |
+| **部署教程** | [Vercel 部署教程](docs/deploy-vercel.md) | [Cloudflare Pages 部署教程](docs/deploy-cloudflare.md) |
+
+> 两份教程都是小白友好的，从注册账号开始手把手教你，不需要任何编程经验。
 
 ---
 
@@ -38,276 +52,87 @@
 
 - **隐私与安全**：
   - API Key 均保存在浏览器 `localStorage`
-  - 后端新增 SSRF 防护、域名白名单、限流、媒体大小限制等机制
+  - 后端 SSRF 防护、域名白名单、限流、媒体大小限制
 
 ---
 
-## 核心功能 🌟
+## 核心功能
 
 | 模块 | 能力 | 说明 |
 | --- | --- | --- |
-| 双 URL 媒体架构 | `original` + `proxied` 双地址 | 后端为每条媒体生成原始 URL 与 `/api/media/proxy` 代理 URL，前端按用户策略自动选择 |
-| 代理模式切换 | `none` / `all` | 用户可在前端设置中选择：直接加载 / 代理图片，搭配上游代理实现双重代理 |
-| 富媒体处理 | 内容内嵌图片替换 | 富文本 `content` 中的 `<img>` 会结合代理模式自动替换为合适的 URL |
-| 安全防护 | SSRF / 白名单 / 限流 / 大小限制 | `/api/media/proxy` 针对内网访问、域名来源、请求频次、文件体积均设有硬限制 |
-| 快速阅读体验 | 动效 + 智能分页 | Framer Motion 动画、瀑布流样式、智能缓存与分页渲染 |
+| 双 URL 媒体架构 | `original` + `proxied` 双地址 | 后端为每条媒体生成原始 URL 与代理 URL，前端按用户策略自动选择 |
+| 代理模式切换 | `none` / `all` | 用户可在前端设置中选择：直接加载 / 代理图片 |
+| 安全防护 | SSRF / 白名单 / 限流 / 大小限制 | 针对内网访问、域名来源、请求频次、文件体积均设有硬限制 |
 | AI 工作流 | 翻译 / 分析 / 总结 | 用户可为「翻译」「日总结」「内容分析」分别指定模型与 API 端点 |
 
 ---
 
-## 本地运行
+## 本地开发
 
-### 1. 环境准备
+### 环境要求
 
-- Node.js（建议 20+，推荐当前 LTS）
+- Node.js 20+（推荐当前 LTS）
 
-### 2. 安装依赖
+### 启动
 
 ```bash
 npm install
-```
-
-### 3. 配置环境变量
-
-在项目根目录创建 `.env.local`（不会被提交到 Git）：
-
-```env
-# 数据库连接字符串（本地开发可选，部署时必需）
-DATABASE_URL=your-neon-connection-string
-
-# 管理后台密码（部署时必需）
-ADMIN_SECRET=your-admin-secret
-
-# 媒体代理大小限制（可选，默认 50MB）
-# MEDIA_PROXY_MAX_BYTES=52428800
-```
-
-> **重要**：AI 功能（翻译、总结、分类）需要在前端「设置」中配置 API 提供商。项目不再支持服务端 API key fallback，所有 AI 调用都使用用户自己配置的 provider。
-
-### 4. 启动开发服务器
-
-```bash
 npm run dev
 ```
 
-默认会在 `http://localhost:5173`（Vite 默认端口）启动前端。
+前端会在 `http://localhost:3000` 启动。
 
-**本地开发说明**：
-- 前端可以直接开发和预览 UI 交互
-- 后端 API（Vercel Functions）在本地开发时不会自动运行
-- 如需测试完整功能（RSS 抓取、历史记录、媒体代理等），建议部署到 Vercel 测试环境
-- 或使用 `vercel dev` 命令在本地模拟 Vercel Functions 环境（需要先安装 Vercel CLI）
+> 前端可直接开发和预览 UI，后端 API 需要完整运行环境。本地测试完整功能有两种方式：
 
 ```bash
-# 可选：使用 Vercel CLI 在本地运行完整环境
-npm i -g vercel
-vercel dev
+# Vercel 方式
+npm i -g vercel && vercel dev
+
+# Cloudflare 方式
+npm run preview:cf
 ```
-
----
-
-## Serverless 部署（Vercel + Neon）🚀 **推荐**
-
-本项目已完成 Serverless 架构重构，支持零运维部署到 Vercel + Neon PostgreSQL。
-
-### 优势
-
-- ✅ **零服务器维护**：无需管理 Docker 容器或 VPS
-- ✅ **全球 CDN 加速**：Vercel 边缘网络自动优化访问速度
-- ✅ **按需付费**：Neon 和 Vercel 均提供免费额度，超出才计费
-- ✅ **自动扩容**：流量高峰自动扩展，无需手动干预
-- ✅ **HTTPS 默认启用**：自动 SSL 证书配置
-
-### 部署步骤
-
-#### 1. 准备 Neon 数据库
-
-1. 访问 [Neon.tech](https://neon.tech) 创建免费账号
-2. 创建新项目和数据库
-3. 复制连接字符串（格式：`postgresql://user:password@host.neon.tech/dbname?sslmode=require`）
-
-#### 2. 数据迁移（如果从 Docker/本地迁移）
-
-如果你已有本地 `data/feeds.json` 和 `data/history.db`：
-
-```bash
-# 设置环境变量
-export DATABASE_URL="your-neon-connection-string"
-
-# 运行迁移脚本
-node scripts/migrate-to-neon.cjs
-```
-
-如果是全新部署，可跳过此步骤。
-
-#### 3. 部署到 Vercel
-
-方式一：通过 GitHub（推荐）
-
-1. 将代码推送到 GitHub 仓库
-2. 访问 [Vercel Dashboard](https://vercel.com/new)
-3. 导入你的 GitHub 仓库
-4. 配置环境变量：
-   - `DATABASE_URL`: 你的 Neon 连接字符串
-   - `ADMIN_SECRET`: 设置管理后台密码
-   - `MEDIA_PROXY_MAX_BYTES`: (可选) 媒体大小限制
-5. 点击 Deploy
-
-方式二：通过 Vercel CLI
-
-```bash
-# 安装 Vercel CLI
-npm i -g vercel
-
-# 登录
-vercel login
-
-# 部署
-vercel
-
-# 配置环境变量（在 Vercel Dashboard 或通过 CLI）
-vercel env add DATABASE_URL
-vercel env add ADMIN_SECRET
-
-# 生产部署
-vercel --prod
-```
-
-#### 4. 初始化数据库表结构
-
-部署完成后，需要创建数据库表：
-
-```bash
-# 使用 Drizzle Kit 生成并推送表结构
-npx drizzle-kit push
-```
-
-或者手动在 Neon SQL Editor 中执行：
-
-```sql
-CREATE TABLE feeds (
-  id TEXT PRIMARY KEY,
-  url TEXT NOT NULL,
-  category TEXT NOT NULL,
-  is_sub BOOLEAN DEFAULT false NOT NULL,
-  custom_title TEXT DEFAULT '',
-  allowed_media_hosts TEXT,
-  display_order INTEGER DEFAULT 0 NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW() NOT NULL,
-  updated_at TIMESTAMP DEFAULT NOW() NOT NULL
-);
-
-CREATE TABLE history (
-  id SERIAL PRIMARY KEY,
-  feed_id TEXT NOT NULL REFERENCES feeds(id) ON DELETE CASCADE,
-  guid TEXT,
-  link TEXT,
-  title TEXT,
-  pub_date TEXT,
-  content TEXT,
-  description TEXT,
-  thumbnail TEXT,
-  author TEXT,
-  enclosure TEXT,
-  feed_title TEXT,
-  last_updated TIMESTAMP DEFAULT NOW() NOT NULL
-);
-
-CREATE INDEX idx_history_feed_id_pub_date ON history (feed_id, pub_date);
-CREATE UNIQUE INDEX idx_history_feed_id_guid ON history (feed_id, guid);
-CREATE UNIQUE INDEX idx_history_feed_id_link ON history (feed_id, link);
-```
-
-#### 5. 访问你的应用
-
-- 前端：`https://your-project.vercel.app`
-- API: `https://your-project.vercel.app/api/feeds/list`
-
-### 架构说明
-
-| 组件 | 技术栈 | 说明 |
-| --- | --- | --- |
-| 前端 | React + Vite | 静态托管在 Vercel CDN |
-| API | Vercel Functions | Serverless 函数，自动扩展 |
-| 数据库 | Neon PostgreSQL | Serverless 数据库，按需计费 |
-| ORM | Drizzle ORM | 轻量级，Serverless 友好 |
-
-### 注意事项
-
-- ⚠️ Vercel 免费版函数执行时间限制为 10 秒，Hobby 版为 10 秒，Pro 版为 60 秒
-- ⚠️ 大型媒体文件代理可能会超时，建议前端设置为「不代理」模式
-- ⚠️ Neon 免费版有存储限制（0.5 GB），超出需升级套餐
-
----
-
-## 安全说明 🔒
-
-
-- ✅ **SSRF 防护**：所有代理请求在发起前会解析真实 IP，并拒绝访问内网 / 回环地址。
-- ✅ **DNS 重绑定攻击防护**：解析并验证目标 IP 不是私有地址，使用原始 hostname 发起请求以保持 CDN 兼容性。
-- ✅ **域名白名单**：仅允许出现在订阅配置或自动推断列表中的媒体域名进入代理。
-- ✅ **体积限制**：媒体代理对 Content-Length 与实际传输字节提供双重大小检测，超过阈值直接中断。
-- ✅ **协议约束**：仅允许 `http` / `https` 协议，拒绝 `ftp://`、`file://` 等危险协议。
-- ✅ **Admin Secret**：后台管理接口需携带 `ADMIN_SECRET`，建议结合 SSH 隧道或反向代理进一步加固。
-- ✅ **前端存储隔离**：所有 API Key 存储在浏览器 `localStorage`，不会上传至服务器。
-
----
-
-## API 接口 📡
-
-### `/api/media/proxy`
-
-- **Query 参数**：
-  - `url`：必填，目标媒体资源的完整 URL，仅支持 `http` / `https`
-
-- **行为**：
-  1. 验证域名是否在白名单中，检查协议是否合法。
-  2. 解析目标 IP 并验证不是私有地址（SSRF 防护）。
-  3. 使用原始 hostname 发起请求以保持 CDN 兼容性。
-  4. 流式转发响应体，按配置注入 `Cache-Control`、`Access-Control-Allow-Origin` 等头。
-  5. 若超过大小限制返回 `413`，若命中内网地址返回 `403`。
-
-- **典型响应**：
-  - 200：成功代理媒体
-  - 403：域名未在白名单 / 解析到内网
-  - 413：文件大小超出限制
-  - 502 / 504：上游错误或超时
-
-### 其他接口
-
-- `/api/feed?id=feedId`：根据订阅配置抓取 RSS 内容
-
-- `/api/feeds/list/admin`、`/api/feeds/add` 等：订阅源管理（需 `ADMIN_SECRET`）
-- `/api/feeds/summary`：返回每个订阅源的文章总数（history 聚合）
-- `/api/history/upsert`、`/api/history/get`：历史记录同步与查询
 
 ---
 
 ## AI 设置
 
-- 在前端点击左下角「设置」：
-  - 添加 API 提供商（OpenAI 兼容 / Gemini / 反代）
-  - 分别为「翻译」「总结」「分析」任务指定模型
-  - 配置代理模式、界面偏好等
+1. 打开网站，点击左下角 **设置**
+2. 添加 API 提供商（OpenAI 兼容 / Gemini / 反代）
+3. 分别为「翻译」「总结」「分析」任务指定模型
 
-- 所有配置均保存在浏览器 `localStorage`：
-  - 不会写入代码仓库
-  - 不会通过接口上传
+所有 API Key 保存在浏览器 `localStorage`，不会上传到服务器。
 
-> 请勿将包含 API Key 的 `.env.local` 或浏览器导出的配置文件提交到公开仓库。
+> 没有 API Key？推荐去[硅基流动](https://siliconflow.cn/)或[魔搭社区](https://modelscope.cn/)获取免费的。
 
 ---
 
-## 开发说明
+## API 接口
 
-- **前端**：React 19 + TypeScript + Vite，使用 Framer Motion / Recharts 构建交互与图表
-- **后端**：Vercel Functions + Neon PostgreSQL，负责 RSS / 媒体代理、订阅源管理、历史存储
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/feed?id=feedId` | GET | 抓取 RSS 内容 |
+| `/api/feeds/list` | GET | 公开订阅源列表 |
+| `/api/feeds/summary` | GET | 每个订阅源的文章总数 |
+| `/api/feeds/add` | POST | 添加订阅源（需 `ADMIN_SECRET`） |
+| `/api/feeds/delete` | POST | 删除订阅源（需 `ADMIN_SECRET`） |
+| `/api/feeds/reorder` | POST | 排序订阅源（需 `ADMIN_SECRET`） |
+| `/api/history/get?id=X` | GET | 查询文章历史 |
+| `/api/history/upsert` | POST | 同步文章历史 |
+| `/api/media/proxy?url=X` | GET | 媒体代理（域名白名单 + 大小限制） |
 
-你可以根据业务需求自由扩展 UI、AI 工作流与订阅源结构。
+---
+
+## 文档索引
+
+| 文档 | 说明 |
+|------|------|
+| [Vercel 部署教程](docs/deploy-vercel.md) | 小白友好，纯网页操作，20 分钟完成 |
+| [Cloudflare Pages 部署教程](docs/deploy-cloudflare.md) | 小白友好，需要命令行，30 分钟完成 |
+| [Docker → Vercel 迁移指南](docs/migration-docker-to-vercel.md) | 从旧版 Docker 部署迁移到 Vercel |
+| [重构记录](docs/refactoring-summary.md) | Docker/Node.js → Serverless 架构的重构历史 |
 
 ---
 
 ## License
 
 本项目使用 [MIT License](./LICENSE) 开源。欢迎自由使用、修改与部署，请在再分发时保留版权与许可证声明。
-

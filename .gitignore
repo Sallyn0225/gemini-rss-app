@@ -36,6 +36,9 @@ data/
 .opencode/
 .sisyphus/
 
+# Cloudflare
+.wrangler/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -111,7 +114,7 @@ jspm_packages/
 
 # Gatsby files
 .cache/
-public
+# public  (do not ignore — Vite uses public/ for static assets)
 
 # Storybook build outputs
 .out

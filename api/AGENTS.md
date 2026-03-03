@@ -2,7 +2,6 @@
 
 **Generated:** Sun Jan 11 2026
 **Commit:** 19ff07e
-**Branch:** vercel-neon-refactor
 
 ## OVERVIEW
 Vercel Serverless Functions for RSS aggregation, media proxying, and feed management with Neon PostgreSQL.

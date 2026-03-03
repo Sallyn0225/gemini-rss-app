@@ -1,0 +1,20 @@
+name = "gemini-rss-app"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+# ─── D1 Database ───
+[[d1_databases]]
+binding = "DB"
+database_name = "gemini-rss-db"
+database_id = ""  # Fill in after `wrangler d1 create gemini-rss-db`
+migrations_dir = "drizzle/d1-migrations"
+
+# ─── KV Namespace (rate limiting) ───
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = ""  # Fill in after `wrangler kv namespace create RATE_LIMIT_KV`
+
+# ─── Secrets (set via `wrangler pages secret put`) ───
+# ADMIN_SECRET
+# DATABASE_URL  (optional, Neon PG fallback)
