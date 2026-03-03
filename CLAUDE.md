@@ -27,15 +27,18 @@ This is a **React 19 + Vite SPA** with two supported deployment targets:
 2. **Cloudflare Pages Functions** + **D1 SQLite / Neon PG** (backend in `functions/` + `server/`)
 
 ### Key principle
-All user preferences and API keys are stored **client-side only** (localStorage + IndexedDB). The backend handles RSS fetching, media proxying, and article history — never user credentials.
+All user preferences and API keys are stored **client-side only** (localStorage + IndexedDB). The backend handles RSS fetching, article extraction, and article history — never user credentials.
 
 ### Frontend
 
 - **`App.tsx`** — top-level orchestrator: route parsing, feed fetching/caching, article deduplication, AI workflow
 - **`lib/AppContext.tsx`** — global React Context for dark mode, sidebar state, feed configs, AI settings; persisted to localStorage
-- **`services/rssService.ts`** — RSS fetching, media URL handling with dual proxy/direct modes (`ImageProxyMode`)
+- **`services/rssService.ts`** — RSS fetching via backend proxy (system feeds) or public CORS proxies (custom URLs)
+- **`src/services/articleService.ts`** — Article full-text extraction with IndexedDB caching (24h TTL)
+- **`src/services/readabilityService.ts`** — Client-side Readability extraction (DOMParser + @mozilla/readability)
+- **`src/services/corsProxy.ts`** — Public CORS proxy list with automatic fallback
 - **`services/geminiService.ts`** — AI translation, classification, summarization via Google GenAI SDK
-- **`types.ts`** — canonical type definitions (`Article`, `Feed`, `MediaUrl`, `AISettings`, `ArticleCategory`)
+- **`types.ts`** — canonical type definitions (`Article`, `Feed`, `ExtractedArticle`, `AISettings`, `ArticleCategory`)
 
 ### Backend — Vercel (legacy, `api/`)
 
@@ -44,7 +47,7 @@ All user preferences and API keys are stored **client-side only** (localStorage 
 | `api/feed.ts` | Fetch a single RSS feed |
 | `api/feeds.ts` | Feed CRUD + admin management (requires `ADMIN_SECRET`) |
 | `api/history.ts` | Article history sync |
-| `api/media/proxy.ts` | Secure media proxy with SSRF protection, domain whitelist, size limits |
+| `api/article/extract.ts` | Article full-text extraction (Readability + domain whitelist) |
 
 ### Backend — Cloudflare Pages (`functions/` + `server/`)
 
@@ -53,6 +56,8 @@ Platform-agnostic shared logic lives in `server/`, thin CF wrappers in `function
 | Directory | Purpose |
 |-----------|---------|
 | `server/handlers/` | Core request handlers (return Web API `Response`) |
+| `server/handlers/article-extract.ts` | Article extraction handler (rate limit, domain whitelist, Readability) |
+| `server/utils/readability.ts` | Readability wrapper using linkedom |
 | `server/db/` | Dual database support: D1 (SQLite) + Neon PG, Repository pattern |
 | `server/security.ts` | Platform-agnostic SSRF/security (no Node.js deps) |
 | `server/http.ts` | `secureFetch()` + `streamWithSizeLimit()` |
@@ -90,7 +95,7 @@ Do not bypass security checks when adding new proxy or fetch functionality.
 |----------|----------|---------|
 | `DATABASE_URL` | Yes | Neon PostgreSQL connection string |
 | `ADMIN_SECRET` | Yes | Protects feed write operations |
-| `MEDIA_PROXY_MAX_BYTES` | No | Max proxied media size (default 50 MB) |
+| `ARTICLE_EXTRACT_MAX_BYTES` | No | Max article HTML size for extraction (default 5 MB) |
 
 ### Cloudflare (configured in `wrangler.toml` + secrets)
 
@@ -100,7 +105,7 @@ Do not bypass security checks when adding new proxy or fetch functionality.
 | `DATABASE_URL` | Secret | Neon PG fallback (optional if D1 is set) |
 | `ADMIN_SECRET` | Secret | Protects feed write operations |
 | `RATE_LIMIT_KV` | KV binding | Distributed rate limiting |
-| `MEDIA_PROXY_MAX_BYTES` | Secret | Max proxied media size (default 50 MB) |
+| `ARTICLE_EXTRACT_MAX_BYTES` | Secret | Max article HTML size for extraction (default 5 MB) |
 
 ### CI/CD (GitHub Actions)
 
