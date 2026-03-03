@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import { AISettings, AIProvider, AIModelConfig, AIProviderType } from '../types';
 import { addSystemFeed, fetchAllSystemFeeds, deleteSystemFeed, reorderSystemFeeds, FullSystemFeedConfig } from '../services/rssService';
@@ -47,6 +47,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const LAYOUT_SPRING = { type: "spring" as const, stiffness: 300, damping: 30 };
+const FEED_WHILE_DRAG = { scale: 1.02, boxShadow: "0 8px 24px rgba(0,0,0,0.15)", zIndex: 50, cursor: "grabbing" };
+const GROUP_WHILE_DRAG = { scale: 1.01, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50 };
+
 const PROVIDER_DEFAULTS: Record<AIProviderType, { label: string; badge: string; baseUrl: string; keyPlaceholder: string }> = {
   'openai':           { label: 'OpenAI 兼容 (Chat)',       badge: 'GPT', baseUrl: 'https://api.openai.com/v1',                keyPlaceholder: 'sk-...' },
   'openai-responses': { label: 'OpenAI Responses API',     badge: 'RSP', baseUrl: 'https://api.openai.com/v1',                keyPlaceholder: 'sk-...' },
@@ -59,6 +63,7 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: AISettings;
   onSave: (newSettings: AISettings) => void;
+  onFeedsReordered?: () => void;
 }
 
 const DEFAULT_SETTINGS: AISettings = {
@@ -86,10 +91,14 @@ const DraggableNestedFeedItem = React.memo<{
   const dragControls = useDragControls();
   
   return (
-    <Reorder.Item 
+    <Reorder.Item
       value={feed}
       dragListener={false}
       dragControls={dragControls}
+      layout
+      transition={LAYOUT_SPRING}
+      whileDrag={FEED_WHILE_DRAG}
+      style={{ position: "relative" }}
       className="flex items-center gap-3 p-3 rounded-lg bg-card border hover:border-primary/50 transition-all list-none shadow-sm group"
     >
       <div 
@@ -257,10 +266,14 @@ const DraggableChildGroup = React.memo<{
   const dragControls = useDragControls();
   
   return (
-    <Reorder.Item 
+    <Reorder.Item
       value={childKey}
       dragListener={false}
       dragControls={dragControls}
+      layout
+      transition={LAYOUT_SPRING}
+      whileDrag={GROUP_WHILE_DRAG}
+      style={{ position: "relative" }}
       className="list-none"
     >
       <NestedGroupItem
@@ -294,10 +307,14 @@ const DraggableTopLevelGroup = React.memo<{
   const dragControls = useDragControls();
   
   return (
-    <Reorder.Item 
+    <Reorder.Item
       value={groupName}
       dragListener={false}
       dragControls={dragControls}
+      layout
+      transition={LAYOUT_SPRING}
+      whileDrag={GROUP_WHILE_DRAG}
+      style={{ position: "relative" }}
       className="list-none"
     >
       <NestedGroupItem
@@ -317,7 +334,7 @@ const DraggableTopLevelGroup = React.memo<{
 });
 DraggableTopLevelGroup.displayName = 'DraggableTopLevelGroup';
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, onFeedsReordered }) => {
   const { toast } = useToast();
   const [localSettings, setLocalSettings] = useState<AISettings>(settings || DEFAULT_SETTINGS);
   const [activeTab, setActiveTab] = useState('providers');
@@ -357,6 +374,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const [isSubmittingFeed, setIsSubmittingFeed] = useState(false);
 
   const feedFormRef = useRef<HTMLDivElement>(null);
+  const [feedsWereReordered, setFeedsWereReordered] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -365,6 +383,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       setAdminSecret('');
       setFullFeedList([]);
       setChildGroupOrderMap({});
+      setFeedsWereReordered(false);
       if (settings?.providers?.length > 0) {
         setActiveProviderForModels(settings.providers[0].id);
       }
@@ -480,6 +499,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   const handleDragReorder = async (newOrder: FullSystemFeedConfig[]) => {
     if (!verifiedSecret) return;
     setFullFeedList(newOrder);
+    setFeedsWereReordered(true);
     if (reorderTimeoutRef.current) clearTimeout(reorderTimeoutRef.current);
     reorderTimeoutRef.current = setTimeout(async () => {
       try {
@@ -490,6 +510,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       }
     }, 500);
   };
+
+  const flushPendingReorder = useCallback(async () => {
+    if (reorderTimeoutRef.current) {
+      clearTimeout(reorderTimeoutRef.current);
+      reorderTimeoutRef.current = null;
+      if (verifiedSecret && fullFeedList.length > 0) {
+        try {
+          await reorderSystemFeeds(fullFeedList.map(f => f.id), verifiedSecret);
+        } catch (e) {
+          console.warn('Failed to flush pending reorder:', e);
+        }
+      }
+    }
+  }, [verifiedSecret, fullFeedList]);
+
+  const handleCloseWithSync = useCallback(async () => {
+    onClose();
+    if (feedsWereReordered && onFeedsReordered) {
+      await flushPendingReorder();
+      onFeedsReordered();
+    }
+  }, [onClose, feedsWereReordered, onFeedsReordered, flushPendingReorder]);
 
   const handleProviderTypeChange = (newType: AIProviderType) => {
     const baseUrl = PROVIDER_DEFAULTS[newType].baseUrl;
@@ -602,7 +644,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     });
   };
 
-  const handleSaveAll = () => {
+  const handleSaveAll = async () => {
     if (!localSettings.tasks.general?.providerId || !localSettings.tasks.general?.modelId) {
       alert("必须配置「总模型」作为默认兜底。");
       return;
@@ -614,6 +656,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       variant: "default",
     });
     onClose();
+    if (feedsWereReordered && onFeedsReordered) {
+      await flushPendingReorder();
+      onFeedsReordered();
+    }
   };
 
   const handleLoadFeeds = async (secret: string) => {
@@ -643,6 +689,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       setFeedStatus({ msg: `订阅源已${isEditingFeed ? '更新' : '添加'}，列表即将刷新。`, type: 'success' });
       setFeedForm({ id: '', url: '', category: '', isSub: false, customTitle: '' });
       setIsEditingFeed(false);
+      setFeedsWereReordered(true);
       await handleLoadFeeds(verifiedSecret);
     } catch (e: any) {
       setFeedStatus({ msg: e.message || '提交订阅源失败。', type: 'error' });
@@ -664,6 +711,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       try {
         await deleteSystemFeed(id, verifiedSecret);
         setFeedStatus({ msg: '订阅源已删除，列表即将刷新。', type: 'success' });
+        setFeedsWereReordered(true);
         await handleLoadFeeds(verifiedSecret);
       } catch (e: any) {
         setFeedStatus({ msg: e.message || '删除订阅源失败。', type: 'error' });
@@ -683,7 +731,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleCloseWithSync(); }}>
       <DialogContent className="max-w-4xl w-full sm:w-[95vw] h-[100dvh] sm:h-[90vh] md:h-[85vh] p-0 flex flex-col overflow-hidden rounded-none sm:rounded-[1.5rem] md:rounded-[2rem]">
         <DialogHeader className="px-4 md:px-6 py-4 border-b shrink-0">
           <div className="flex items-center gap-2">
@@ -1193,7 +1241,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         </Tabs>
 
         <DialogFooter className="px-4 md:px-6 py-3 sm:py-4 border-t shrink-0 bg-muted/20 flex flex-col-reverse sm:flex-row gap-2">
-          <Button variant="ghost" onClick={onClose} className="w-full sm:w-auto">取消</Button>
+          <Button variant="ghost" onClick={handleCloseWithSync} className="w-full sm:w-auto">取消</Button>
           <Button onClick={handleSaveAll} className="w-full sm:w-auto sm:px-8">保存所有设置</Button>
         </DialogFooter>
       </DialogContent>

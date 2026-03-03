@@ -762,6 +762,7 @@ const App: React.FC = () => {
       <SettingsModal
         isOpen={showSettings} onClose={() => setShowSettings(false)}
         settings={aiSettings} onSave={setAiSettings}
+        onFeedsReordered={initFeeds}
       />
     </div>
   );
