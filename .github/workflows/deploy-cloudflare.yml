@@ -3,8 +3,8 @@ name: Deploy to Cloudflare Pages
 on:
   push:
     branches:
-      - vercel-neon-refactor  # Production branch
-      - '**'                  # All other branches (preview)
+      - main  # Production branch
+      - '**'  # All other branches (preview)
 
 jobs:
   deploy:

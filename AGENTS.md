@@ -48,7 +48,7 @@ Gemini RSS Translator: A React 19 + Vite SPA for RSS aggregation, AI translation
 | Rate Limiting | `server/rate-limit.ts` | KV-backed + InMemory fallback |
 | CF Config | `wrangler.toml` | D1, KV bindings (IDs are placeholders, injected by CI) |
 | CF Routing | `public/_routes.json` | Only `/api/*` → Functions |
-| CI/CD | `.github/workflows/deploy-cloudflare.yml` | Auto-deploy to CF Pages on push to `vercel-neon-refactor` |
+| CI/CD | `.github/workflows/deploy-cloudflare.yml` | Auto-deploy to CF Pages on push to `main` |
 
 ## CONVENTIONS
 - **Dual Backend**: Vercel code in `/api` + `/lib`, CF code in `/functions` + `/server`. Don't mix.

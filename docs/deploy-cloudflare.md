@@ -178,11 +178,11 @@ wrangler pages secret put ADMIN_SECRET --project-name=gemini-rss-app
 
 ## 第九步：部署
 
-项目已配置 GitHub Actions 自动部署。只需把代码推送到 `vercel-neon-refactor` 分支，即可自动构建并部署到 Cloudflare Pages。
+项目已配置 GitHub Actions 自动部署。只需把代码推送到 `main` 分支，即可自动构建并部署到 Cloudflare Pages。
 
 ```bash
 # 推送代码，GitHub Actions 会自动部署
-git push origin vercel-neon-refactor
+git push origin main
 ```
 
 部署成功后，你的网站地址是：`https://gemini-rss-app.pages.dev`（或你自定义的项目名）。
@@ -270,7 +270,7 @@ npm run preview:cf
 
 ```bash
 git fetch upstream
-git merge upstream/vercel-neon-refactor
+git merge upstream/main
 git push
 ```
 

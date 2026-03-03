@@ -104,7 +104,7 @@ Do not bypass security checks when adding new proxy or fetch functionality.
 
 ### CI/CD (GitHub Actions)
 
-Production deploys to Cloudflare Pages via `.github/workflows/deploy-cloudflare.yml`, triggered on push to `vercel-neon-refactor`.
+Production deploys to Cloudflare Pages via `.github/workflows/deploy-cloudflare.yml`, triggered on push to `main`.
 
 `wrangler.toml` contains empty placeholders for D1/KV IDs; the workflow injects real values from GitHub Secrets at deploy time.
 
