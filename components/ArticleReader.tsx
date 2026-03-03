@@ -1,12 +1,14 @@
-import React from 'react';
-import { 
-  ChevronLeft, 
-  Languages, 
-  Sparkles, 
-  RefreshCw, 
-  PanelLeft, 
-  PanelRight, 
-  ExternalLink 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  ChevronLeft,
+  Languages,
+  Sparkles,
+  RefreshCw,
+  PanelLeft,
+  PanelRight,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -56,6 +58,40 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
   proxiedArticleContent,
   readingViewAvatar
 }) => {
+  // 控制是否显示完整内容
+  const [showFullContent, setShowFullContent] = useState(false);
+
+  // 当文章切换时，重置为显示摘要
+  useEffect(() => {
+    setShowFullContent(false);
+  }, [article.guid]);
+
+  // 判断是否需要显示切换按钮
+  const shouldShowToggle = useMemo(() => {
+    const desc = article.description?.replace(/<[^>]+>/g, '').trim() || '';
+    const cont = article.content?.replace(/<[^>]+>/g, '').trim() || '';
+
+    // 如果摘要为空或很短，不显示切换
+    if (!desc || desc.length < 100) return false;
+
+    // 如果内容为空，不显示切换
+    if (!cont) return false;
+
+    // 如果内容和摘要相同，不显示切换
+    if (desc === cont) return false;
+
+    // 如果摘要是内容的完整子串（说明摘要就是内容的截取），显示切换
+    return true;
+  }, [article.description, article.content]);
+
+  // 获取要显示的内容
+  const displayContent = useMemo(() => {
+    if (!shouldShowToggle || showFullContent) {
+      return proxiedArticleContent; // 显示完整内容
+    }
+    return article.description; // 显示摘要
+  }, [shouldShowToggle, showFullContent, proxiedArticleContent, article.description]);
+
   return (
     <div className="h-full flex flex-col bg-background animate-in slide-in-from-right duration-500">
       <header className="h-16 border-b flex items-center justify-between px-4 md:px-6 bg-background/80 backdrop-blur-md sticky top-0 z-20">
@@ -134,10 +170,35 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({
           )}
 
           {!showTranslation && (
-            <div
-              className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-2xl prose-headings:font-black selection:bg-primary selection:text-primary-foreground prose-table:block prose-table:overflow-x-auto prose-img:max-w-full prose-img:h-auto prose-pre:max-w-full prose-pre:overflow-x-auto"
-              dangerouslySetInnerHTML={{ __html: proxiedArticleContent }}
-            />
+            <>
+              <div
+                className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-2xl prose-headings:font-black selection:bg-primary selection:text-primary-foreground prose-table:block prose-table:overflow-x-auto prose-img:max-w-full prose-img:h-auto prose-pre:max-w-full prose-pre:overflow-x-auto"
+                dangerouslySetInnerHTML={{ __html: displayContent }}
+              />
+
+              {shouldShowToggle && (
+                <div className="flex justify-center mt-8">
+                  <Button
+                    variant="default"
+                    size="lg"
+                    onClick={() => setShowFullContent(!showFullContent)}
+                    className="gap-2 font-black text-sm uppercase tracking-widest"
+                  >
+                    {showFullContent ? (
+                      <>
+                        <ChevronUp className="w-4 h-4" />
+                        收起内容
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4" />
+                        展开全文
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
           
           <div className="h-20" />
