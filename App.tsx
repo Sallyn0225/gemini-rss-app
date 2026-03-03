@@ -13,7 +13,6 @@ import {
   Article,
   Language,
   ArticleCategory,
-  AISettings,
   FeedMeta
 } from './types';
 import { LeftSidebar, CategoryNode } from './components/LeftSidebar';
@@ -23,14 +22,6 @@ import { Dashboard } from './components/Dashboard';
 import { SettingsModal } from './components/SettingsModal';
 import { CalendarWidget } from './components/CalendarWidget';
 import { cn, mergeAndDedupeArticles } from './lib/utils';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAppContext } from './lib/AppContext';
 import ReactMarkdown from 'react-markdown';
@@ -107,7 +98,6 @@ const App: React.FC = () => {
 
   const { toast } = useToast();
 
-  const FEED_CACHE_TTL = 10 * 60 * 1000;
   const HISTORY_INITIAL_LOAD = 24;  // 首次加载 2 页（24 条）
   const HISTORY_PRELOAD_SIZE = 12;  // 预加载 1 页（12 条）
   const ARTICLES_PER_PAGE = 12;
@@ -120,8 +110,6 @@ const App: React.FC = () => {
   const [feedAvatarCache, setFeedAvatarCache] = useState<Record<string, string>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-  const [helpContent, setHelpContent] = useState('');
   const [openFolderPath, setOpenFolderPath] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dailySummary, setDailySummary] = useState<string | null>(null);
@@ -214,7 +202,7 @@ const App: React.FC = () => {
         }, {})
       );
       setFeedAvatarCache(avatars);
-    } catch (e) { setErrorMsg("初始化订阅源出错"); } finally { setLoading(false); }
+    } catch { setErrorMsg("初始化订阅源出错"); } finally { setLoading(false); }
   }, [setFeedConfigs]);
 
   useEffect(() => { initFeeds(); }, [initFeeds]);
@@ -307,12 +295,12 @@ const App: React.FC = () => {
         ...prev,
         [meta.id]: { total: historyData.total, loaded: mergedItems.length }
       }));
-    } catch (e) {
+    } catch {
       setErrorMsg("加载失败");
     } finally {
       setLoadingFeedId(null);
     }
-  }, [feedContentCache, setFeedContentCache, setSelectedFeed, setSelectedFeedMeta, setActiveArticle, updateFeedAvatarCache]);
+  }, [feedContentCache, setFeedContentCache, setSelectedFeed, setSelectedFeedMeta, setActiveArticle, updateFeedAvatarCache, selectedFeedMeta?.id]);
 
   const handleRefresh = useCallback(async () => {
     if (!selectedFeedMeta || isRefreshing) return;
@@ -341,12 +329,12 @@ const App: React.FC = () => {
         [selectedFeedMeta.id]: { total: historyData.total, loaded: mergedItems.length }
       }));
       setCurrentPage(1);
-    } catch (e) {
+    } catch {
       setErrorMsg("刷新失败");
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedFeedMeta, isRefreshing, setFeedContentCache, updateFeedAvatarCache]);
+  }, [selectedFeedMeta, isRefreshing, setFeedContentCache, updateFeedAvatarCache, setSelectedFeed]);
 
   // 分页切换时预加载下一页
   const handlePageChange = useCallback((newPage: number) => {
@@ -489,11 +477,12 @@ const App: React.FC = () => {
       
       toast({ description: "AI 分析完成！" });
       
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "分析失败，请检查 AI 配置";
       console.error("Analysis failed:", e);
-      setErrorMsg(e.message || "分析失败，请检查 AI 配置");
+      setErrorMsg(message);
       toast({
-        description: e.message || "分析失败，请检查 AI 配置",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -525,7 +514,7 @@ const App: React.FC = () => {
     }
   }, [selectedFeedMeta, selectedDate, summaryCache, classificationCache]);
 
-  const syncStateWithRoute = useCallback((route: any, skipHistory: boolean) => {
+  const syncStateWithRoute = useCallback((route: { feedId: string | null; articleId: string | null }, _skipHistory: boolean) => {
     if (!route.feedId) {
       setSelectedFeed(null); setSelectedFeedMeta(null); setActiveArticle(null);
       return;
@@ -555,7 +544,7 @@ const App: React.FC = () => {
       // URL 中没有 articleId 但当前有 activeArticle，需要清除（处理从文章页后退到列表页的情况）
       setActiveArticle(null);
     }
-  }, [feedConfigs, handleFeedSelect, selectedFeed, selectedFeedMeta, activeArticle, setActiveArticle]);
+  }, [feedConfigs, handleFeedSelect, selectedFeed, selectedFeedMeta, activeArticle, setActiveArticle, setSelectedFeed, setSelectedFeedMeta]);
 
   useEffect(() => {
     const handlePopState = () => syncStateWithRoute(parseRoute(), true);
@@ -573,7 +562,7 @@ const App: React.FC = () => {
       const res = await translateContent(activeArticle.content || activeArticle.description, targetLang, aiSettings);
       setTranslatedContent(res);
       setShowTranslation(true);
-    } catch (e) { alert("翻译失败"); } finally { setIsTranslating(false); }
+    } catch { alert("翻译失败"); } finally { setIsTranslating(false); }
   };
 
   return (

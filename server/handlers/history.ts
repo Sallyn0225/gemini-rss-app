@@ -1,4 +1,4 @@
-import type { Repository } from '../db/repository.js';
+import type { Repository, HistoryItem } from '../db/repository.js';
 import type { RateLimiter } from '../rate-limit.js';
 import { normalizeClientIp } from '../security.js';
 
@@ -65,7 +65,7 @@ export async function handleHistory(
 
     // ── POST: Upsert history items ──
     if (request.method === 'POST') {
-      const body = await request.json() as any;
+      const body = await request.json() as { feedId?: string; items?: HistoryItem[] };
       const { feedId, items } = body;
 
       if (!feedId || !Array.isArray(items)) {
@@ -97,8 +97,8 @@ export async function handleHistory(
     }
 
     return Response.json({ error: 'Method not allowed' }, { status: 405 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Server Error] [API Error]', error);
-    return Response.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+    return Response.json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

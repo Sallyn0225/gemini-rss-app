@@ -64,9 +64,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .orderBy(desc(history.pubDate));
 
       if (limit > 0) {
-        query = query.limit(limit).offset(offset) as any;
+        query = query.limit(limit).offset(offset) as typeof query;
       } else if (offset > 0) {
-        query = query.offset(offset) as any;
+        query = query.offset(offset) as typeof query;
       }
 
       const rows = await query;
@@ -169,7 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           author: item.author || null,
           enclosure: item.enclosure ? JSON.stringify(item.enclosure) : null,
           feedTitle: item.feedTitle || null,
-        } as any).onConflictDoNothing();
+        } as typeof history.$inferInsert).onConflictDoNothing();
       }
 
       // Get total count
@@ -191,12 +191,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (res.headersSent) {
       console.error('[Server Error] [API Error] Headers already sent:', error);
       return;
     }
     console.error('[Server Error] [API Error]', error);
-    return res.status(500).json({ error: 'Internal server error', details: error.message });
+    return res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) });
   }
 }

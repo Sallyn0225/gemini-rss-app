@@ -1,9 +1,9 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { get, set } from 'idb-keyval';
 import {
   Feed,
   Article,
-  Language,
   AISettings,
   FeedMeta
 } from '../types';

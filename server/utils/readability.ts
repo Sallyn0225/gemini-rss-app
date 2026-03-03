@@ -19,7 +19,7 @@ export interface ExtractedArticle {
  */
 export async function extractArticleContent(
   html: string,
-  url: string
+  _url: string
 ): Promise<ExtractedArticle | null> {
   try {
     // 使用 linkedom 解析 HTML

@@ -71,18 +71,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', CACHE_CONTROL_HEADER);
     return res.status(200).send(body);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (res.headersSent) {
       console.error(`[Server Error] [Feed Fetch] Headers already sent:`, error);
       return;
     }
     console.error(`[Server Error] [Feed Fetch Error]`, error);
-    const isTimeout = error.message.includes('timeout') || error.message.includes('超时');
-    const isPrivateHost = error.code === 'PRIVATE_HOST';
-    
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const isTimeout = errMsg.includes('timeout') || errMsg.includes('超时');
+    const isPrivateHost = (error as { code?: string }).code === 'PRIVATE_HOST';
+
     return res.status(isPrivateHost ? 403 : (isTimeout ? 504 : 502)).json({
       error: isTimeout ? 'Fetch timeout' : (isPrivateHost ? 'Host resolves to private address' : 'Fetch failed'),
-      details: error.message,
+      details: errMsg,
     });
   }
 }

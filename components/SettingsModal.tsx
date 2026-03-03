@@ -449,6 +449,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         setGroupOrder(prev => [...prev, ...newGroups.sort()]);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- groupOrder intentionally excluded to avoid infinite loop
   }, [groupTree.root]);
 
   const handleTopLevelGroupReorder = (newOrder: string[]) => {
@@ -504,8 +505,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
     reorderTimeoutRef.current = setTimeout(async () => {
       try {
         await reorderSystemFeeds(newOrder.map(f => f.id), verifiedSecret);
-      } catch (e: any) {
-        setFeedStatus({ msg: '排序保存失败: ' + e.message, type: 'error' });
+      } catch (e: unknown) {
+        setFeedStatus({ msg: '排序保存失败: ' + (e instanceof Error ? e.message : String(e)), type: 'error' });
         handleLoadFeeds(verifiedSecret);
       }
     }, 500);
@@ -608,8 +609,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       const models = await fetchProviderModels(provider);
       if (models.length === 0) setFetchError("未找到任何可用模型。请检查 API Key 权限或网络连接。");
       else setAvailableModels(models);
-    } catch (e: any) {
-      setFetchError(e.message);
+    } catch (e: unknown) {
+      setFetchError(e instanceof Error ? e.message : String(e));
     } finally {
       setIsFetchingModels(false);
     }
@@ -669,8 +670,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       const feeds = await fetchAllSystemFeeds(secret);
       setFullFeedList(feeds);
       setVerifiedSecret(secret);
-    } catch (e: any) {
-      setFeedStatus({ msg: e.message || '加载订阅源失败，请检查密钥是否正确。', type: 'error' });
+    } catch (e: unknown) {
+      setFeedStatus({ msg: (e instanceof Error ? e.message : '') || '加载订阅源失败，请检查密钥是否正确。', type: 'error' });
       setVerifiedSecret(null);
     } finally {
       setIsVerifying(false);
@@ -691,8 +692,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
       setIsEditingFeed(false);
       setFeedsWereReordered(true);
       await handleLoadFeeds(verifiedSecret);
-    } catch (e: any) {
-      setFeedStatus({ msg: e.message || '提交订阅源失败。', type: 'error' });
+    } catch (e: unknown) {
+      setFeedStatus({ msg: (e instanceof Error ? e.message : '') || '提交订阅源失败。', type: 'error' });
     } finally {
       setIsSubmittingFeed(false);
     }
@@ -713,8 +714,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
         setFeedStatus({ msg: '订阅源已删除，列表即将刷新。', type: 'success' });
         setFeedsWereReordered(true);
         await handleLoadFeeds(verifiedSecret);
-      } catch (e: any) {
-        setFeedStatus({ msg: e.message || '删除订阅源失败。', type: 'error' });
+      } catch (e: unknown) {
+        setFeedStatus({ msg: (e instanceof Error ? e.message : '') || '删除订阅源失败。', type: 'error' });
       } finally {
         setIsSubmittingFeed(false);
       }

@@ -210,7 +210,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
       data: extracted,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Article extraction error:', error);
     return res.status(500).json({
       success: false,

@@ -45,7 +45,7 @@ export async function handleFeeds(
         return Response.json({ error: 'Unauthorized: Invalid Admin Secret' }, { status: 401 });
       }
 
-      const body = await request.json() as any;
+      const body = await request.json() as { id?: string; url?: string; category?: string; isSub?: boolean; customTitle?: string; allowedMediaHosts?: string[]; ids?: string[] };
 
       // Add or Update Feed
       if (action === 'add' || action === 'update') {
@@ -89,8 +89,8 @@ export async function handleFeeds(
         }
         try {
           await repo.reorderFeeds(uniqueIds);
-        } catch (err: any) {
-          if (err.message === 'One or more feeds not found') {
+        } catch (err: unknown) {
+          if (err instanceof Error && err.message === 'One or more feeds not found') {
             return Response.json({ error: err.message }, { status: 404 });
           }
           throw err;

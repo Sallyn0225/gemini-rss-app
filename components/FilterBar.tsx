@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, Check, Sparkles, Filter } from "lucide-react";
+import { RefreshCw, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArticleCategory } from '../types';

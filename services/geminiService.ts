@@ -72,7 +72,7 @@ export const fetchProviderModels = async (provider: AIProvider): Promise<string[
         }
         const data = await response.json() as { models?: { name: string }[] };
         if (data.models && Array.isArray(data.models)) {
-          return data.models.map((m: any) => m.name.replace(/^models\//, ''));
+          return data.models.map((m) => m.name.replace(/^models\//, ''));
         }
         return [];
       }
@@ -89,7 +89,7 @@ export const fetchProviderModels = async (provider: AIProvider): Promise<string[
         }
         const data = await response.json() as { data?: { id: string }[] };
         if (data.data && Array.isArray(data.data)) {
-          return data.data.map((m: any) => m.id);
+          return data.data.map((m) => m.id);
         }
         return [];
       }
@@ -106,16 +106,16 @@ export const fetchProviderModels = async (provider: AIProvider): Promise<string[
         }
         const data = await response.json() as { data?: { id: string }[] };
         if (data.data && Array.isArray(data.data)) {
-          return data.data.map((m: any) => m.id);
+          return data.data.map((m) => m.id);
         }
         return [];
       }
       default:
         throw new Error(`不支持的 API 格式: ${provider.type}`);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Fetch Models Error:", error);
-    throw new Error(`获取模型列表失败: ${error.message}`);
+    throw new Error(`获取模型列表失败: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
@@ -153,7 +153,7 @@ const callLLM = async (
         if (!response.ok) {
           throw new Error(await parseApiError(response, providerLabel));
         }
-        const geminiData = await response.json() as any;
+        const geminiData = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
         return geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
       }
 
@@ -177,14 +177,14 @@ const callLLM = async (
         if (!response.ok) {
           throw new Error(await parseApiError(response, providerLabel));
         }
-        const openaiData = await response.json() as any;
+        const openaiData = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
         return openaiData.choices?.[0]?.message?.content || '';
       }
 
       case 'openai-responses': {
         providerLabel = 'OpenAI Responses API';
         const url = `${baseUrl}/responses`;
-        const body: Record<string, any> = {
+        const body: Record<string, unknown> = {
           model: modelId,
           input: prompt,
         };
@@ -203,7 +203,7 @@ const callLLM = async (
         if (!response.ok) {
           throw new Error(await parseApiError(response, providerLabel));
         }
-        const respData = await response.json() as any;
+        const respData = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ text?: string }> }> };
         return respData.output_text || respData.output?.[0]?.content?.[0]?.text || '';
       }
 
@@ -228,15 +228,15 @@ const callLLM = async (
         if (!response.ok) {
           throw new Error(await parseApiError(response, providerLabel));
         }
-        const anthropicData = await response.json() as any;
+        const anthropicData = await response.json() as { content?: Array<{ text?: string }> };
         return anthropicData.content?.[0]?.text || '';
       }
 
       default:
         throw new Error(`不支持的 API 格式: ${provider.type}`);
     }
-  } catch (e: any) {
-    if (e.name === 'AbortError') {
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === 'AbortError') {
       throw new Error(`请求超时：连接 API 服务器超过 60 秒无响应。请检查您的网络连接或代理配置。`);
     }
     // Handle standard fetch network errors (DNS, Connection Refused, CORS)
@@ -323,9 +323,9 @@ ${context}
     const text = await callLLM(config.provider, config.modelId, prompt, true);
     const result = JSON.parse(text);
     return Array.isArray(result) ? result : [];
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.warn("Classification failed:", e);
-    throw new Error(`分类失败：${e.message}`);
+    throw new Error(`分类失败：${e instanceof Error ? e.message : String(e)}`);
   }
 };
 
@@ -399,8 +399,8 @@ ${dateStr}，${feedTitle}发布的内容如下。
   try {
     const text = await callLLM(config.provider, config.modelId, prompt, false);
     return text.trim() || "总结生成失败。";
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.warn("Summary generation failed:", e);
-    throw new Error(`总结生成失败：${e.message}`);
+    throw new Error(`总结生成失败：${e instanceof Error ? e.message : String(e)}`);
   }
 };

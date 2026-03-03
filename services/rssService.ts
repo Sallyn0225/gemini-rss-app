@@ -153,7 +153,7 @@ const upsertHistory = (feedId: string, items: Article[]): void => {
   // Strip content when it equals description to save bandwidth
   const payload = newItems.map(item => {
     if (item.content && item.content === item.description) {
-      const { content, ...rest } = item;
+      const { content: _content, ...rest } = item;
       return rest;
     }
     return item;
@@ -170,9 +170,9 @@ const upsertHistory = (feedId: string, items: Article[]): void => {
     }).then(res => {
       if (res.ok) return res.json();
       throw new Error(`Upsert failed with status ${res.status}`);
-    }).then(data => {
-      if ((data as any).added > 0) {
-        console.log(`[History] Saved ${(data as any).added} new items for "${feedId}", total: ${(data as any).total}`);
+    }).then((data: { added?: number; total?: number }) => {
+      if (data.added && data.added > 0) {
+        console.log(`[History] Saved ${data.added} new items for "${feedId}", total: ${data.total}`);
       }
     }).catch(e => {
       if (attempt < maxAttempts) {
@@ -219,7 +219,7 @@ const extractImageFromHtml = (html: string): string => {
     if (video) return video.getAttribute('poster') || '';
 
     return '';
-  } catch (e) {
+  } catch {
     const match = html.match(/<img[^>]+src\s*=\s*["']([^"']+)["']/i);
     return match ? match[1] : '';
   }
@@ -345,29 +345,30 @@ export const fetchRSS = async (urlOrId: string): Promise<Feed> => {
         const xmlText = await response.text();
         return parseXML(xmlText, url);
       }
-    } catch (e) { console.warn(`${strategy.name} failed for ${url}`); }
+    } catch { console.warn(`${strategy.name} failed for ${url}`); }
   }
 
   try {
     const response = await fetch(`${RSS2JSON_API}${encodeURIComponent(url)}`);
-    const data = await response.json() as { status: string; feed: { title: string; description: string; image?: string }; items: any[] };
+    const data = await response.json() as { status: string; feed: { title: string; description: string; image?: string }; items: Array<Record<string, unknown>> };
     if (data.status === 'ok') {
       return {
         url: url, title: data.feed.title, description: data.feed.description,
         image: data.feed.image || '',
-        items: data.items.map((item: any) => {
-          let thumbnailUrl = item.thumbnail;
-          if (!thumbnailUrl && item.enclosure?.type?.startsWith('image/')) thumbnailUrl = item.enclosure.link;
-          if (!thumbnailUrl) thumbnailUrl = extractImageFromHtml(item.content || item.description);
+        items: data.items.map((item: Record<string, unknown>) => {
+          const enclosure = item.enclosure as { link?: string; type?: string } | undefined;
+          let thumbnailUrl = item.thumbnail as string | undefined;
+          if (!thumbnailUrl && enclosure?.type?.startsWith('image/')) thumbnailUrl = enclosure.link;
+          if (!thumbnailUrl) thumbnailUrl = extractImageFromHtml((item.content || item.description) as string);
           return {
             ...item,
             thumbnail: thumbnailUrl || '',
             feedTitle: data.feed.title
-          };
+          } as Article;
         }),
       };
     }
-  } catch (e) { console.warn(`RSS2JSON failed for ${url}`); }
+  } catch { console.warn(`RSS2JSON failed for ${url}`); }
 
   throw new Error(`All fetch methods failed for ${url}`);
 };

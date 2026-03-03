@@ -92,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               customTitle: customTitle || '',
               allowedMediaHosts: allowedMediaHosts ? JSON.stringify(allowedMediaHosts) : null,
               updatedAt: new Date(),
-            } as any)
+            } as Partial<typeof feeds.$inferInsert>)
             .where(eq(feeds.id, id));
         } else {
           // Insert new feed
@@ -104,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             customTitle: customTitle || '',
             allowedMediaHosts: allowedMediaHosts ? JSON.stringify(allowedMediaHosts) : null,
             displayOrder: 0,
-          } as any);
+          } as typeof feeds.$inferInsert);
         }
 
         return res.status(200).json({ success: true });
@@ -153,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // We'll use sequential updates with error handling.
         for (let i = 0; i < uniqueIds.length; i++) {
           await db.update(feeds)
-            .set({ displayOrder: i, updatedAt: new Date() } as any)
+            .set({ displayOrder: i, updatedAt: new Date() } as Partial<typeof feeds.$inferInsert>)
             .where(eq(feeds.id, uniqueIds[i]));
         }
  

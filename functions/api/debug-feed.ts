@@ -54,8 +54,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       } else {
         fetchBody = await response.text();
       }
-    } catch (error: any) {
-      fetchError = error.message;
+    } catch (error: unknown) {
+      fetchError = error instanceof Error ? error.message : String(error);
     }
 
     return Response.json({
@@ -73,12 +73,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         bodyPreview: fetchBody,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return Response.json({
       step: 'unknown',
       success: false,
-      error: error.message,
-      stack: error.stack,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
     }, { status: 500 });
   }
 };

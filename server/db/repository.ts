@@ -49,13 +49,14 @@ export interface HistoryItem {
   pubDate?: string | null;
   content?: string | null;
   description?: string | null;
-  thumbnail?: any;
+  thumbnail?: string | Record<string, unknown> | null;
   author?: string | null;
-  enclosure?: any;
+  enclosure?: { link: string; type: string } | null;
   feedTitle?: string | null;
 }
 
-function normalizeFeed(raw: any): FeedRow {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeFeed(raw: Record<string, any>): FeedRow {
   return {
     id: raw.id,
     url: raw.url,
@@ -69,7 +70,8 @@ function normalizeFeed(raw: any): FeedRow {
   };
 }
 
-function normalizeHistory(raw: any): HistoryRow {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeHistory(raw: Record<string, any>): HistoryRow {
   return {
     id: raw.id,
     feedId: raw.feedId,
@@ -136,7 +138,7 @@ export class Repository {
           customTitle: data.customTitle,
           allowedMediaHosts: data.allowedMediaHosts,
           updatedAt: new Date().toISOString(),
-        } as any).where(eq(d1Schema.feeds.id, data.id));
+        } as Partial<typeof d1Schema.feeds.$inferInsert>).where(eq(d1Schema.feeds.id, data.id));
       } else {
         await this.client.d1!.insert(d1Schema.feeds).values({
           id: data.id,
@@ -146,7 +148,7 @@ export class Repository {
           customTitle: data.customTitle,
           allowedMediaHosts: data.allowedMediaHosts,
           displayOrder: 0,
-        } as any);
+        } as typeof d1Schema.feeds.$inferInsert);
       }
     } else {
       const existing = await this.client.neon!.select().from(pgSchema.feeds).where(eq(pgSchema.feeds.id, data.id)).limit(1);
@@ -158,7 +160,7 @@ export class Repository {
           customTitle: data.customTitle,
           allowedMediaHosts: data.allowedMediaHosts,
           updatedAt: new Date(),
-        } as any).where(eq(pgSchema.feeds.id, data.id));
+        } as Partial<typeof pgSchema.feeds.$inferInsert>).where(eq(pgSchema.feeds.id, data.id));
       } else {
         await this.client.neon!.insert(pgSchema.feeds).values({
           id: data.id,
@@ -168,7 +170,7 @@ export class Repository {
           customTitle: data.customTitle,
           allowedMediaHosts: data.allowedMediaHosts,
           displayOrder: 0,
-        } as any);
+        } as typeof pgSchema.feeds.$inferInsert);
       }
     }
   }
@@ -176,7 +178,7 @@ export class Repository {
   async deleteFeed(id: string): Promise<number> {
     if (this.client.type === 'd1') {
       const result = await this.client.d1!.delete(d1Schema.feeds).where(eq(d1Schema.feeds.id, id));
-      return (result as any).rowsAffected ?? result.meta?.changes ?? 0;
+      return (result as { rowsAffected?: number }).rowsAffected ?? result.meta?.changes ?? 0;
     }
     const result = await this.client.neon!.delete(pgSchema.feeds).where(eq(pgSchema.feeds.id, id));
     return result.rowCount ?? 0;
@@ -188,13 +190,13 @@ export class Repository {
       const existing = await this.client.d1!.select({ id: d1Schema.feeds.id }).from(d1Schema.feeds).where(inArray(d1Schema.feeds.id, ids));
       if (existing.length !== ids.length) throw new Error('One or more feeds not found');
       for (let i = 0; i < ids.length; i++) {
-        await this.client.d1!.update(d1Schema.feeds).set({ displayOrder: i, updatedAt: new Date().toISOString() } as any).where(eq(d1Schema.feeds.id, ids[i]));
+        await this.client.d1!.update(d1Schema.feeds).set({ displayOrder: i, updatedAt: new Date().toISOString() } as Partial<typeof d1Schema.feeds.$inferInsert>).where(eq(d1Schema.feeds.id, ids[i]));
       }
     } else {
       const existing = await this.client.neon!.select({ id: pgSchema.feeds.id }).from(pgSchema.feeds).where(inArray(pgSchema.feeds.id, ids));
       if (existing.length !== ids.length) throw new Error('One or more feeds not found');
       for (let i = 0; i < ids.length; i++) {
-        await this.client.neon!.update(pgSchema.feeds).set({ displayOrder: i, updatedAt: new Date() } as any).where(eq(pgSchema.feeds.id, ids[i]));
+        await this.client.neon!.update(pgSchema.feeds).set({ displayOrder: i, updatedAt: new Date() } as Partial<typeof pgSchema.feeds.$inferInsert>).where(eq(pgSchema.feeds.id, ids[i]));
       }
     }
   }
@@ -213,14 +215,14 @@ export class Repository {
   async getHistory(feedId: string, limit: number, offset: number): Promise<HistoryRow[]> {
     if (this.client.type === 'd1') {
       let query = this.client.d1!.select().from(d1Schema.history).where(eq(d1Schema.history.feedId, feedId)).orderBy(desc(d1Schema.history.pubDate));
-      if (limit > 0) query = query.limit(limit).offset(offset) as any;
-      else if (offset > 0) query = query.offset(offset) as any;
+      if (limit > 0) query = query.limit(limit).offset(offset) as typeof query;
+      else if (offset > 0) query = query.offset(offset) as typeof query;
       const rows = await query;
       return rows.map(normalizeHistory);
     }
     let query = this.client.neon!.select().from(pgSchema.history).where(eq(pgSchema.history.feedId, feedId)).orderBy(desc(pgSchema.history.pubDate));
-    if (limit > 0) query = query.limit(limit).offset(offset) as any;
-    else if (offset > 0) query = query.offset(offset) as any;
+    if (limit > 0) query = query.limit(limit).offset(offset) as typeof query;
+    else if (offset > 0) query = query.offset(offset) as typeof query;
     const rows = await query;
     return rows.map(normalizeHistory);
   }
@@ -241,7 +243,7 @@ export class Repository {
       const result = await this.client.d1!.delete(d1Schema.history).where(
         and(eq(d1Schema.history.feedId, feedId), lt(d1Schema.history.lastUpdated, cutoffStr))
       );
-      return (result as any).rowsAffected ?? result.meta?.changes ?? 0;
+      return (result as { rowsAffected?: number }).rowsAffected ?? result.meta?.changes ?? 0;
     }
     const result = await this.client.neon!.delete(pgSchema.history).where(
       and(eq(pgSchema.history.feedId, feedId), lt(pgSchema.history.lastUpdated, cutoff))
@@ -273,7 +275,7 @@ export class Repository {
           author: item.author || null,
           enclosure: item.enclosure ? JSON.stringify(item.enclosure) : null,
           feedTitle: item.feedTitle || null,
-        } as any).onConflictDoNothing();
+        } as typeof d1Schema.history.$inferInsert).onConflictDoNothing();
       } else {
         const existing = await this.client.neon!.select().from(pgSchema.history).where(
           and(eq(pgSchema.history.feedId, feedId), item.guid ? eq(pgSchema.history.guid, item.guid) : eq(pgSchema.history.link, item.link!))
@@ -291,7 +293,7 @@ export class Repository {
           author: item.author || null,
           enclosure: item.enclosure ? JSON.stringify(item.enclosure) : null,
           feedTitle: item.feedTitle || null,
-        } as any).onConflictDoNothing();
+        } as typeof pgSchema.history.$inferInsert).onConflictDoNothing();
       }
     }
 

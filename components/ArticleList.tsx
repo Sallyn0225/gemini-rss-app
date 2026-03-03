@@ -26,7 +26,7 @@ interface ArticleListProps {
   isAnalyzing: boolean;
   analysisSuccess: boolean;
   isAiConfigured: boolean;
-  paginatedArticlesWithCategory: any[];
+  paginatedArticlesWithCategory: (Article & { aiCategory?: string })[];
   readArticleIds: Set<string>;
   handleArticleSelect: (article: Article) => void;
   onRefresh: () => Promise<void>;
@@ -223,7 +223,7 @@ export const ArticleList: React.FC<ArticleListProps> = ({
         onShowToast={onShowToast}
       />
 
-      <ScrollArea ref={articleListRef as any} className="flex-1 bg-muted/10">
+      <ScrollArea ref={articleListRef as React.Ref<HTMLDivElement>} className="flex-1 bg-muted/10">
         <div className="p-4 md:p-8">
           {/* Pull-to-refresh indicator */}
           <div

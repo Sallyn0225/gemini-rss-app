@@ -89,7 +89,7 @@ export async function fetchAndExtractClientSide(articleUrl: string): Promise<Ext
         return result;
       }
     }
-  } catch (e) {
+  } catch {
     console.warn('[Readability] All CORS proxies failed, falling back to server');
   }
 

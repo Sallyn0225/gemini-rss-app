@@ -36,10 +36,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       statusText: response.statusText,
       headers: newHeaders,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Middleware Error]', error);
     return Response.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500, headers: { ...CORS_HEADERS, ...SECURITY_HEADERS } },
     );
   }

@@ -48,7 +48,7 @@ export async function fetchViaCorsProxy(
 
       console.log(`[CORSProxy] ${proxy.name} succeeded for ${targetUrl}`);
       return text;
-    } catch (e) {
+    } catch {
       console.warn(`[CORSProxy] ${proxy.name} failed for ${targetUrl}`);
     }
   }

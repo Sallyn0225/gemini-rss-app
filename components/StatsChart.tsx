@@ -18,7 +18,7 @@ const COLORS = [
   'hsl(var(--primary) / 0.2)',
 ];
 
-export const StatsChart: React.FC<StatsChartProps> = React.memo(({ feeds, isDarkMode }) => {
+export const StatsChart: React.FC<StatsChartProps> = React.memo(({ feeds }) => {
   const data = useMemo(() => feeds.map((feed) => ({
     name: feed.title.length > 15 ? feed.title.substring(0, 15) + '...' : feed.title,
     count: feed.items.length,

@@ -52,12 +52,12 @@ export async function handleFeed(request: Request, repo: Repository): Promise<Re
         'Cache-Control': CACHE_CONTROL_HEADER,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[Server Error] [Feed Fetch Error]`, error);
-    const isTimeout = error.name === 'AbortError' || error.message?.includes('timeout');
+    const isTimeout = error instanceof Error && (error.name === 'AbortError' || error.message?.includes('timeout'));
     return Response.json({
       error: isTimeout ? 'Fetch timeout' : 'Fetch failed',
-      details: error.message,
+      details: error instanceof Error ? error.message : String(error),
     }, { status: isTimeout ? 504 : 502 });
   }
 }
