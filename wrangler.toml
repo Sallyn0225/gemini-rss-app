@@ -7,13 +7,13 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "gemini-rss-db"
-database_id = "14e4a542-8c88-4295-9b6f-ab67d56842a2"
+database_id = ""  # Fill in after `wrangler d1 create gemini-rss-db`
 migrations_dir = "drizzle/d1-migrations"
 
 # ─── KV Namespace (rate limiting) ───
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "3c348ef141d24372b22961fa409b09a0"
+id = ""  # Fill in after `wrangler kv namespace create RATE_LIMIT_KV`
 
 # ─── Secrets (set via `wrangler pages secret put`) ───
 # ADMIN_SECRET
