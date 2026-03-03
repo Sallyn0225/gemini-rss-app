@@ -53,7 +53,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         category: f.category,
         isSub: f.isSub || false,
         customTitle: f.customTitle || '',
-        canProxyImages: true,
       }));
 
       return res.status(200).json(safeFeeds);

@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Article, ArticleCategory } from '../types';
-import { getMediaUrl } from '../services/rssService';
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, ExternalLink } from "lucide-react";
@@ -69,7 +68,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = React.memo(({ article, on
           <div className="relative aspect-video overflow-hidden bg-muted w-full">
           {hasValidThumbnail ? (
             <img 
-              src={getMediaUrl(article.thumbnail)} 
+              src={article.thumbnail} 
               alt="" 
               loading="lazy"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 

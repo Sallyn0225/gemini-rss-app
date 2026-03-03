@@ -18,9 +18,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { FeedItem } from './FeedItem';
-import { Feed, FeedMeta, MediaUrl } from '../types';
+import { Feed, FeedMeta } from '../types';
 import { cn } from "@/lib/utils";
-import { proxyImageUrl, getMediaUrl } from '../services/rssService';
 
 export interface CategoryNode {
   name: string;
@@ -42,7 +41,7 @@ interface LeftSidebarProps {
   groupedFeeds: Map<string, CategoryNode>;
   feedContentCache: Record<string, Feed>;
   feedSummaryMap: Record<string, number>;
-  feedAvatarCache: Record<string, MediaUrl>;
+  feedAvatarCache: Record<string, string>;
   selectedFeedMeta: FeedMeta | null;
   loadingFeedId: string | null;
   handleFeedSelect: (feed: FeedMeta) => void;
@@ -69,14 +68,14 @@ const getNodeByPath = (groupedFeeds: Map<string, CategoryNode>, path: string): C
 const getFolderPreviews = (
   node: CategoryNode,
   feedContentCache: Record<string, Feed>,
-  feedAvatarCache: Record<string, MediaUrl>
+  feedAvatarCache: Record<string, string>
 ): string[] => {
   const previews: string[] = [];
   for (const meta of node.feeds) {
     if (previews.length >= 4) break;
     const content = feedContentCache[meta.id];
     const cachedAvatar = feedAvatarCache[meta.id];
-    const previewUrl = getMediaUrl(content?.image || cachedAvatar);
+    const previewUrl = content?.image || cachedAvatar;
     previews.push(previewUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(meta.customTitle || meta.id)}&background=3b82f6&color=fff&size=64`);
   }
   if (previews.length < 4) {
@@ -152,7 +151,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <div className="grid grid-cols-2 gap-1.5 mb-3">
             {[0, 1, 2, 3].map(i => (
               <div key={i} className="aspect-square bg-muted rounded-lg overflow-hidden">
-                {previews[i] ? <img src={proxyImageUrl(previews[i])} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" /> : <div className="w-full h-full" />}
+                {previews[i] ? <img src={previews[i]} alt="" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" /> : <div className="w-full h-full" />}
               </div>
             ))}
           </div>
